@@ -1,20 +1,53 @@
 #
-# FAKTROKURVER
-# Beregne nye faktorkurver basert på nye data.
+# FACTOR CURVES
+# Calculate new factor curves based on our own data.
 #
 
-# Pakker ####
+# Packages ####
 library(ghql)
 library(jsonlite)
 library(httr)
 library(tidyverse)
 library(lubridate)
 
-# Angir APIets URL
+# Functions ####
+
+# Our API's URL
 cli <- GraphqlClient$new(
   url = "https://www.vegvesen.no/trafikkdata/api/?query="
 )
 
+# Get all traffic registration points
+
+getPoints <- function() {
+
+  # The GraphQL Query
+  query_points <-
+  "
+query{
+  trafficRegistrationPoints {
+    id
+    name
+    trafficRegistrationType
+  }
+}
+  "
+  myqueries <- Query$new()
+  myqueries$query("points", query_points)
+
+  # Executing the query
+  points <- cli$exec(myqueries$queries$points) %>%
+    fromJSON(simplifyDataFrame = T, flatten = T) %>%
+    as.data.frame() %>%
+    rename(point_id = data.trafficRegistrationPoints.id,
+           point_name = data.trafficRegistrationPoints.name,
+           traffic_type =
+             data.trafficRegistrationPoints.trafficRegistrationType)
+
+  return(points)
+}
+
+# TODO: oppdater resten av koden!
 # Definerer spørringen med msnr som variabel
 msnr <- '1601405'
 query_del1 <- '{
@@ -55,6 +88,26 @@ totalVolume
 }
 }'
 
+hentTimetrafikk <- function(trp_id) {
+
+  # Lager spørringen
+  sporringer <- Query$new()
+  sporringer$query("timetrafikk", paste0(query_del1, msnr, query_del2_time))
+
+  # Utfører spørringen
+  timetrafikk <- cli$exec(sporringer$queries$timetrafikk) %>%
+    fromJSON(simplifyDataFrame = T, flatten = T) %>%
+    as.data.frame() %>%
+    unnest() %>%
+    rename(intervallstart = data.api.station.volumes.intervalStart,
+           felt = lane,
+           retning = directionIsReverse,
+           trafikkmengde = totalVolume) %>%
+    mutate(intervallstart = with_tz(ymd_hm(intervallstart), "CET"))
+
+  return(timetrafikk)
+}
+
 hentDogntrafikk <- function(msnr) {
 
   # Lager spørringen
@@ -82,26 +135,14 @@ hentDogntrafikk <- function(msnr) {
   return(adt_g)
 }
 
-hentTimetrafikk <- function(msnr) {
 
-  # Lager spørringen
-  sporringer <- Query$new()
-  sporringer$query("timetrafikk", paste0(query_del1, msnr, query_del2_time))
 
-  # Utfører spørringen
-  timetrafikk <- cli$exec(sporringer$queries$timetrafikk) %>%
-    fromJSON(simplifyDataFrame = T, flatten = T) %>%
-    as.data.frame() %>%
-    unnest() %>%
-    rename(intervallstart = data.api.station.volumes.intervalStart,
-           felt = lane,
-           retning = directionIsReverse,
-           trafikkmengde = totalVolume) %>%
-    mutate(intervallstart = with_tz(ymd_hm(intervallstart), "CET"))
+# Utførende kode ####
 
-  return(timetrafikk)
-}
+# Henter alle punkter for bil
+points_for_vehicle <- getPoints() %>%
+  filter(traffic_type == "VEHICLE")
 
 #
-# Slutt.
+# END.
 #
