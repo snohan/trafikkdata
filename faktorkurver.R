@@ -48,6 +48,62 @@ query{
 }
 
 # TODO: oppdater resten av koden!
+
+getHourlytraffic(trpID, from, to){
+  hasNextPage <- TRUE
+  cursor <- ""
+  hourlyTraffic <- data.frame()
+
+  while(hasNextPage == TRUE){
+
+    getAllPages(trpID){
+      query_hourlyTraffic <- paste0(
+        "
+        query{
+          trafficData(trafficRegistrationPointId: ",
+        trpID,
+        "){
+        volume {
+        byHour(
+        from: ",
+        from,
+        "
+        to: ",
+        to,
+        ") {
+        edges {
+          node {
+            from
+            total {
+              volume
+            }
+              }
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              }
+              }
+            }
+        }
+      ")
+
+      # TODO:
+      # aksesser ulike deler av svaret direkte?
+      # flatten json
+
+      hourlyTraffic <- query[]
+      cursor <- query[]
+      hasNextPage <- query[]
+
+      return()
+    }
+    hourlyTraffic <- bind_rows()
+  }
+}
+
+# OLD CODE ####
 # Definerer spørringen med msnr som variabel
 msnr <- '1601405'
 query_del1 <- '{
