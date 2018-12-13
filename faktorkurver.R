@@ -9,6 +9,8 @@ library(jsonlite)
 library(httr)
 library(tidyverse)
 library(lubridate)
+library(magrittr)
+options(stringsAsFactors = F)
 
 # Functions ####
 
@@ -23,19 +25,17 @@ getPoints <- function() {
 
   # The GraphQL Query
   query_points <-
-  "
-query{
+  "{
   trafficRegistrationPoints {
     id
     name
     trafficRegistrationType
   }
-}
-  "
+  }"
+
   myqueries <- Query$new()
   myqueries$query("points", query_points)
 
-  # Executing the query
   points <- cli$exec(myqueries$queries$points) %>%
     fromJSON(simplifyDataFrame = T, flatten = T) %>%
     as.data.frame() %>%
@@ -48,29 +48,38 @@ query{
 }
 
 # TODO: oppdater resten av koden!
+trpID <- "43623V704583"
+from <- "2017-01-01T00:00:00+01:00"
+to <-   "2017-01-15T00:00:00+01:00"
 
-getHourlytraffic(trpID, from, to){
+getHourlytraffic <- function(trpID, from, to) {
+  # Default values
   hasNextPage <- TRUE
   cursor <- ""
   hourlyTraffic <- data.frame()
 
-  while(hasNextPage == TRUE){
-
-    getAllPages(trpID){
-      query_hourlyTraffic <- paste0(
-        "
-        query{
-          trafficData(trafficRegistrationPointId: ",
-        trpID,
-        "){
+  build_query <- function() {
+    query_hourlyTraffic <- paste0(
+      '{
+    trafficData(trafficRegistrationPointId: "',
+      trpID,
+      '"){
+        trafficRegistrationPoint {
+          id
+          name
+        }
         volume {
         byHour(
-        from: ",
-        from,
-        "
-        to: ",
-        to,
-        ") {
+        from: "',
+      from,
+      '",
+        to: "',
+      to,
+      '",
+        after: "',
+      cursor,
+      '"
+        ) {
         edges {
           node {
             from
@@ -87,20 +96,49 @@ getHourlytraffic(trpID, from, to){
               }
             }
         }
-      ")
-
-      # TODO:
-      # aksesser ulike deler av svaret direkte?
-      # flatten json
-
-      hourlyTraffic <- query[]
-      cursor <- query[]
-      hasNextPage <- query[]
-
-      return()
-    }
-    hourlyTraffic <- bind_rows()
+      ')
   }
+
+  while(hasNextPage == TRUE){
+
+    myqueries <- Query$new()
+    myqueries$query("hourlyTraffic", build_query())
+
+    trafficData <- cli$exec(myqueries$queries$hourlyTraffic) %>%
+      fromJSON(simplifyDataFrame = T, flatten = T) %>%
+      as.data.frame()
+
+    cursor <-
+      trafficData$data.trafficData.volume.byHour.pageInfo.endCursor[1] %>%
+      as.character()
+    hasNextPage <-
+      trafficData$data.trafficData.volume.byHour.pageInfo.hasNextPage[1]
+
+    trafficData %<>% select(1:4)
+
+    hourlyTraffic <- bind_rows(hourlyTraffic, trafficData)
+  }
+
+  colnames(hourlyTraffic) <- c("point_id", "point_name", "hour_from",
+                               "total_volume")
+  hourlyTraffic %<>% mutate(hour_from = with_tz(ymd_hms(hour_from), "CET"))
+
+  return(hourlyTraffic)
+}
+
+# Testhenting av 1 side
+getOnePage <- function() {
+
+  # The GraphQL Query
+myqueries <- Query$new()
+myqueries$query("onepage", query_hourlyTraffic)
+
+# Executing the query
+onepage <- cli$exec(myqueries$queries$onepage) %>%
+  fromJSON(simplifyDataFrame = T, flatten = T) %>%
+  as.data.frame()
+
+#return(onepage)
 }
 
 # OLD CODE ####
@@ -159,7 +197,7 @@ hentTimetrafikk <- function(trp_id) {
            felt = lane,
            retning = directionIsReverse,
            trafikkmengde = totalVolume) %>%
-    mutate(intervallstart = with_tz(ymd_hm(intervallstart), "CET"))
+
 
   return(timetrafikk)
 }
@@ -195,9 +233,15 @@ hentDogntrafikk <- function(msnr) {
 
 # Utførende kode ####
 
-# Henter alle punkter for bil
+# Alle punkter for bil
 points_for_vehicle <- getPoints() %>%
   filter(traffic_type == "VEHICLE")
+
+# Timeverdier for et punkt
+hourlyTrafficVolume <- getHourlytraffic(
+  "43623V704583",
+  "2017-01-01T00:00:00+01:00",
+  "2017-12-31T00:00:00+01:00")
 
 #
 # END.
