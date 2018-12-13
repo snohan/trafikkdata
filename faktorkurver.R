@@ -14,16 +14,12 @@ options(stringsAsFactors = F)
 
 # Functions ####
 
-# Our API's URL
 cli <- GraphqlClient$new(
   url = "https://www.vegvesen.no/trafikkdata/api/?query="
 )
 
-# Get all traffic registration points
-
 getPoints <- function() {
-
-  # The GraphQL Query
+  # Get all traffic registration points
   query_points <-
   "{
   trafficRegistrationPoints {
@@ -46,11 +42,6 @@ getPoints <- function() {
 
   return(points)
 }
-
-# TODO: oppdater resten av koden!
-trpID <- "43623V704583"
-from <- "2017-01-01T00:00:00+01:00"
-to <-   "2017-01-15T00:00:00+01:00"
 
 getHourlytraffic <- function(trpID, from, to) {
   # Default values
@@ -126,82 +117,37 @@ getHourlytraffic <- function(trpID, from, to) {
   return(hourlyTraffic)
 }
 
-# Testhenting av 1 side
-getOnePage <- function() {
+calculatefactorCurve <- function(hourlyValues) {
+  # A factor curve for a whole year is calculated by
+  # dividing yearly hour traffic through yearly traffic
+  # TODO: yearly traffic per point and then join to hourly values
+  yearlyValues <- hourlyValues %>%
+    group_by(point_id) %>%
+    summarise(yearly_traffic = sum(total_volume))
 
-  # The GraphQL Query
-myqueries <- Query$new()
-myqueries$query("onepage", query_hourlyTraffic)
-
-# Executing the query
-onepage <- cli$exec(myqueries$queries$onepage) %>%
-  fromJSON(simplifyDataFrame = T, flatten = T) %>%
-  as.data.frame()
-
-#return(onepage)
+  hourlyValues %<>%
+    mutate(hour_of_day = hour(hour_from))  %>%
+    group_by(point_id, hour_of_day) %>%
+    summarise(yearly_hour_traffic = sum(total_volume)) %>%
+    left_join(yearlyValues, by = c("point_id")) %>%
+    mutate(hourly_factor = yearly_hour_traffic / yearly_traffic)
 }
 
+getTrafficDataForpoints <- function(trp_list, start, end) {
+  number_of_points <- length(trp_list)
+  data_points <- data.frame()
+  trp <- 1
+
+  while (trp <= number_of_points) {
+    data_points <- bind_rows(data_points,
+                             getHourlytraffic(trp_list[trp], start, end))
+    trp <- trp + 1
+  }
+  return(data_points)
+}
+
+#
 # OLD CODE ####
-# Definerer spørringen med msnr som variabel
-msnr <- '1601405'
-query_del1 <- '{
-api(apiKey: "0985BA1D-813A-4003-BBFA-580F3D5E9111") {
-station(measurePointNumber: '
-query_del2_dogn <- ') {
-volumes(
-from: "2017-01-01",
-to: "2017-02-01",
-interval: 1,
-unit: DAY,
-groupBy: STATION) {
-intervalStart
-traffic {
-lane
-directionIsReverse
-totalVolume
-}
-}
-}
-}
-}'
-query_del2_time <- ') {
-volumes(
-from: "2017-01-01",
-to: "2017-02-01",
-interval: 1,
-unit: HOUR,
-groupBy: LANE) {
-intervalStart
-traffic {
-lane
-directionIsReverse
-totalVolume
-}
-}
-}
-}
-}'
-
-hentTimetrafikk <- function(trp_id) {
-
-  # Lager spørringen
-  sporringer <- Query$new()
-  sporringer$query("timetrafikk", paste0(query_del1, msnr, query_del2_time))
-
-  # Utfører spørringen
-  timetrafikk <- cli$exec(sporringer$queries$timetrafikk) %>%
-    fromJSON(simplifyDataFrame = T, flatten = T) %>%
-    as.data.frame() %>%
-    unnest() %>%
-    rename(intervallstart = data.api.station.volumes.intervalStart,
-           felt = lane,
-           retning = directionIsReverse,
-           trafikkmengde = totalVolume) %>%
-
-
-  return(timetrafikk)
-}
-
 hentDogntrafikk <- function(msnr) {
 
   # Lager spørringen
@@ -229,19 +175,37 @@ hentDogntrafikk <- function(msnr) {
   return(adt_g)
 }
 
-
-
 # Utførende kode ####
 
-# Alle punkter for bil
 points_for_vehicle <- getPoints() %>%
   filter(traffic_type == "VEHICLE")
+
+# 2017 is in focus for this analysis
+interval_start <- "2017-01-01T00:00:00+01:00"
+interval_end   <- "2018-01-01T00:00:00+01:00"
+
 
 # Timeverdier for et punkt
 hourlyTrafficVolume <- getHourlytraffic(
   "43623V704583",
   "2017-01-01T00:00:00+01:00",
-  "2017-12-31T00:00:00+01:00")
+  "2018-01-01T00:00:00+01:00")
+
+hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[1:2,1],
+                                               interval_start,
+                                               interval_end)
+
+factorCurve <- calculatefactorCurve(hourlyTrafficVolume)
+
+factorPlot <- factorCurve %>%
+  ggplot(aes(hour_of_day, hourly_factor, color = point_id)) +
+  geom_line()
+
+factorPlot
+
+# TODO: One point's 365 curves in one plot
+# TODO: One plot per weekday
+# TODO: One factor curve based on all points with 8760 values in 2017.
 
 #
 # END.
