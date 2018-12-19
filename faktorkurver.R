@@ -191,7 +191,7 @@ hourlyTrafficVolume <- getHourlytraffic(
   "2017-01-01T00:00:00+01:00",
   "2018-01-01T00:00:00+01:00")
 
-hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[1:2,1],
+hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[9:11,1],
                                                interval_start,
                                                interval_end)
 
@@ -206,6 +206,8 @@ factorPlot
 # TODO: One point's 365 curves in one plot
 # TODO: One plot per weekday
 # TODO: One factor curve based on all points with 8760 values in 2017.
+# TODO: Do not crash when there are no data in the interval.
+# TODO: Filter out points based on operational status.
 
 #
 # END.
