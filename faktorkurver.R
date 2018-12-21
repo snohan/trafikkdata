@@ -11,6 +11,7 @@ library(tidyverse)
 library(lubridate)
 library(magrittr)
 library(tictoc)
+library(plotly)
 options(stringsAsFactors = F)
 
 # Functions ####
@@ -144,6 +145,15 @@ calculatefactorCurve <- function(hourlyValues) {
     mutate(hourly_factor = yearly_hour_traffic / yearly_traffic)
 }
 
+nationalFactorCurve <- function(hourlyValues) {
+  yearly_traffic = sum(hourlyValues$yearly_hour_traffic)
+
+  hourlyValues %<>%
+    group_by(hour_of_day) %>%
+    summarise(yearly_hour_traffic = sum(yearly_hour_traffic)) %>%
+    mutate(hourly_factor = yearly_hour_traffic / yearly_traffic)
+}
+
 getTrafficDataForpoints <- function(trp_list, start, end) {
   number_of_points <- length(trp_list)
   data_points <- data.frame()
@@ -196,26 +206,62 @@ interval_start <- "2017-01-01T00:00:00+01:00"
 interval_end   <- "2018-01-01T00:00:00+01:00"
 
 # Taking a few points at a time
+# 300 a time should be safe!
 tic()
-hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[1:15,1],
+hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[201:300,1],
                                                interval_start,
                                                interval_end)
 toc()
 
 numberOfhours_2017 <- hourlyTrafficVolume %>%
   group_by(point_id) %>%
-  summarise(no_hours = n())
+  summarise(no_hours = n()) %>%
+  filter(no_hours == 8760)
 
+hourlyTrafficVolume_to_add <-
+  hourlyTrafficVolume %>%
+  filter(point_id %in% numberOfhours_2017$point_id)
+
+#hourlyTrafficVolume_2017 <- data.frame()
+hourlyTrafficVolume_2017 <-
+  bind_rows(hourlyTrafficVolume_2017, hourlyTrafficVolume_to_add)
+
+length(unique(hourlyTrafficVolume_2017$point_id))
 
 # Calculate the factor curves
-factorCurve <- calculatefactorCurve(hourlyTrafficVolume)
+factorCurve <- calculatefactorCurve(hourlyTrafficVolume_2017)
 
 factorPlot <- factorCurve %>%
+  filter(!(point_id %in% deviatingPoints)) %>%
   ggplot(aes(hour_of_day, hourly_factor, color = point_id)) +
   geom_line()
 
-factorPlot
+ggplotly(factorPlot)
 
+
+# Deviating curves seen in plot:
+# 71241V2460301: Kong Håkons gate: Kø?
+# 96529V885935: Skjellesvikskaret: lav ÅDT
+# 88780V2282345: Ørbekk sørgående rampe: forsinket rushtime?
+# 991115V249438: Årøsæterlia: ?
+# 13278V121819: Aukland vegstasjon: lav ÅDT
+# 50043V885183: Trollvann: lav ÅDT
+# 85303V886129: Svolvær lufthavn: lav ÅDT, kun flyplasstrafikk
+# 16467V249421: Spjelkavik sør: omkjøringsvei tunnelstenging?
+# 77194V72348: Hitratunnelen: lav ÅDT
+
+deviatingPoints <- c("96529V885935", "71241V2460301",
+                     "85303V886129", "16467V249421",
+                     "77194V72348")
+
+write.csv2(factorCurve, file = "faktorkurver_1_300.csv",
+           row.names = F)
+
+nationalCurve <- factorCurve %>% nationalFactorCurve()
+# Ligner mest på M3, men er mer spisset!
+
+# TODO: Interactive plot
+# TODO: Remove deviating curves
 # TODO: One point's 365 curves in one plot
 # TODO: One plot per weekday
 # TODO: One factor curve based on all points with 8760 values in 2017.
