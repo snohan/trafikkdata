@@ -10,6 +10,7 @@ library(httr)
 library(tidyverse)
 library(lubridate)
 library(magrittr)
+library(tictoc)
 options(stringsAsFactors = F)
 
 # Functions ####
@@ -96,8 +97,12 @@ getHourlytraffic <- function(trpID, from, to) {
     myqueries$query("hourlyTraffic", build_query())
 
     trafficData <- cli$exec(myqueries$queries$hourlyTraffic) %>%
-      fromJSON(simplifyDataFrame = T, flatten = T) %>%
-      as.data.frame()
+      fromJSON(simplifyDataFrame = T, flatten = T)
+
+    if(length(trafficData$data$trafficData$volume$byHour$edges) == 0)
+      break;
+
+    trafficData %<>% as.data.frame()
 
     cursor <-
       trafficData$data.trafficData.volume.byHour.pageInfo.endCursor[1] %>%
@@ -110,9 +115,15 @@ getHourlytraffic <- function(trpID, from, to) {
     hourlyTraffic <- bind_rows(hourlyTraffic, trafficData)
   }
 
-  colnames(hourlyTraffic) <- c("point_id", "point_name", "hour_from",
-                               "total_volume")
-  hourlyTraffic %<>% mutate(hour_from = with_tz(ymd_hms(hour_from), "CET"))
+  if(nrow(hourlyTraffic) == 0) {
+    hourlyTraffic <- setNames(data.frame(matrix(ncol = 4, nrow = 0)),
+                              c("point_id", "point_name", "hour_from",
+                                "total_volume"))
+  }else{
+    colnames(hourlyTraffic) <- c("point_id", "point_name", "hour_from",
+                                 "total_volume")
+    hourlyTraffic %<>% mutate(hour_from = with_tz(ymd_hms(hour_from), "CET"))
+  }
 
   return(hourlyTraffic)
 }
@@ -184,17 +195,19 @@ points_for_vehicle <- getPoints() %>%
 interval_start <- "2017-01-01T00:00:00+01:00"
 interval_end   <- "2018-01-01T00:00:00+01:00"
 
-
-# Timeverdier for et punkt
-hourlyTrafficVolume <- getHourlytraffic(
-  "43623V704583",
-  "2017-01-01T00:00:00+01:00",
-  "2018-01-01T00:00:00+01:00")
-
-hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[9:11,1],
+# Taking a few points at a time
+tic()
+hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[1:15,1],
                                                interval_start,
                                                interval_end)
+toc()
 
+numberOfhours_2017 <- hourlyTrafficVolume %>%
+  group_by(point_id) %>%
+  summarise(no_hours = n())
+
+
+# Calculate the factor curves
 factorCurve <- calculatefactorCurve(hourlyTrafficVolume)
 
 factorPlot <- factorCurve %>%
@@ -206,7 +219,6 @@ factorPlot
 # TODO: One point's 365 curves in one plot
 # TODO: One plot per weekday
 # TODO: One factor curve based on all points with 8760 values in 2017.
-# TODO: Do not crash when there are no data in the interval.
 # TODO: Filter out points based on operational status.
 
 #
