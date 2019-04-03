@@ -4,8 +4,6 @@
 #
 
 # Packages ####
-#.libPaths( c( .libPaths(), "C://Eget/R/library") )
-#.libPaths()
 library(ghql)
 library(jsonlite)
 library(httr)
