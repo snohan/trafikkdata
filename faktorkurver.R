@@ -198,6 +198,7 @@ hentDogntrafikk <- function(msnr) {
 
 # Utførende kode ####
 
+# All points
 points_for_vehicle <- getPoints() %>%
   filter(traffic_type == "VEHICLE")
 
@@ -208,7 +209,7 @@ interval_end   <- "2018-01-01T00:00:00+01:00"
 # Taking a few points at a time
 # 300 a time should be safe!
 tic()
-hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[201:300,1],
+hourlyTrafficVolume <- getTrafficDataForpoints(points_for_vehicle[201:204,1],
                                                interval_start,
                                                interval_end)
 toc()
@@ -260,8 +261,41 @@ write.csv2(factorCurve, file = "faktorkurver_1_300.csv",
 nationalCurve <- factorCurve %>% nationalFactorCurve()
 # Ligner mest på M3, men er mer spisset!
 
-# TODO: Interactive plot
-# TODO: Remove deviating curves
+
+# Predefined set of points ####
+points_predfined <- c("27025V443294", "52685V444218",
+                      "93210V444230") %>%
+  as.list()
+
+tic()
+hourlyTrafficVolume_predefined <- getTrafficDataForpoints(points_predfined,
+                                                          interval_start,
+                                                          interval_end)
+toc()
+
+# Calculate the factor curves
+factorCurve_predefined <-
+  calculatefactorCurve(hourlyTrafficVolume_predefined) %>%
+  mutate(hourly_factor_percentage = round(hourly_factor * 100, digits = 1)) %>%
+  ungroup() %>%
+  mutate(yearly_traffic_by_24 = yearly_traffic / 24) %>%
+  group_by(hour_of_day) %>%
+  summarise(sum_yearly_hour_traffic = sum(yearly_hour_traffic),
+            sum_yearly_traffic = sum(yearly_traffic)) %>%
+  mutate(hourly_factor = round(100 *
+                 sum_yearly_hour_traffic / sum_yearly_traffic,
+               digits = 1))
+
+write.csv2(factorCurve_predefined,
+           file = "vinterbro_2017.csv", row.names = F)
+
+factorPlot_predefined <- factorCurve_predefined %>%
+  ggplot(aes(hour_of_day, hourly_factor #color = point_id
+             )) +
+  geom_line()
+
+ggplotly(factorPlot_predefined)
+
 # TODO: One point's 365 curves in one plot
 # TODO: One plot per weekday
 # TODO: One factor curve based on all points with 8760 values in 2017.
