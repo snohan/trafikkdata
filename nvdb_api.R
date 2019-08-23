@@ -120,8 +120,8 @@ stasjoner_med_fartsgrense <- bind_rows(stasjoner_30,
                                        stasjoner_100,
                                        stasjoner_110)
 
-write.csv2(stasjoner_med_fartsgrense,
-           file = "stasjoner_med_fartsgrense.csv",
+write.csv2(stasjoner_110,
+           file = "stasjoner_med_fartsgrense_110_20190507.csv",
            row.names = F)
 
 # AADT-belegging ####
