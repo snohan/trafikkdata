@@ -8,3 +8,5 @@
 *.xlsx
 kibanadata
 *_cache
+atki_api.R
+*.xml

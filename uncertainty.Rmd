@@ -1,0 +1,51 @@
+---
+title: "Usikkerhet i trafikkmengdestørrelser"
+output: html_notebook
+---
+
+```{r setup}
+source("H:/Programmering/R/byindeks/rmd_setup.R")
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+library(kableExtra)
+```
+
+
+# Variasjon i døgntrafikk
+
+```{r get_mdt}
+mdt <- get_trp_mdt_with_coverage("84355V1175837") %>% 
+  dplyr::mutate(trp_id = as.character(trp_id),
+                coverage = round(coverage, digits = 1)) %>% 
+  dplyr::select(trp_id, year, month, mdt, uncertainty, coverage) %>% 
+  dplyr::rename(punkt_id = trp_id,
+                aar = year,
+                maaned = month,
+                MDT = mdt,
+                usikkerhet = uncertainty,
+                dekningsgrad = coverage)
+  
+```
+
+
+```{r mdt_unrounded}
+mdt %>% 
+  kable()
+```
+
+
+```{r mdt_rounded}
+mdt %>% 
+  dplyr::mutate(usikkerhet = signif(usikkerhet, 2)) %>% 
+  kable() 
+```
+
+
+```{r mdt_rounded_final}
+mdt %>% 
+  dplyr::mutate(usikkerhet = signif(usikkerhet, 2)) %>% 
+  dplyr::mutate(MDT = round(MDT, digits = -(floor(log10(usikkerhet)) - 1))) %>% 
+  kable()
+
+```
+
+
