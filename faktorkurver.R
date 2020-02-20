@@ -46,6 +46,7 @@ getPoints <- function() {
 }
 
 getHourlytraffic <- function(trpID, from, to) {
+  # COPIED TO get_from_td_api - USE THAT INSTEAD!
   # Default values
   hasNextPage <- TRUE
   cursor <- ""
