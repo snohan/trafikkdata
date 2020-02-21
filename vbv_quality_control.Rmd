@@ -1,0 +1,154 @@
+---
+title: "Sammenhenger mellom lengde, fart, qspeed og klasse"
+output: html_notebook
+---
+
+```{r setup, message=F}
+library(tidyverse)
+library(knitr)
+library(cowplot)
+library(lubridate)
+
+# knitr options ####
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE,
+                      error = FALSE,
+                      cache = TRUE)
+```
+
+```{r functions}
+read_kibana_vbv <- function(vbv_file) {
+  read_csv2(vbv_file) %>%
+  dplyr::mutate(lane = as.character(lane),
+                vehicle_type = as.character(vehicle_type))
+}
+
+plot_scatterplot_length <- function(vbv_data) {
+  vbv_data %>%
+  ggplot() + 
+  geom_point(aes(qspeed, length, color = lane)) +
+  geom_vline(aes(xintercept = 3)) +
+  geom_hline(aes(yintercept = 2)) +
+  geom_hline(aes(yintercept = 5.6), color = "grey") +
+  geom_hline(aes(yintercept = 27)) +
+  scale_color_discrete()
+}
+
+plot_speed_qspeed <- function(vbv_data) {
+  vbv_data %>%
+  ggplot() + 
+  geom_point(aes(qspeed, speed, color = lane)) +
+  geom_vline(aes(xintercept = 3)) +
+  scale_color_discrete()
+}
+
+plot_length_class <- function(vbv_data) {
+  vbv_data %>%
+  ggplot() + 
+  geom_point(aes(qspeed, length, color = vehicle_type)) +
+  geom_vline(aes(xintercept = 3)) +
+  geom_hline(aes(yintercept = 2)) +
+  geom_hline(aes(yintercept = 5.6), color = "grey") +
+  geom_hline(aes(yintercept = 27)) +
+  scale_color_discrete()
+}
+
+plot_all_in_one <- function(vbv_data) {
+  cowplot::plot_grid(plot_scatterplot_length(vbv_data),
+                   plot_speed_qspeed(vbv_data),
+                   plot_length_class(vbv_data),
+                   ncol = 1)
+}
+
+```
+
+```{r get_data, message=F}
+# Vbv data exported from Kibana
+vbv_data_asker <- 
+  read_kibana_vbv("vbv_data/asker.csv")
+vbv_data_soyland <- 
+  read_kibana_vbv("vbv_data/soyland.csv")
+vbv_data_hollundsvegen <- 
+  read_kibana_vbv("vbv_data/hollundsvegen.csv")
+vbv_data_svortland_vest <-
+  read_kibana_vbv("vbv_data/svortland_vest.csv")
+vbv_data_svortland_ost <-
+  read_kibana_vbv("vbv_data/svortland_ost.csv")
+vbv_postterminalen <- 
+  read_kibana_vbv("vbv_data/postterminalen.csv")
+```
+
+## E18 Asker (LM)
+Egenskaper:
+
+* Fire felt.
+* God flyt i trafikken, fart mellom 60 og 120. 
+* En sløyfe i felt 3 har 20 kHz lavere enn de andre sløyfene.
+
+```{r asker, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_data_asker)
+```
+
+
+
+## F44 Søyland (LM)
+Egenskaper:
+
+* To felt.
+* Grei flyt i trafikken, fart mellom 50 og 90.
+* En sløyfe i felt 2 har 20 kHz lavere enn de andre sløyfene.
+
+```{r soyland, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_data_soyland)
+```
+
+
+
+## F5004 Hollundsvegen (LM)
+Egenskaper:
+
+* To felt.
+* Tidvis saktegående trafikk
+* Alle fire sløyfer har frekvens på ca. 55 kHz.
+
+```{r hollundsvegen, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_data_hollundsvegen)
+```
+
+## Svortland vest
+Egenskaper:
+
+* To felt.
+* Tidvis saktegående trafikk
+* Alle fire sløyfer har frekvens på ca. 65 kHz.
+
+```{r svortlandv, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_data_svortland_vest)
+```
+
+
+## Svortland øst
+Egenskaper:
+
+* To felt.
+* Tidvis saktegående trafikk
+* Alle fire sløyfer har frekvens på ca. 85 kHz.
+
+```{r svortlando, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_data_svortland_ost)
+```
+
+
+## F862 Postterminalen (LM)
+Egenskaper:
+
+* Tre felt, men felt 2 er flettefelt, så sikkert en del delvise passeringer.
+* Tidvis saktegående trafikk. Forventer en del kø i felt 1.
+* Alle sløyfer viser normal frekvens på rundt 85 kHz.
+
+```{r postterminalen, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_postterminalen)
+```
+
+
