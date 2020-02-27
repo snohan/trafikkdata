@@ -1,6 +1,14 @@
 ---
-title: "Sammenhenger mellom lengde, fart, qspeed og klasse"
-output: html_notebook
+title: "Vurdering av regler for kontroll av datakvalitet"
+output: 
+  html_notebook:
+    theme: cerulean
+    number_sections: true
+    toc: true
+    toc_float: 
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
 ---
 
 ```{r setup, message=F}
@@ -9,7 +17,6 @@ library(knitr)
 library(cowplot)
 library(lubridate)
 
-# knitr options ####
 knitr::opts_chunk$set(echo = FALSE,
                       warning = FALSE,
                       message = FALSE,
@@ -32,7 +39,8 @@ plot_scatterplot_length <- function(vbv_data) {
   geom_hline(aes(yintercept = 2)) +
   geom_hline(aes(yintercept = 5.6), color = "grey") +
   geom_hline(aes(yintercept = 27)) +
-  scale_color_discrete()
+  scale_color_discrete() +
+    theme_minimal()
 }
 
 plot_speed_qspeed <- function(vbv_data) {
@@ -40,7 +48,17 @@ plot_speed_qspeed <- function(vbv_data) {
   ggplot() + 
   geom_point(aes(qspeed, speed, color = lane)) +
   geom_vline(aes(xintercept = 3)) +
-  scale_color_discrete()
+  scale_color_discrete() +
+    theme_minimal()
+}
+
+plot_speed_relqspeed <- function(vbv_data) {
+  vbv_data %>%
+    mutate(relative_qspeed = qspeed / speed) %>% 
+  ggplot() + 
+  geom_point(aes(relative_qspeed, speed, color = lane)) +
+  scale_color_discrete() +
+    theme_minimal()
 }
 
 plot_length_class <- function(vbv_data) {
@@ -51,19 +69,48 @@ plot_length_class <- function(vbv_data) {
   geom_hline(aes(yintercept = 2)) +
   geom_hline(aes(yintercept = 5.6), color = "grey") +
   geom_hline(aes(yintercept = 27)) +
-  scale_color_discrete()
+  scale_color_discrete() +
+    theme_minimal()
+}
+
+plot_length_class_per_lane <- function(vbv_data) {
+  vbv_data %>%
+    group_by(lane) %>% 
+    ggplot() + 
+    geom_point(aes(qspeed, length, color = vehicle_type)) +
+    facet_wrap(. ~ lane, labeller = label_both) +
+    geom_vline(aes(xintercept = 3)) +
+    geom_hline(aes(yintercept = 2)) +
+    geom_hline(aes(yintercept = 5.6), color = "grey") +
+    geom_hline(aes(yintercept = 27)) +
+    scale_color_discrete() +
+    theme_minimal()
+}
+
+plot_length_class_per_lane_relqspeed <- function(vbv_data) {
+  vbv_data %>%
+    mutate(relative_qspeed = qspeed / speed) %>%
+    group_by(lane) %>% 
+    ggplot() + 
+    geom_point(aes(relative_qspeed, length, color = vehicle_type)) +
+    facet_wrap(. ~ lane, labeller = label_both) +
+    geom_hline(aes(yintercept = 2)) +
+    geom_hline(aes(yintercept = 5.6), color = "grey") +
+    geom_hline(aes(yintercept = 27)) +
+    scale_color_discrete() +
+    theme_minimal()
 }
 
 plot_all_in_one <- function(vbv_data) {
   cowplot::plot_grid(plot_scatterplot_length(vbv_data),
                    plot_speed_qspeed(vbv_data),
-                   plot_length_class(vbv_data),
+                   plot_length_class_per_lane(vbv_data),
                    ncol = 1)
 }
 
 ```
 
-```{r get_data, message=F}
+```{r get_data, message=F, warning=F, error=F, include=F}
 # Vbv data exported from Kibana
 vbv_data_asker <- 
   read_kibana_vbv("vbv_data/asker.csv")
@@ -77,78 +124,328 @@ vbv_data_svortland_ost <-
   read_kibana_vbv("vbv_data/svortland_ost.csv")
 vbv_postterminalen <- 
   read_kibana_vbv("vbv_data/postterminalen.csv")
+vbv_elgeseter <- 
+  read_kibana_vbv("vbv_data/elgeseter_bru.csv")
+# Ser på Elgeseter bru 24.02.2020 da det var mye snø og neppe noen faktiske mc
+# eller skuter
+vbv_elgeseter_2 <- 
+  read_kibana_vbv("vbv_data/elgeseter_bru_20200224.csv")
+vbv_moholtlia <- 
+  read_kibana_vbv("vbv_data/moholtlia.csv")
+vbv_f05 <- 
+  read_kibana_vbv("vbv_data/oysand_f05.csv")
 ```
 
-## E18 Asker (LM)
+
+# Dagens regelsett
+Vi har regler som gjelder generelt, og noen som gjelder spesifikt per apparattype.
+
+For **alle utstyrstyper** for motorkjøretøy må følgende ved hver enkelt registrering merkes ugyldig dersom:
+
+- Selve registreringen:
+  - Kjørefeltverdien er fraværende.
+  - Kjørefeltverdien er utenfor de kjørefeltene som eksisterer på vegsnittet.
+  - Eventnummer er "null".
+- Lengde og klassifisering:
+  - Lengde er < 1 m eller > 27 m.
+- Fart:
+  - Absoluttverdi av fart > 300 km/h
+
+For **Loop Monitor** skal følgende merkes som ugyldig hvis:
+
+- Fart, lengde og klassifisering:
+  - Absoluttverdi av fart < 7 km/h.
+- Fart og lengde:
+  - <p style="color:red">Speed_quality >= 3 % for fart >= 100 km/h, eller >= 3 km/h for fart < 100 km/h. (Speed_quality er absolutt avvik (i km/h) mellom loop 1 og 2)</p>
+- Klassifisering:
+  - Signalkoden inneholder oddetall eller 0, unntatt 0202.
+
+For **EMU3** skal følgende merkes ugyldig hvis:
+
+- Fart og lengde:
+  - Absoluttverdi av fart < 7 km/h.
+- Fart, lengde og klassifisering:
+  - <p style="color:red">Speed_quality ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).</p>
+  
+
+## Hvilke regler fører til underkjente lengder
+
+- Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne regelen.
+- Lengde utenfor (1, 27) m: noen få utslag av denne regelen.
+- **Qspeed større enn 3: de fleste utslagene skyldes denne regelen.** De aktuelle reglene er i avsnittet over merket med rødt.
+
+
+# Formålet med denne undersøkelsen
+Noen trafikkregistreringspunkter har høy andel ukjente **lengder**. Hva er grunnen til det?
+
+Kan det være at dagens regelsett er for strengt?
+
+Målet er å vurdere dagens regelsett og eventuelt justere reglene. Om reglene justeres, skal alle data i Datainn reberegnes tilbake til 2014.
+
+
+# Normalsituasjon
+Ved god flyt i trafikken, god kvalitet på sløyfene og ingen delvise passeringer blir datakvaliteten veldig god, også får lengdemålingene.
+
+Eksempel kommer.
+
+
+# Feilsituasjoner og eksempler
+
+Årsaker til lav datakvalitet kan grovt deles inn i tre kategorier:
+
+- Feil på sløyfer:
+  - betydelig ulik frekvens på sløyfer i samme felt
+  - frekvens utenfor toleranseområde
+  - ingen frekvens (sløyfebrudd, ikke tilkoblet sløyfe eller dårlig koblet sløyfe, kortslutning)
+- Delvis passering av sløyfer
+- Saktegående eller stillestående trafikk (kø)
+
+
+## Feil på sløyfer
+
+### Sløyfer med ulik frekvens
+Dagens regelsett gir ukjent lengde for de fleste passeringer i felt der det er stor forskjell i frekvensen på de to sløyfene. Typisk eksempel er der hvor en sløyfe har omkring 65 kHz og den andre ligger rundt 85 kHz. Sistnevnte er normalt frekvensnivå.
+
+Hva som er grunnen til at en sløyfe har omtrent 20 kHz lavere frekvens enn normalt, er ukjent.
+
+#### E18 Asker (LM)
 Egenskaper:
 
-* Fire felt.
-* God flyt i trafikken, fart mellom 60 og 120. 
-* En sløyfe i felt 3 har 20 kHz lavere enn de andre sløyfene.
+- Fire felt.
+- God flyt i trafikken, fart mellom 60 og 120. 
+- En sløyfe i felt 3 har 20 kHz lavere enn de andre sløyfene.
 
 ```{r asker, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_data_asker)
 ```
 
 
+Vurdering:
 
-## F44 Søyland (LM)
+- Ulik frekvens på sløyfene i felt 3 gir høyere qspeed-verdier her, men både lengde- og fartsmålinger virker helt greie likevel.
+
+
+#### F44 Søyland (LM)
 Egenskaper:
 
-* To felt.
-* Grei flyt i trafikken, fart mellom 50 og 90.
-* En sløyfe i felt 2 har 20 kHz lavere enn de andre sløyfene.
+- To felt.
+- Grei flyt i trafikken, fart mellom 50 og 90.
+- En sløyfe i felt 2 har 20 kHz lavere enn de andre sløyfene.
 
 ```{r soyland, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_data_soyland)
 ```
 
+#### Øysand F05
 
-
-## F5004 Hollundsvegen (LM)
 Egenskaper:
 
-* To felt.
-* Tidvis saktegående trafikk
-* Alle fire sløyfer har frekvens på ca. 55 kHz.
+- To felt.
+- Stort sett god flyt i trafikken.
+- En sløyfe i felt 2 har 20 kHz lavere enn de andre sløyfene.
+  
+```{r f05, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_f05)
+```
+
+
+
+### Lav frekvens på alle sløyfer
+
+#### F5004 Hollundsvegen (LM)
+Egenskaper:
+
+- To felt.
+- Tidvis saktegående trafikk
+- Alle fire sløyfer har frekvens på ca. 55 kHz.
 
 ```{r hollundsvegen, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_data_hollundsvegen)
 ```
 
-## Svortland vest
+#### Svortland vest
 Egenskaper:
 
-* To felt.
-* Tidvis saktegående trafikk
-* Alle fire sløyfer har frekvens på ca. 65 kHz.
+- To felt.
+- Tidvis saktegående trafikk
+- Alle fire sløyfer har frekvens på ca. 65 kHz.
 
 ```{r svortlandv, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_data_svortland_vest)
 ```
 
+### Brudd eller dårlig koblet sløyfe
 
-## Svortland øst
+#### Moholtlia
+
 Egenskaper:
 
-* To felt.
-* Tidvis saktegående trafikk
-* Alle fire sløyfer har frekvens på ca. 85 kHz.
+- Fire felt.
+- Stort sett god flyt i trafikken.
+- Feil på en av sløyfene i felt 4, ellers frekvenser rundt 70 kHz.
+  
+```{r moholtlia, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_moholtlia)
+```
+
+
+## Saktegående trafikk
+
+#### Svortland øst
+Egenskaper:
+
+- To felt.
+- Tidvis saktegående trafikk
+- Alle fire sløyfer har frekvens på ca. 85 kHz.
 
 ```{r svortlando, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_data_svortland_ost)
 ```
 
 
-## F862 Postterminalen (LM)
+#### F862 Postterminalen (LM)
+
+![Postterminalen](vbv_data/postterminalen.PNG)
+
+
 Egenskaper:
 
-* Tre felt, men felt 2 er flettefelt, så sikkert en del delvise passeringer.
-* Tidvis saktegående trafikk. Forventer en del kø i felt 1.
-* Alle sløyfer viser normal frekvens på rundt 85 kHz.
+- Tre felt, men felt 2 er flettefelt, så sikkert en del delvise passeringer.
+- Tidvis saktegående trafikk. Forventer en del kø i felt 1.
+- Alle sløyfer viser normal frekvens på rundt 85 kHz.
 
 ```{r postterminalen, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_postterminalen)
 ```
+
+Ser nærmere på korte lengder.
+
+```{r postterminalen2, fig.height=12, fig.width=8}
+vbv_postterminalen %>% 
+  dplyr::filter(vehicle_type == 1 | length < 2.5) %>% 
+  plot_all_in_one()
+```
+
+Zommer inn
+
+```{r postterminalen2_korte_zoom, fig.height=12, fig.width=8}
+vbv_postterminalen %>% 
+  dplyr::filter(vehicle_type == 1 | length < 2.5) %>% 
+  # removing outliers
+  dplyr::filter(length < 20) %>% 
+  group_by(lane) %>% 
+    ggplot() + 
+    geom_point(aes(qspeed, length, color = vehicle_type)) +
+    facet_wrap(. ~ lane, labeller = label_both) +
+    geom_vline(aes(xintercept = 3)) +
+    geom_hline(aes(yintercept = 2)) +
+    scale_color_discrete() +
+    theme_minimal()
+```
+
+#### F6690 Elgeseter bru
+Egenskaper:
+
+- Fire felt.
+- Tidvis saktgående trafikk.
+- Mange metrobusser på 24,5 m.
+- Sløyfefrekvenser:
+  - Felt 1 og 3: ca. 70 kHz
+  - Felt 2: 65 og 85
+  - felt 4: 85
+  
+  
+```{r elgeseter, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_elgeseter)
+```
+  
+### Data fra 24. februar 2020
+Mye snøfall, ingen forventede mc, skuter o.l.
+  
+
+```{r elgeseter2, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_elgeseter_2)
+```
+
+
+Ser kun på registreringer som enten er klassifisert som MC eller har lengde under 3,5 m.
+
+```{r elgeseter2_korte, fig.height=12, fig.width=8}
+vbv_elgeseter_2 %>% 
+  dplyr::filter(vehicle_type == 1 | length < 2.5) %>% 
+  plot_all_in_one()
+```
+
+Zommer inn
+
+```{r elgeseter2_korte_zoom, fig.height=12, fig.width=8}
+vbv_elgeseter_2 %>% 
+  dplyr::filter(vehicle_type == 1 | length < 2.5) %>% 
+  # removing outlier
+  dplyr::filter(qspeed < 20) %>% 
+  group_by(lane) %>% 
+    ggplot() + 
+    geom_point(aes(qspeed, length, color = vehicle_type)) +
+    facet_wrap(. ~ lane, labeller = label_both) +
+    geom_vline(aes(xintercept = 3)) +
+    geom_hline(aes(yintercept = 2)) +
+    scale_color_discrete() +
+    theme_minimal()
+```
+
+
+# Test på Øysand
+På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omskring 65  og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger. Er disse likevel gode nok når vi har fasit på lengdemålinger fra Kjøretøyregisteret.
+
+
+# Vurdering av resultater
+
+
+## Ulik frekvens på sløyfer
+Selv om ulik frekvens på sløyfer gir høyere verdier på qspeed, ser både lengde- og fartsmålinger helt greie ut. Bruk av qspeed som indikator på lav datakvalitet er derfor ikke hensiktsmessig.
+
+
+## Klassifisering
+Klare vi skille ut fakiske motorsykler?
+Er alle lengder under 2 m faktiske lette kjøretøy?
+
+
+## Typiske lengder som blir underkjent
+
+- Lengder mellom 1 og 2 m forekommer relativt hyppig blant de underkjente, og fanges opp av qspeed-regelen. **Kan vi tro alle disse er LETTE?**
+- Øvrig lengdefordeling fra 2,5 m og oppover ligner veldig på den for godkjente lengder.
+
+## Typiske steder med høy andel ukjente
+
+- Flerfeltsveg, pga. feltskifte?
+- Kø, dvs. nære kryss og trafikklys o.l.
+- Svinger, dvs. nære kryss.
+- Ramper, stor endring i fart.
+
+
+### Kø
+Gir både en del lengder 1,2 - 2 m, og 20-29 m. Mange feilklassifiseres som MC.
+
+
+### Delvis passering av sløyfer
+Gir stor andel 1,2 - 2 m selv med fart godt over 15 km/h.
+
+### Feil på sløyfe
+Dersom en av to sløyfer er ødelagt (frakoblet e.l.) blir det mange 29 m.
+
+
+# Konklusjon
+Resultatene av denne undersøkelsen viser at vi må justere enkelte regler. Det er reglene som benytter qspeed vi må endre, dvs. ta helt bort. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengdeklassifisering enn det vi gjør i dag.
+
+Enkelte situasjoner fører til for lav kvalitet på lengdemålingene og disse bør i størst mulig grad fanges opp av kvalitetsreglene. Dette gjelder i hovedsak der hvor det er kø, delvis passeringer eller feil på sløyfer.
+
+
+
+
+
+
+
+
+
 
 
