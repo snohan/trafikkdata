@@ -134,12 +134,16 @@ vbv_moholtlia <-
   read_kibana_vbv("vbv_data/moholtlia.csv")
 vbv_f05 <- 
   read_kibana_vbv("vbv_data/oysand_f05.csv")
+vbv_skullerud <- 
+  read_kibana_vbv("vbv_data/skullerud.csv")
 ```
 
 
-# Dagens regelsett
+# Regler for kvalitetskontroll av enkeltkjøretøyregistreringer
 Vi har regler som gjelder generelt, og noen som gjelder spesifikt per apparattype.
 
+
+## Dagens regler
 For **alle utstyrstyper** for motorkjøretøy må følgende ved hver enkelt registrering merkes ugyldig dersom:
 
 - Selve registreringen:
@@ -168,19 +172,20 @@ For **EMU3** skal følgende merkes ugyldig hvis:
   - <p style="color:red">Speed_quality ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).</p>
   
 
-## Hvilke regler fører til underkjente lengder
-
-- Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne regelen.
-- Lengde utenfor (1, 27) m: noen få utslag av denne regelen.
-- **Qspeed større enn 3: de fleste utslagene skyldes denne regelen.** De aktuelle reglene er i avsnittet over merket med rødt.
-
-
-# Formålet med denne undersøkelsen
+## Passer reglene med den reelle datakvaliteten?
 Noen trafikkregistreringspunkter har høy andel ukjente **lengder**. Hva er grunnen til det?
 
 Kan det være at dagens regelsett er for strengt?
 
 Målet er å vurdere dagens regelsett og eventuelt justere reglene. Om reglene justeres, skal alle data i Datainn reberegnes tilbake til 2014.
+
+
+## Hvilke regler fører til underkjente lengder
+Etter å ha sett på mye data i Kibana (visualisering "Ukjent lengde histogram"), viser det seg at reglene som underkjenner lengdemålingene fordeler seg slik:
+
+- Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne regelen.
+- Lengde utenfor (1, 27) m: noen få utslag av denne regelen.
+- **Qspeed større enn 3: de fleste utslagene skyldes denne regelen.** De aktuelle reglene er i avsnittet over merket med rødt.
 
 
 # Normalsituasjon
@@ -190,7 +195,6 @@ Eksempel kommer.
 
 
 # Feilsituasjoner og eksempler
-
 Årsaker til lav datakvalitet kan grovt deles inn i tre kategorier:
 
 - Feil på sløyfer:
@@ -200,13 +204,17 @@ Eksempel kommer.
 - Delvis passering av sløyfer
 - Saktegående eller stillestående trafikk (kø)
 
+I det følgende er det sett på data fra 20. februar 2020, om ikke annet er oppgitt.
+
 
 ## Feil på sløyfer
+
 
 ### Sløyfer med ulik frekvens
 Dagens regelsett gir ukjent lengde for de fleste passeringer i felt der det er stor forskjell i frekvensen på de to sløyfene. Typisk eksempel er der hvor en sløyfe har omkring 65 kHz og den andre ligger rundt 85 kHz. Sistnevnte er normalt frekvensnivå.
 
 Hva som er grunnen til at en sløyfe har omtrent 20 kHz lavere frekvens enn normalt, er ukjent.
+
 
 #### E18 Asker (LM)
 Egenskaper:
@@ -237,7 +245,6 @@ plot_all_in_one(vbv_data_soyland)
 ```
 
 #### Øysand F05
-
 Egenskaper:
 
 - To felt.
@@ -393,6 +400,18 @@ vbv_elgeseter_2 %>%
     theme_minimal()
 ```
 
+
+## E6 Skullerud (LM)
+Egenskaper:
+
+- God flyt i trafikken, noe saktegående i felt 2.
+- Normal frekvens på alle sløyfer.
+- Muligens en del feltskifte.
+
+
+```{r skullerud, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_skullerud)
+```
 
 # Test på Øysand
 På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omskring 65  og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger. Er disse likevel gode nok når vi har fasit på lengdemålinger fra Kjøretøyregisteret.
