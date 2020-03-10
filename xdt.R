@@ -45,7 +45,7 @@ trp_mdt <- trp_distinct %>%
   dplyr::filter(!is.na(mdt))
 
 write.csv2(trp_mdt, file = "trp_mdt_2020-02.csv", row.names = F)
-#trp_mdt <- read.csv2("trp_mdt_2020-02.csv")
+trp_mdt <- read.csv2("trp_mdt_2020-02.csv")
 
 # Looking at the city index trps
 city_trp_raw <-
@@ -55,6 +55,16 @@ city_trp_raw <-
 city_trp <- city_trp_raw %>%
   select(trp_id) %>%
   unique()
+
+trp_distinct_all <- trp %>%
+  dplyr::filter(traffic_type == "VEHICLE") %>%
+  dplyr::group_by(trp_id) %>%
+  dplyr::slice(which.min(validFrom))
+
+city_trp_def <- city_trp_raw %>%
+  left_join(trp_distinct_all, by = c("trp_id")) %>%
+  select(city_area_name, agreement_start, legacyNortrafMpn,
+         name, road_reference, validFrom, kommentar)
 
 city_mdt <- trp_mdt %>%
   ungroup() %>%
