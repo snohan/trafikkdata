@@ -79,3 +79,7 @@ trp_without_trs <- dplyr::anti_join(trp, trs_with_trp)
 # TODO: filter out stations without commissions, or why are they not part of
 # station-query
 
+# Bike trps, revised approve list ####
+trs <- get_all_trs_with_trp()
+
+

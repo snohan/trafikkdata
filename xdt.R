@@ -6,7 +6,7 @@ library(jsonlite)
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 
-trp <- getPoints()
+trp <- get_points()
 
 trp_distinct <- trp %>%
   dplyr::filter(!is.na(validFrom)) %>%
