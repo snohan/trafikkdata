@@ -82,4 +82,62 @@ trp_without_trs <- dplyr::anti_join(trp, trs_with_trp)
 # Bike trps, revised approve list ####
 trs <- get_all_trs_with_trp()
 
+# Periodic trps ####
+periodic_trps <- get_periodic_trps()
+
+parse_nortrafweb_csv <- function(filename, year) {
+  # Parses hellish nortrafweb-csvswith aadts to a tibble
+  nortraf_csv <- read_csv2(filename,
+                           skip = 6,
+                           col_names = FALSE) %>%
+    dplyr::select(X1, X3, X7, X8, X10, X11, X12, X13) %>%
+    head(n = -2)
+
+  trs_ids <- nortraf_csv %>%
+    filter(row_number() %% 3 == 1) %>%
+    mutate(trs_id = stringr::str_extract(X1, "\\([:digit:]*\\)") %>%
+             stringr::str_sub(2, -2)) %>%
+    select(trs_id) %>%
+    mutate(year = year)
+
+  numbers <- nortraf_csv %>%
+    filter(row_number() %% 3 == 0)
+
+  nortrafdata <- bind_cols(trs_ids,
+                           numbers) %>%
+    rename(trs_id = 1,
+           year = 2,
+           aadt = 3,
+           aadt_sd = 4,
+           ydt = 5,
+           ydt_sd = 6,
+           hdt = 7,
+           hdt_sd = 8,
+           sdt = 9,
+           sdt_sd = 10)
+
+  return(nortrafdata)
+}
+
+periodic_aadt_2018 <- bind_rows(
+  parse_nortrafweb_csv("periodisk_adt/periodiske_n2_2018.csv", 2018),
+  parse_nortrafweb_csv("periodisk_adt/periodiske_n3_2018.csv", 2018)
+)
+
+periodic_aadt_2019 <- bind_rows(
+  parse_nortrafweb_csv("periodisk_adt/periodiske_n2_2019.csv", 2019),
+  parse_nortrafweb_csv("periodisk_adt/periodiske_n3_2019.csv", 2019)
+)
+
+periodic_trps_2018 <- left_join(periodic_trps,
+                                periodic_aadt_2018)
+
+periodic_trps_2019 <- left_join(periodic_trps,
+                                periodic_aadt_2019)
+
+write.csv2(periodic_trps_2018, "periodisk_adt/periodiske_punkt_2018.csv",
+           row.names = F)
+
+write.csv2(periodic_trps_2019, "periodisk_adt/periodiske_punkt_2019.csv",
+           row.names = F)
 
