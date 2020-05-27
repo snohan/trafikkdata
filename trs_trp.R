@@ -9,7 +9,7 @@ library(geosphere)
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 
 # Large distance between trs and trp ####
-trs_trp <- get_stations_and_trps_with_coordinates_from_TRPAPI()
+trs_trp <- get_stations_and_trps_with_coordinates_from_TRPAPI_httr()
 
 trs_trp_distance <- trs_trp %>%
   dplyr::mutate(distance = round(
@@ -17,8 +17,8 @@ trs_trp_distance <- trs_trp %>%
                      function(row) {distGeo(c(row$stasjon_lon, row$stasjon_lat),
                                             c(row$punkt_lon, row$punkt_lat))
                   }),
-                  digits = 1)) %>%
-  dplyr::filter(distance > 100)
+                  digits = 1)) #%>%
+  #dplyr::filter(distance > 100)
 
 write.csv2(trs_trp_distance, file = "stasjon_punkt_avstand.csv",
            row.names = F)
