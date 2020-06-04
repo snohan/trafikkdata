@@ -12,3 +12,5 @@ atki_api.R
 *.xml
 kurs.R
 emu3*
+*.gpkg
+vbv_data
