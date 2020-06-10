@@ -11,6 +11,7 @@ library(leaflet)
 library(sf)
 library(knitr)
 library(flextable)
+library(htmltools)
 
 # knitr options ####
 knitr::opts_chunk$set(echo = FALSE,
