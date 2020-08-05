@@ -54,71 +54,92 @@ nvdb_crs <- leafletCRS(
 
 ```
 
-```{r read_data}
-geopackage_file <- "trafikklenker_20200601150729.gpkg"
-
+```{r read_data, message=FALSE}
+geopackage_file <- "trafikklenker_20200713002654.gpkg"
 #sf::st_layers(geopackage_file)
 
-top_row_query <- "SELECT * FROM \"Trafikklenker\" LIMIT 100"
+# Exploring the top rows
+# top_row_query <- "SELECT * FROM \"Trafikklenker\" LIMIT 100"
+# 
+# 
+# trafikklenker_top <- sf::st_read(geopackage_file, "Trafikklenker",
+#                              as_tibble = TRUE,
+#                              query = top_row_query)
 
-e39_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID = 384479"
-
-trafikklenker_top <- sf::st_read(geopackage_file, "Trafikklenker",
-                             as_tibble = TRUE,
-                             query = top_row_query)
-
-trafikklenker_e39 <- sf::st_read(geopackage_file, "Trafikklenker",
-                             as_tibble = TRUE,
-                             query = e39_query)
-
-
-
-#str(trafikklenker_top)
-#sf::st_crs(trafikklenker_top)
-#sf::st_set_crs(trafikklenker_top, "+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs")
-
-trafikklenker_top_sorted <- trafikklenker_top %>%
-  arrange(START_NODE_OID) %>%
-  st_zm(drop = T, what = "ZM") %>% 
-  select(GEOMETRY) %>% 
-  #slice(1:10) %>% 
-  mutate(line_length = sf::st_length(GEOMETRY))
-
-#str(trafikklenker_top_sorted)
-#sf::st_crs(trafikklenker_top_sorted)
-
-trafikklenker_top_sorted_wgs84 <- sf::st_transform(trafikklenker_top_sorted,
-                                                   "+proj=longlat +datum=WGS84")
-
-#sf::st_crs(trafikklenker_top_sorted_wgs84)
+#top_row_query <- "SELECT * FROM \"Kryss\" LIMIT 100"
+ 
+ 
+#kryss_top <- sf::st_read(geopackage_file, "Kryss",
+#                              as_tibble = TRUE,
+#                              query = top_row_query)
 
 
-trafikklenker_e39_clean <- trafikklenker_e39 %>%
-  #arrange(START_NODE_OID) %>%
-  st_zm(drop = T, what = "ZM") %>% 
-  select(GEOMETRY) %>% 
-  #slice(1:10) %>% 
-  mutate(line_length = sf::st_length(GEOMETRY)) %>% 
+# Looking at a specific road segment
+# E39 Førde: 384479
+# Harsjøen: IN (705126, 705125) 
+#element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID BETWEEN 705100 AND 705200"
+#element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (705126, 705125, 705238, 705127)"
+element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (3112188, 3112207, 2997535, 2997537, 2997540, 2997539, 3112180, 3112181, 2997528)"
+
+# TODO: query by bounding box on geometry
+# TODO: query by road number (via NVDB API to find all element IDs)
+
+trafikklenker_element <- sf::st_read(geopackage_file, "Trafikklenker",
+                                     as_tibble = TRUE,
+                                     query = element_query)
+
+trafikklenker_element_clean <- trafikklenker_element %>%
+  sf::st_zm(drop = T, what = "ZM") %>% 
+  dplyr::select(GEOMETRY) %>% 
+  dplyr::mutate(line_length = round(sf::st_length(GEOMETRY),
+                                    digits = 1)) %>% 
+  sf::st_transform("+proj=longlat +datum=WGS84")
+
+
+# Tilhørende kryss
+unique_start_node_ids <- trafikklenker_element$START_NODE_OID %>% 
+  unique()
+unique_end_node_ids <- trafikklenker_element$END_NODE_OID %>% 
+  unique()
+
+unique_node_ids <- c(unique_start_node_ids, unique_end_node_ids) %>% 
+  unique()
+
+kryss_query = paste0("SELECT * FROM \"Kryss\" WHERE FEATURE_OID IN (",
+                     stringr::str_c(unique_node_ids, collapse = ", "),
+                     ")")
+
+kryss <- sf::st_read(geopackage_file, "Kryss",
+                     as_tibble = TRUE,
+                     query = kryss_query) %>% 
+  sf::st_zm(drop = T, what = "ZM") %>% 
+  dplyr::select(GEOMETRY) %>% 
   sf::st_transform("+proj=longlat +datum=WGS84")
 ```
 
 
 
 ```{r plot}
-# trafikklenker_top_sorted %>%
-#   ggplot() +
-#   geom_sf()
-
 leaflet(width = "100%",
           height = 700,
           options = leafletOptions(crs = nvdb_crs,
                                    zoomControl = F)) %>%
   addTiles(urlTemplate = nvdb_map_url,
            attribution = nvdb_map_attribution) %>%
-  addPolylines(data = trafikklenker_e39_clean,
+  addPolylines(data = trafikklenker_element_clean,
                popup = ~htmlEscape(line_length),
                highlightOptions = highlightOptions(bringToFront = TRUE,
                                                    sendToBack = TRUE,
                                                    color = "white",
+                                                   opacity = 0.7)) %>% 
+  addPolylines(data = kryss,
+               #popup = ~htmlEscape(line_length),
+               fill = TRUE,
+               fillColor = "black",
+               highlightOptions = highlightOptions(bringToFront = TRUE,
+                                                   sendToBack = TRUE,
+                                                   color = "black",
                                                    opacity = 0.7)) 
+
+# TODO: Add more labels
 ```
