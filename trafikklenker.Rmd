@@ -13,6 +13,8 @@ library(knitr)
 library(flextable)
 library(htmltools)
 
+source("H:/Programmering/byindeks/get_from_nvdb_api.R")
+
 # knitr options ####
 knitr::opts_chunk$set(echo = FALSE,
                       warning = FALSE,
@@ -52,6 +54,7 @@ nvdb_crs <- leafletCRS(
   ),
   origin = c(-2500000.0, 9045984.0))
 
+alle_kommuner <- hent_alle_kommuner_v3()
 ```
 
 ```{r read_data, message=FALSE}
@@ -79,9 +82,11 @@ geopackage_file <- "trafikklenker_20200713002654.gpkg"
 # Harsjøen: IN (705126, 705125) 
 #element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID BETWEEN 705100 AND 705200"
 #element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (705126, 705125, 705238, 705127)"
-element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (3112188, 3112207, 2997535, 2997537, 2997540, 2997539, 3112180, 3112181, 2997528)"
+#element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (3112188, 3112207, 2997535, 2997537, 2997540, 2997539, 3112180, 3112181, 2997528, 2997531, 3112190, 3112189, 2997529, 3112179)"
 
-# TODO: query by bounding box on geometry
+element_query <- "SELECT feature_oid, start_node_oid, end_node_oid, geometry FROM \"Trafikklenker\" LIMIT 10000;"
+#element_query <- "SELECT * FROM \"Trafikklenker\" LIMIT 5;"
+
 # TODO: query by road number (via NVDB API to find all element IDs)
 
 trafikklenker_element <- sf::st_read(geopackage_file, "Trafikklenker",
@@ -90,13 +95,32 @@ trafikklenker_element <- sf::st_read(geopackage_file, "Trafikklenker",
 
 trafikklenker_element_clean <- trafikklenker_element %>%
   sf::st_zm(drop = T, what = "ZM") %>% 
-  dplyr::select(GEOMETRY) %>% 
-  dplyr::mutate(line_length = round(sf::st_length(GEOMETRY),
+  dplyr::select(GEOMETRY, FEATURE_OID) %>% 
+  dplyr::group_by(FEATURE_OID) %>% 
+  dplyr::summarise(combined_geometry = sf::st_combine(GEOMETRY)) %>% 
+  dplyr::mutate(line_length = round(sf::st_length(combined_geometry),
                                     digits = 1)) %>% 
   sf::st_transform("+proj=longlat +datum=WGS84")
 
+#complete_links <- trafikklenker_element_clean %>% 
+#  dplyr::group_by(FEATURE_OID) %>% 
+#  dplyr::summarise(combined_geometry = sf::st_combine(GEOMETRY))
 
-# Tilhørende kryss
+# Filter by municipality polygon
+kommunenr <- alle_kommuner$nummer[alle_kommuner$navn == "Trondheim"] %>% 
+  as.character()
+
+kommune_polygon <- hent_kommune_v3(kommunenr)
+# st_simplify?
+
+trafikklenker_kommune <- trafikklenker_element_clean %>% 
+  dplyr::mutate(innafor = sf::st_intersects(trafikklenker_element_clean, kommune_polygon, sparse = FALSE))
+
+trafikklenker_trondheim <- trafikklenker_kommune %>% 
+  filter(innafor == TRUE)
+
+
+# Tilhørende kryss, hmmm: TODO: outer intersections of combined links
 unique_start_node_ids <- trafikklenker_element$START_NODE_OID %>% 
   unique()
 unique_end_node_ids <- trafikklenker_element$END_NODE_OID %>% 
@@ -126,20 +150,21 @@ leaflet(width = "100%",
                                    zoomControl = F)) %>%
   addTiles(urlTemplate = nvdb_map_url,
            attribution = nvdb_map_attribution) %>%
-  addPolylines(data = trafikklenker_element_clean,
-               popup = ~htmlEscape(line_length),
-               highlightOptions = highlightOptions(bringToFront = TRUE,
-                                                   sendToBack = TRUE,
-                                                   color = "white",
-                                                   opacity = 0.7)) %>% 
-  addPolylines(data = kryss,
-               #popup = ~htmlEscape(line_length),
-               fill = TRUE,
-               fillColor = "black",
-               highlightOptions = highlightOptions(bringToFront = TRUE,
-                                                   sendToBack = TRUE,
-                                                   color = "black",
-                                                   opacity = 0.7)) 
+   addPolylines(data = trafikklenker_trondheim,
+                popup = ~htmlEscape(line_length),
+                highlightOptions = highlightOptions(bringToFront = TRUE,
+                                                    sendToBack = TRUE,
+                                                    color = "white",
+                                                    opacity = 0.7)) #%>% 
+  # addPolylines(data = kryss,
+  #              fill = TRUE,
+  #              fillColor = "black",
+  #              highlightOptions = highlightOptions(bringToFront = TRUE,
+  #                                                  sendToBack = TRUE,
+  #                                                  color = "black",
+  #                                                  opacity = 0.7)) %>% 
+  #addPolygons(data = kommune_polygon,
+  #            fill = FALSE)
 
 # TODO: Add more labels
 ```
