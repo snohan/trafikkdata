@@ -3,7 +3,6 @@ title: "Trafikklenker"
 output: html_notebook
 ---
 
-
 ```{r setup, include = FALSE, echo = FALSE}
 # Packages ####
 library(tidyverse)
@@ -13,7 +12,7 @@ library(knitr)
 library(flextable)
 library(htmltools)
 
-source("H:/Programmering/byindeks/get_from_nvdb_api.R")
+source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 
 # knitr options ####
 knitr::opts_chunk$set(echo = FALSE,
@@ -57,21 +56,19 @@ nvdb_crs <- leafletCRS(
 alle_kommuner <- hent_alle_kommuner_v3()
 ```
 
-```{r read_data, message=FALSE}
+```{r read_data, message=FALSE, include=FALSE}
 geopackage_file <- "trafikklenker_20200713002654.gpkg"
+
+# To see layers in gpkg file
 #sf::st_layers(geopackage_file)
 
 # Exploring the top rows
 # top_row_query <- "SELECT * FROM \"Trafikklenker\" LIMIT 100"
-# 
-# 
 # trafikklenker_top <- sf::st_read(geopackage_file, "Trafikklenker",
 #                              as_tibble = TRUE,
 #                              query = top_row_query)
 
 #top_row_query <- "SELECT * FROM \"Kryss\" LIMIT 100"
- 
- 
 #kryss_top <- sf::st_read(geopackage_file, "Kryss",
 #                              as_tibble = TRUE,
 #                              query = top_row_query)
@@ -82,65 +79,72 @@ geopackage_file <- "trafikklenker_20200713002654.gpkg"
 # Harsjøen: IN (705126, 705125) 
 #element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID BETWEEN 705100 AND 705200"
 #element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (705126, 705125, 705238, 705127)"
-#element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (3112188, 3112207, 2997535, 2997537, 2997540, 2997539, 3112180, 3112181, 2997528, 2997531, 3112190, 3112189, 2997529, 3112179)"
+# Klett
+element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (3112188, 3112207, 2997535, 2997537, 2997540, 2997539, 3112180, 3112181, 2997528, 2997531, 3112190, 3112189, 2997529, 3112179, 72241, 72242, 2801072)"
 
-element_query <- "SELECT feature_oid, start_node_oid, end_node_oid, geometry FROM \"Trafikklenker\" LIMIT 10000;"
+# Read many
+#element_query <- "SELECT feature_oid, start_node_oid, end_node_oid, geometry FROM \"Trafikklenker\" LIMIT 50000;"
 #element_query <- "SELECT * FROM \"Trafikklenker\" LIMIT 5;"
 
-# TODO: query by road number (via NVDB API to find all element IDs)
+# TODO: query by road number (via NVDB API to find all element IDs belonging to road number)
 
 trafikklenker_element <- sf::st_read(geopackage_file, "Trafikklenker",
                                      as_tibble = TRUE,
                                      query = element_query)
+```
 
-trafikklenker_element_clean <- trafikklenker_element %>%
+```{r intersections}
+# Tilhørende kryss
+# TODO: find just outer intersections of combined links
+# unique_start_node_ids <- trafikklenker_element$START_NODE_OID %>% 
+#   unique()
+# unique_end_node_ids <- trafikklenker_element$END_NODE_OID %>% 
+#   unique()
+# 
+# unique_node_ids <- c(unique_start_node_ids, unique_end_node_ids) %>% 
+#   unique()
+# 
+# kryss_query = paste0("SELECT * FROM \"Kryss\" WHERE FEATURE_OID IN (",
+#                      stringr::str_c(unique_node_ids, collapse = ", "),
+#                      ")")
+# 
+# kryss <- sf::st_read(geopackage_file, "Kryss",
+#                      as_tibble = TRUE,
+#                      query = kryss_query) %>% 
+#   sf::st_zm(drop = T, what = "ZM") %>% 
+#   dplyr::select(GEOMETRY) %>% 
+#   sf::st_transform("+proj=longlat +datum=WGS84")
+```
+
+
+
+```{r manipulate_links}
+trafikklenker_combined <- trafikklenker_element %>%
   sf::st_zm(drop = T, what = "ZM") %>% 
   dplyr::select(GEOMETRY, FEATURE_OID) %>% 
   dplyr::group_by(FEATURE_OID) %>% 
   dplyr::summarise(combined_geometry = sf::st_combine(GEOMETRY)) %>% 
   dplyr::mutate(line_length = round(sf::st_length(combined_geometry),
                                     digits = 1)) %>% 
+  # Need to transform for leaflet plotting
   sf::st_transform("+proj=longlat +datum=WGS84")
 
-#complete_links <- trafikklenker_element_clean %>% 
-#  dplyr::group_by(FEATURE_OID) %>% 
-#  dplyr::summarise(combined_geometry = sf::st_combine(GEOMETRY))
+# TODO: transform all combined, and write to file
+# TODO: find road system reference segment for each link
 
 # Filter by municipality polygon
-kommunenr <- alle_kommuner$nummer[alle_kommuner$navn == "Trondheim"] %>% 
-  as.character()
+#kommunenr <- alle_kommuner$nummer[alle_kommuner$navn == "Trondheim"] %>% 
+#  as.character()
 
-kommune_polygon <- hent_kommune_v3(kommunenr)
-# st_simplify?
+#kommune_polygon <- hent_kommune_v3(kommunenr)
+# TODO: Consider simplifying polygon by st_simplify
 
-trafikklenker_kommune <- trafikklenker_element_clean %>% 
-  dplyr::mutate(innafor = sf::st_intersects(trafikklenker_element_clean, kommune_polygon, sparse = FALSE))
+#trafikklenker_kommune <- trafikklenker_combined %>% 
+#  dplyr::mutate(innafor = sf::st_intersects(trafikklenker_combined, kommune_polygon, sparse = FALSE))
 
-trafikklenker_trondheim <- trafikklenker_kommune %>% 
-  filter(innafor == TRUE)
-
-
-# Tilhørende kryss, hmmm: TODO: outer intersections of combined links
-unique_start_node_ids <- trafikklenker_element$START_NODE_OID %>% 
-  unique()
-unique_end_node_ids <- trafikklenker_element$END_NODE_OID %>% 
-  unique()
-
-unique_node_ids <- c(unique_start_node_ids, unique_end_node_ids) %>% 
-  unique()
-
-kryss_query = paste0("SELECT * FROM \"Kryss\" WHERE FEATURE_OID IN (",
-                     stringr::str_c(unique_node_ids, collapse = ", "),
-                     ")")
-
-kryss <- sf::st_read(geopackage_file, "Kryss",
-                     as_tibble = TRUE,
-                     query = kryss_query) %>% 
-  sf::st_zm(drop = T, what = "ZM") %>% 
-  dplyr::select(GEOMETRY) %>% 
-  sf::st_transform("+proj=longlat +datum=WGS84")
+#trafikklenker_trondheim <- trafikklenker_kommune %>% 
+#  filter(innafor == TRUE)
 ```
-
 
 
 ```{r plot}
@@ -150,7 +154,7 @@ leaflet(width = "100%",
                                    zoomControl = F)) %>%
   addTiles(urlTemplate = nvdb_map_url,
            attribution = nvdb_map_attribution) %>%
-   addPolylines(data = trafikklenker_trondheim,
+   addPolylines(data = trafikklenker_combined, #trafikklenker_trondheim,
                 popup = ~htmlEscape(line_length),
                 highlightOptions = highlightOptions(bringToFront = TRUE,
                                                     sendToBack = TRUE,

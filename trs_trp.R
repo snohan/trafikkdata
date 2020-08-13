@@ -5,6 +5,7 @@ library(jsonlite)
 library(httr)
 library(ghql)
 library(geosphere)
+library(writexl)
 
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 
@@ -81,6 +82,15 @@ trp_without_trs <- dplyr::anti_join(trp, trs_with_trp)
 
 # Bike trps, revised approve list ####
 trs <- get_all_trs_with_trp()
+
+# or just
+bike_trps <- get_points() %>%
+  dplyr::distinct(trp_id, .keep_all = T) %>%
+  dplyr::filter(traffic_type == "BICYCLE") %>%
+  dplyr::select(trp_id, name, road_reference, county_name, municipality_name,
+                validFrom, validTo) %>%
+  dplyr::arrange(road_reference) %>%
+  writexl::write_xlsx(path = "sykkelpunkter.xlsx")
 
 # Periodic trps ####
 periodic_trps <- get_periodic_trps()
