@@ -96,7 +96,7 @@ bike_trps <- get_points() %>%
 periodic_trps <- get_periodic_trps()
 
 parse_nortrafweb_csv <- function(filename, year) {
-  # Parses hellish nortrafweb-csvswith aadts to a tibble
+  # Parsing hellish nortrafweb-csvs with aadts to a tibble
   nortraf_csv <- read_csv2(filename,
                            skip = 6,
                            col_names = FALSE) %>%
@@ -129,6 +129,45 @@ parse_nortrafweb_csv <- function(filename, year) {
   return(nortrafdata)
 }
 
+#filename <- "periodisk_adt/periodiske_n2_2018_retning_lengde.csv"
+#year <- "2018"
+parse_nortrafweb_csv_with_direction_and_length <- function(filename, year) {
+  # Parsing hellish nortrafweb-csvs with aadts to a tibble
+  nortraf_csv <- read_csv2(filename,
+                           skip = 4,
+                           col_names = FALSE) %>%
+    dplyr::select(direction = X1,
+                  length_class = X5,
+                  adt = X8,
+                  adt_sd = X9,
+                  ydt = X10,
+                  ydt_sd = X11,
+                  hdt = X12,
+                  hdt_sd = X13) %>%
+    head(n = -2) %>%
+    dplyr::filter(direction != "Felt") %>%
+    dplyr::mutate(new_trs = dplyr::if_else(is.na(length_class), "new", "")) %>%
+    dplyr::group_by(trs_serial_number = cumsum(new_trs == "new")) %>%
+    dplyr::ungroup()
+
+  trs_id_alle <- nortraf_csv %>%
+    dplyr::filter(is.na(length_class)) %>%
+    mutate(trs_id = stringr::str_extract(direction, "\\([:digit:]*\\)") %>%
+             stringr::str_sub(2, -2)) %>%
+    select(trs_id) %>%
+    mutate(year = year) %>%
+    tibble::rowid_to_column("trs_serial_number")
+
+  nortraf_csv_trs_id <- nortraf_csv %>%
+    dplyr::left_join(trs_id_alle) %>%
+    dplyr::select(-new_trs, -trs_serial_number) %>%
+    dplyr::filter(!is.na(length_class))
+
+  return(nortraf_csv_trs_id)
+}
+
+
+# Without length
 periodic_aadt_2018 <- bind_rows(
   parse_nortrafweb_csv("periodisk_adt/periodiske_n2_2018.csv", 2018),
   parse_nortrafweb_csv("periodisk_adt/periodiske_n3_2018.csv", 2018)
@@ -151,3 +190,25 @@ write.csv2(periodic_trps_2018, "periodisk_adt/periodiske_punkt_2018.csv",
 write.csv2(periodic_trps_2019, "periodisk_adt/periodiske_punkt_2019.csv",
            row.names = F)
 
+# With length
+periodic_aadt_length_2018 <- bind_rows(
+  parse_nortrafweb_csv_with_direction_and_length("periodisk_adt/periodiske_n2_2018_retning_lengde.csv", 2018),
+  parse_nortrafweb_csv_with_direction_and_length("periodisk_adt/periodiske_n3_2018_retning_lengde.csv", 2018)
+)
+
+periodic_aadt_length_2019 <- bind_rows(
+  parse_nortrafweb_csv_with_direction_and_length("periodisk_adt/periodiske_n2_2019_retning_lengde.csv", 2019),
+  parse_nortrafweb_csv_with_direction_and_length("periodisk_adt/periodiske_n3_2019_retning_lengde.csv", 2019)
+)
+
+periodic_trps_2018 <- left_join(periodic_trps,
+                                periodic_aadt_length_2018)
+
+periodic_trps_2019 <- left_join(periodic_trps,
+                                periodic_aadt_length_2019)
+
+write.csv2(periodic_trps_2018, "periodisk_adt/periodiske_punkt_2018_lengde_retning.csv",
+           row.names = F)
+
+write.csv2(periodic_trps_2019, "periodisk_adt/periodiske_punkt_2019_lengde_retning.csv",
+           row.names = F)
