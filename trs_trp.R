@@ -212,3 +212,10 @@ write.csv2(periodic_trps_2018, "periodisk_adt/periodiske_punkt_2018_lengde_retni
 
 write.csv2(periodic_trps_2019, "periodisk_adt/periodiske_punkt_2019_lengde_retning.csv",
            row.names = F)
+
+
+# Manual TRPs ####
+mtrps <- get_manual_points_from_trpapi_httr()
+
+write.csv2(mtrps, file = "manuelle_punkter.csv",
+           row.names = F)

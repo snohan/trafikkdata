@@ -11,6 +11,8 @@ library(sf)
 library(knitr)
 library(flextable)
 library(htmltools)
+library(DBI)
+library(RSQLite)
 
 source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 
@@ -57,22 +59,72 @@ alle_kommuner <- hent_alle_kommuner_v3()
 ```
 
 ```{r read_data, message=FALSE, include=FALSE}
-geopackage_file <- "trafikklenker_20200713002654.gpkg"
+#geopackage_file <- "trafikklenker_20200713002654.gpkg"
+#geopackage_file <- "trafikklenker_20200819125511.gpkg"
+geopackage_file <- "trafikklenker_20200903184437.gpkg"
 
 # To see layers in gpkg file
-#sf::st_layers(geopackage_file)
+#layers <- sf::st_layers(geopackage_file)
 
 # Exploring the top rows
-# top_row_query <- "SELECT * FROM \"Trafikklenker\" LIMIT 100"
-# trafikklenker_top <- sf::st_read(geopackage_file, "Trafikklenker",
-#                              as_tibble = TRUE,
-#                              query = top_row_query)
+top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 1 LIMIT 5000"
+#top_row_query <- "SELECT feature_oid, start_node_oid, end_node_oid FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL LIMIT 15"
+trafikklenker_top <- sf::st_read(geopackage_file, "TrafikkLenker",
+                                 as_tibble = TRUE,
+                                 query = top_row_query)
 
-#top_row_query <- "SELECT * FROM \"Kryss\" LIMIT 100"
-#kryss_top <- sf::st_read(geopackage_file, "Kryss",
-#                              as_tibble = TRUE,
-#                              query = top_row_query)
+top_row_query_null <- "SELECT feature_oid FROM \"TrafikkLenker\" WHERE geometry IS NULL"
+trafikklenker_top_null <- sf::st_read(geopackage_file, "TrafikkLenker",
+                                 as_tibble = TRUE,
+                                 query = top_row_query_null)
 
+top_row_query_kryss <- "SELECT * FROM \"Kryss\" LIMIT 100"
+#top_row_query_kryss <- "SELECT * FROM \"Kryss\" WHERE feature_oid IS '1108 F516 S1D1 m218 KD1' LIMIT 100"
+kryss_top <- sf::st_read(geopackage_file, "Kryss",
+                             as_tibble = TRUE,
+                             query = top_row_query_kryss)
+
+stedfestinger <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE feature_oid IN ()"
+trafikklenker_top_null <- sf::st_read(geopackage_file, "TrafikkLenker",
+                                 as_tibble = TRUE,
+                                 query = top_row_query_null)
+
+
+# Spør direkte til SQLite-databasen
+# databasekobling <- DBI::dbConnect(SQLite(), geopackage_file)
+# databasetabeller <- as.data.frame(dbListTables(databasekobling))
+# 
+# sql_query_for_null_geometry <- paste0(
+#   "SELECT feature_oid, element_id, start_measure, end_measure ",
+#   "FROM TrafikkLenker ",
+#   "INNER JOIN Trafikklenker_stedfesting ",
+#   "USING(feature_oid) ",
+#   "WHERE TrafikkLenker.geometry IS NULL")
+# 
+# lenker_uten_geometri_med_stedfesting <- DBI::dbSendQuery(databasekobling,
+#                                                          sql_query_for_null_geometry)
+# 
+# lenker_uten_geometri_med_stedfesting_resultat <- DBI::dbFetch(lenker_uten_geometri_med_stedfesting)
+# 
+# dbClearResult(lenker_uten_geometri_med_stedfesting)
+# 
+# # Skrur av kobling til databasen
+# DBI::dbDisconnect(databasekobling)
+# 
+# lenker_uten_geometri_med_stedfesting_veglenkeposisjon <- lenker_uten_geometri_med_stedfesting_resultat %>%
+#   #slice(3081:3090) %>% 
+#   dplyr::mutate(roadlink_position_start = paste0(START_MEASURE, "@", ELEMENT_ID),
+#                 roadlink_position_end = paste0(END_MEASURE, "@", ELEMENT_ID),
+#                 road_system_reference_start = mapply(hent_vegsystemreferanse, 
+#                                                      roadlink_position_start,
+#                                                      USE.NAMES = FALSE),
+#                 #road_system_reference_start = purrr::map_chr(roadlink_position_start,
+#                 #                                             hent_vegsystemreferanse)
+#                 )
+# 
+# lenker_uten_geometri_med_stedfesting_veglenkeposisjon %>% 
+#   write.csv2(file = "trafikklenker_uten_geometri.csv",
+#              row.names = F)
 
 # Looking at a specific road segment
 # E39 Førde: 384479
@@ -80,7 +132,7 @@ geopackage_file <- "trafikklenker_20200713002654.gpkg"
 #element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID BETWEEN 705100 AND 705200"
 #element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (705126, 705125, 705238, 705127)"
 # Klett
-element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (3112188, 3112207, 2997535, 2997537, 2997540, 2997539, 3112180, 3112181, 2997528, 2997531, 3112190, 3112189, 2997529, 3112179, 72241, 72242, 2801072)"
+#element_query <- "SELECT * FROM \"TrafikkLenker\" WHERE ELEMENT_ID IN (3112188, 3112207, 2997535, 2997537, 2997540, 2997539, 3112180, 3112181, 2997528, 2997531, 3112190, 3112189, 2997529, 3112179, 72241, 72242, 2801072)"
 
 # Read many
 #element_query <- "SELECT feature_oid, start_node_oid, end_node_oid, geometry FROM \"Trafikklenker\" LIMIT 50000;"
@@ -88,43 +140,42 @@ element_query <- "SELECT * FROM \"Trafikklenker\" WHERE ELEMENT_ID IN (3112188, 
 
 # TODO: query by road number (via NVDB API to find all element IDs belonging to road number)
 
-trafikklenker_element <- sf::st_read(geopackage_file, "Trafikklenker",
-                                     as_tibble = TRUE,
-                                     query = element_query)
+# trafikklenker_element <- sf::st_read(geopackage_file, "TrafikkLenker",
+#                                      as_tibble = TRUE,
+#                                     query = element_query)
 ```
 
 ```{r intersections}
 # Tilhørende kryss
-# TODO: find just outer intersections of combined links
-# unique_start_node_ids <- trafikklenker_element$START_NODE_OID %>% 
-#   unique()
-# unique_end_node_ids <- trafikklenker_element$END_NODE_OID %>% 
-#   unique()
-# 
-# unique_node_ids <- c(unique_start_node_ids, unique_end_node_ids) %>% 
-#   unique()
-# 
-# kryss_query = paste0("SELECT * FROM \"Kryss\" WHERE FEATURE_OID IN (",
-#                      stringr::str_c(unique_node_ids, collapse = ", "),
-#                      ")")
-# 
-# kryss <- sf::st_read(geopackage_file, "Kryss",
-#                      as_tibble = TRUE,
-#                      query = kryss_query) %>% 
-#   sf::st_zm(drop = T, what = "ZM") %>% 
-#   dplyr::select(GEOMETRY) %>% 
-#   sf::st_transform("+proj=longlat +datum=WGS84")
+unique_start_node_ids <- trafikklenker_top$START_NODE_OID %>% 
+   unique()
+unique_end_node_ids <- trafikklenker_top$END_NODE_OID %>% 
+   unique()
+ 
+unique_node_ids <- c(unique_start_node_ids, unique_end_node_ids) %>% 
+  unique() %>% 
+  stringr::str_c(collapse = "\', \'")
+ 
+kryss_query = paste0("SELECT * FROM \"Kryss\" WHERE FEATURE_OID IN (",
+                     "\'", unique_node_ids, "\'", ")")
+ 
+kryss <- sf::st_read(geopackage_file, "Kryss",
+                     as_tibble = TRUE,
+                      query = kryss_query) %>% 
+   sf::st_zm(drop = T, what = "ZM") %>% 
+   dplyr::select(GEOMETRY) %>% 
+   sf::st_transform("+proj=longlat +datum=WGS84")
 ```
 
 
 
 ```{r manipulate_links}
-trafikklenker_combined <- trafikklenker_element %>%
+trafikklenker_combined <- trafikklenker_top %>%
   sf::st_zm(drop = T, what = "ZM") %>% 
   dplyr::select(GEOMETRY, FEATURE_OID) %>% 
-  dplyr::group_by(FEATURE_OID) %>% 
-  dplyr::summarise(combined_geometry = sf::st_combine(GEOMETRY)) %>% 
-  dplyr::mutate(line_length = round(sf::st_length(combined_geometry),
+  #dplyr::group_by(FEATURE_OID) %>% 
+  #dplyr::summarise(combined_geometry = sf::st_combine(GEOMETRY)) %>% 
+  dplyr::mutate(line_length = round(sf::st_length(GEOMETRY),
                                     digits = 1)) %>% 
   # Need to transform for leaflet plotting
   sf::st_transform("+proj=longlat +datum=WGS84")
@@ -159,14 +210,10 @@ leaflet(width = "100%",
                 highlightOptions = highlightOptions(bringToFront = TRUE,
                                                     sendToBack = TRUE,
                                                     color = "white",
-                                                    opacity = 0.7)) #%>% 
-  # addPolylines(data = kryss,
-  #              fill = TRUE,
-  #              fillColor = "black",
-  #              highlightOptions = highlightOptions(bringToFront = TRUE,
-  #                                                  sendToBack = TRUE,
-  #                                                  color = "black",
-  #                                                  opacity = 0.7)) %>% 
+                                                    opacity = 0.7)) %>% 
+  addCircleMarkers(data = kryss,
+               fill = TRUE,
+               fillColor = "black") #%>%
   #addPolygons(data = kommune_polygon,
   #            fill = FALSE)
 
