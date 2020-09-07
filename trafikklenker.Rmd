@@ -67,49 +67,56 @@ geopackage_file <- "trafikklenker_20200903184437.gpkg"
 #layers <- sf::st_layers(geopackage_file)
 
 # Exploring the top rows
-top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 1 LIMIT 5000"
+top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 2 LIMIT 1000"
 #top_row_query <- "SELECT feature_oid, start_node_oid, end_node_oid FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL LIMIT 15"
 trafikklenker_top <- sf::st_read(geopackage_file, "TrafikkLenker",
                                  as_tibble = TRUE,
                                  query = top_row_query)
 
-top_row_query_null <- "SELECT feature_oid FROM \"TrafikkLenker\" WHERE geometry IS NULL"
-trafikklenker_top_null <- sf::st_read(geopackage_file, "TrafikkLenker",
-                                 as_tibble = TRUE,
-                                 query = top_row_query_null)
+# top_row_query_null <- "SELECT feature_oid FROM \"TrafikkLenker\" WHERE geometry IS NULL"
+# trafikklenker_top_null <- sf::st_read(geopackage_file, "TrafikkLenker",
+#                                  as_tibble = TRUE,
+#                                  query = top_row_query_null)
 
-top_row_query_kryss <- "SELECT * FROM \"Kryss\" LIMIT 100"
+#top_row_query_kryss <- "SELECT * FROM \"Kryss\" LIMIT 100"
 #top_row_query_kryss <- "SELECT * FROM \"Kryss\" WHERE feature_oid IS '1108 F516 S1D1 m218 KD1' LIMIT 100"
-kryss_top <- sf::st_read(geopackage_file, "Kryss",
-                             as_tibble = TRUE,
-                             query = top_row_query_kryss)
+# kryss_top <- sf::st_read(geopackage_file, "Kryss",
+#                              as_tibble = TRUE,
+#                              query = top_row_query_kryss)
 
-stedfestinger <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE feature_oid IN ()"
-trafikklenker_top_null <- sf::st_read(geopackage_file, "TrafikkLenker",
-                                 as_tibble = TRUE,
-                                 query = top_row_query_null)
+# stedfestinger <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE feature_oid IN ()"
+# trafikklenker_top_null <- sf::st_read(geopackage_file, "TrafikkLenker",
+#                                  as_tibble = TRUE,
+#                                  query = top_row_query_null)
 
 
 # Spør direkte til SQLite-databasen
 # databasekobling <- DBI::dbConnect(SQLite(), geopackage_file)
 # databasetabeller <- as.data.frame(dbListTables(databasekobling))
 # 
+# distinct_vegklasser <- paste0(
+#   "SELECT min_funksjonell_vegklasse, ",
+#   "COUNT(*) ",
+#   "FROM TrafikkLenker ",
+#   "GROUP BY min_funksjonell_vegklasse;")
+
 # sql_query_for_null_geometry <- paste0(
 #   "SELECT feature_oid, element_id, start_measure, end_measure ",
 #   "FROM TrafikkLenker ",
 #   "INNER JOIN Trafikklenker_stedfesting ",
 #   "USING(feature_oid) ",
 #   "WHERE TrafikkLenker.geometry IS NULL")
-# 
-# lenker_uten_geometri_med_stedfesting <- DBI::dbSendQuery(databasekobling,
-#                                                          sql_query_for_null_geometry)
-# 
-# lenker_uten_geometri_med_stedfesting_resultat <- DBI::dbFetch(lenker_uten_geometri_med_stedfesting)
-# 
-# dbClearResult(lenker_uten_geometri_med_stedfesting)
-# 
-# # Skrur av kobling til databasen
-# DBI::dbDisconnect(databasekobling)
+
+#sql_query <- distinct_vegklasser
+ 
+#sporring <- DBI::dbSendQuery(databasekobling, sql_query)
+
+#resultat <- DBI::dbFetch(sporring)
+
+#dbClearResult(lenker_uten_geometri_med_stedfesting)
+
+# Skrur av kobling til databasen
+#DBI::dbDisconnect(databasekobling)
 # 
 # lenker_uten_geometri_med_stedfesting_veglenkeposisjon <- lenker_uten_geometri_med_stedfesting_resultat %>%
 #   #slice(3081:3090) %>% 
@@ -209,13 +216,28 @@ leaflet(width = "100%",
                 popup = ~htmlEscape(line_length),
                 highlightOptions = highlightOptions(bringToFront = TRUE,
                                                     sendToBack = TRUE,
-                                                    color = "white",
+                                                    color = "red",
                                                     opacity = 0.7)) %>% 
   addCircleMarkers(data = kryss,
-               fill = TRUE,
-               fillColor = "black") #%>%
+                   radius = 4,
+                   stroke = FALSE,
+                   fillOpacity = 0.9,
+                   fill = TRUE,
+                   fillColor = "black") #%>%
   #addPolygons(data = kommune_polygon,
   #            fill = FALSE)
 
 # TODO: Add more labels
 ```
+
+
+
+```{r histogram}
+trafikklenker_combined %>% 
+  dplyr::mutate(numeric_lengths = as.numeric(line_length)) %>% 
+  ggplot2::ggplot(aes(x = numeric_lengths)) +
+  ggplot2::geom_histogram(binwidth = 1000) +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("Fordeling av trafikklenkenes lengder (m)")
+```
+
