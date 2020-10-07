@@ -55,23 +55,30 @@ nvdb_crs <- leafletCRS(
   ),
   origin = c(-2500000.0, 9045984.0))
 
-alle_kommuner <- hent_alle_kommuner_v3()
+#alle_kommuner <- hent_alle_kommuner_v3()
 ```
 
 ```{r read_data, message=FALSE, include=FALSE}
 #geopackage_file <- "trafikklenker_20200713002654.gpkg"
 #geopackage_file <- "trafikklenker_20200819125511.gpkg"
-geopackage_file <- "trafikklenker_20200903184437.gpkg"
+geopackage_file <- "trafikklenker_20200915130130.gpkg"
 
 # To see layers in gpkg file
 #layers <- sf::st_layers(geopackage_file)
 
 # Exploring the top rows
-top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 2 LIMIT 1000"
+top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 2 LIMIT 10"
 #top_row_query <- "SELECT feature_oid, start_node_oid, end_node_oid FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL LIMIT 15"
 trafikklenker_top <- sf::st_read(geopackage_file, "TrafikkLenker",
                                  as_tibble = TRUE,
                                  query = top_row_query)
+
+# Query selected links
+link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE feature_oid IN('c3442246-4846-488c-be46-8ca53457a11f')"
+trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
+                                 as_tibble = TRUE,
+                                 query = link_query)
+
 
 # top_row_query_null <- "SELECT feature_oid FROM \"TrafikkLenker\" WHERE geometry IS NULL"
 # trafikklenker_top_null <- sf::st_read(geopackage_file, "TrafikkLenker",
@@ -177,7 +184,7 @@ kryss <- sf::st_read(geopackage_file, "Kryss",
 
 
 ```{r manipulate_links}
-trafikklenker_combined <- trafikklenker_top %>%
+trafikklenker_combined <- trafikklenker_selected %>%
   sf::st_zm(drop = T, what = "ZM") %>% 
   dplyr::select(GEOMETRY, FEATURE_OID) %>% 
   #dplyr::group_by(FEATURE_OID) %>% 
@@ -217,13 +224,13 @@ leaflet(width = "100%",
                 highlightOptions = highlightOptions(bringToFront = TRUE,
                                                     sendToBack = TRUE,
                                                     color = "red",
-                                                    opacity = 0.7)) %>% 
-  addCircleMarkers(data = kryss,
-                   radius = 4,
-                   stroke = FALSE,
-                   fillOpacity = 0.9,
-                   fill = TRUE,
-                   fillColor = "black") #%>%
+                                                    opacity = 0.7)) #%>% 
+  # addCircleMarkers(data = kryss,
+  #                  radius = 4,
+  #                  stroke = FALSE,
+  #                  fillOpacity = 0.9,
+  #                  fill = TRUE,
+  #                  fillColor = "black") #%>%
   #addPolygons(data = kommune_polygon,
   #            fill = FALSE)
 

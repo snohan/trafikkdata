@@ -6,6 +6,7 @@ library(jsonlite)
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 
+# points ####
 trp <- get_points()
 
 trp_distinct <- trp %>%
@@ -15,6 +16,8 @@ trp_distinct <- trp %>%
   dplyr::group_by(trp_id) %>%
   dplyr::slice(which.min(validFrom))
 
+
+# mdt ####
 mdt_2020 <- trp_distinct$trp_id %>%
   get_mdt_for_trp_list("2020")
 
@@ -34,6 +37,8 @@ mdt_all <- mdt_2020 %>%
 #   dplyr::mutate(length_quality = round(100 * valid_length_volume / mdt,
 #                                        digits = 0))
 
+
+# device_type ####
 trp_device <- get_trs_device() %>%
   dplyr::select(trp_id, trs_id, deviceType)
 
@@ -47,7 +52,7 @@ trp_mdt <- trp_distinct %>%
 write.csv2(trp_mdt, file = "trp_mdt_2020-02.csv", row.names = F)
 trp_mdt <- read.csv2("trp_mdt_2020-02.csv")
 
-# Looking at the city index trps
+# Looking at the city index trps ####
 city_trp_raw <-
   read_csv2("H:/Programmering/R/byindeks/data_points_raw/cities_points.csv",
             locale = readr::locale(encoding = "latin1"))
@@ -106,3 +111,24 @@ trp_trondelag <- trp %>%
   dplyr::select(-validFrom, -validTo)
 
 write.csv2(trp_trondelag, file = "trp_trondelag.csv")
+
+# low aadt ####
+
+trp_aadt <- trp_distinct %>%
+  dplyr::filter(validFrom < "2019-07-01")
+
+aadt <- get_aadt_for_trp_list(trp_aadt$trp_id)
+
+trp_with_aadt <- aadt %>%
+  dplyr::left_join(trp_distinct) %>%
+  dplyr::select(trp_id, name, traffic_type, road_reference, county_name, municipality_name,
+                validFrom, number_of_directions, year, adt, coverage, valid_length_volume,
+                valid_speed_volume)
+
+write.csv2(trp_with_aadt, file = "alle_aadt.csv",
+           row.names = F)
+
+low_aadt <- trp_with_aadt %>%
+  dplyr::filter(year == 2019,
+                coverage > 90,
+                adt <= 500)

@@ -14,3 +14,6 @@ kurs.R
 emu3*
 *.gpkg
 vbv_data
+*gdb*
+trs_query.txt
+.RDataTmp
