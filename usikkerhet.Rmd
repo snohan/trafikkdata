@@ -1,0 +1,72 @@
+---
+title: "Usikkerhet i trafikkdata"
+output: html_notebook
+---
+
+Beskrive grunnleggende usikkerhet.
+
+Fire ulike parametere vi måler:
+
+- Antall (binomisk)
+- Lengde (kontinuerlig, fasit)
+- Fart (kontinuerlig, uten fasit)
+- Klasse (diskret, fasit)
+
+
+```{r}
+# Dataloggers empiriske kombinerte usikkerhet
+halvtimetrafikk <- c(12, 13, 20, 30, 50, 100, 200, 300, 200, 200, 100, 100, 75, 25)
+usikkerhet_halvtime <- sqrt(sum((0.01 * halvtimetrafikk)^2))
+
+# Ser på deteksjon som binomisk prosess
+# Kan simulere 10 målinger av 100 biler (f.eks. 10 dager med 100 i døgntrafikk)
+# Med dataloggers deteksjonsrate på 99 %
+ rbinom(10, 100, 0.99)
+```
+
+
+## Hva er dataloggers "bidrag" til usikkerheten i trafikkmengdestørrelser?
+For årsdøgntrafikk vil gjennomsnittet av alle årets dager naturlig nok beregnes ut fra 365 dager med varierende trafikk. Selv om registreringsutstyret hadde fungert 100 % perfekt gjennom hele året, slik at hver eneste bil ble registrert, ville ÅDT-verdien få et standardavvik som sier noe om hvor mye trafikken varierer i de 365 dagene.
+
+I tillegg ti denne "usikkerheten" kommer det som med rette kan betegnes usikkerhet i målingen, nemlig det faktum at registreringsutstyret ikke er 100 % perfekt.
+
+La oss tenke oss et eksempel med en trafikklenke som har nøyaktig like mange kjøretøy hver eneste dag hele året. Da kan vi beregne hvor stor usikkerheten til ÅDT blir med registreringsutstyr av ulik kvalitet.
+
+Vi modellerer utstyrets evne til å registrere hvert kjøretøy som en binomisk prosess, det vil si at utstyret enten registrerer kjøretøyet eller så gjør det det ikke. Et perfekt utstyr ville registrere hvert kjøretøy med en sannsynlighet på 100 %. Dagens utstyr er nesten perfekt under gode forhold (fotnote), og ligger på omtrent 99 %. Utstyr som er blitt forkastet i forbindelse med testing av utstyr for rammeavtale, har hatt ned mot 90 %.
+
+Eksempelet vi bruker er en veg med 1000 kjøretøypasseringer hver eneste dag et helt år.
+
+```{r perfekt}
+# Perfekt
+registreringer_perfekt <- rbinom(365, 1000, 1)
+aadt_perfekt <- mean(registreringer_perfekt)
+standardavvik_perfekt <- sd(registreringer)
+
+# Vårt krav
+registreringer <- rbinom(365, 1000, 0.99) + rbinom(365, 1000, 0.001)
+aadt <- mean(registreringer)
+standardavvik <- sd(registreringer)
+
+# Dårlig
+registreringer_bad <- rbinom(365, 1000, 0.70) + rbinom(365, 1000, 0.01)
+aadt_bad <- mean(registreringer_bad)
+standardavvik_bad <- sd(registreringer)
+```
+
+Binomisk fordeling gir samme standardavvik på disse tre dataloggerne. Den tar ikke hensyn til at de kan ha ulik grad av presisjon. Sannsynligheten angir ulik grad av nøyaktighet.
+
+Kan eventuelt legge til et ledd for falske positive, f.eks. dobbelttellinger, med lav sannsynlighet.
+
+
+I testresultater bør vi oppgi utvidet usikkerhet både på punktestimater (per kjøretøy) og for aggregerte verdier (typiske intervaller på 5 min e.l.)
+
+Hvordan finner vi utvidet usikkerhet, dvs. konfidensintervall på 95 %-nivå for de fire ulike parameterne?
+
+Artikler:
+
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7082531/
+
+Hvor skal vi sette kravet om kvalitet?
+
+Må vurdere andre feilkilder enn de som inntreffer under ideelle forhold. Ødelagte sensorer oppstår ofte o.l.
+

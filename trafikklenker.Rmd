@@ -67,18 +67,27 @@ geopackage_file <- "trafikklenker_20200915130130.gpkg"
 #layers <- sf::st_layers(geopackage_file)
 
 # Exploring the top rows
-top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 2 LIMIT 10"
+#top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 2 LIMIT 10"
 #top_row_query <- "SELECT feature_oid, start_node_oid, end_node_oid FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL LIMIT 15"
-trafikklenker_top <- sf::st_read(geopackage_file, "TrafikkLenker",
-                                 as_tibble = TRUE,
-                                 query = top_row_query)
+#trafikklenker_top <- sf::st_read(geopackage_file, "TrafikkLenker",
+#                                 as_tibble = TRUE,
+#                                 query = top_row_query)
 
+# Query selected links based on start_node_id 1849767
+#link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE start_node_oid IN(90874, 2701394, 3112280)"
 # Query selected links
-link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE feature_oid IN('c3442246-4846-488c-be46-8ca53457a11f')"
+link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE feature_oid IN('ef41fb3a-8b86-4e4a-a8a7-ec7ac6667345')"
 trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
                                  as_tibble = TRUE,
                                  query = link_query)
 
+trafikklenker_selected %>% 
+  sf::st_drop_geometry() %>% 
+  dplyr::select(trafikklenkeid = FEATURE_OID,
+                startnode = START_NODE_OID,
+                sluttnode = END_NODE_OID) %>% 
+  write.csv2(file = "trafikklenkeseksempel.csv",
+             row.names = FALSE)
 
 # top_row_query_null <- "SELECT feature_oid FROM \"TrafikkLenker\" WHERE geometry IS NULL"
 # trafikklenker_top_null <- sf::st_read(geopackage_file, "TrafikkLenker",
@@ -159,11 +168,31 @@ trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
 #                                     query = element_query)
 ```
 
+```{r stedfesting}
+query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE element_id IN(1818969)"
+query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE feature_oid IN('ef41fb3a-8b86-4e4a-a8a7-ec7ac6667345')"
+trafikklenker_stedfesting <- sf::st_read(geopackage_file, "Trafikklenker_stedfesting",
+                                         as_tibble = TRUE,
+                                         query = query_stedfesting)
+
+trafikklenker_stedfesting %>% 
+  sf::st_drop_geometry() %>% 
+  dplyr::select(veglenkesekvensid = ELEMENT_ID,
+                startposisjon = START_MEASURE,
+                sluttposisjon = END_MEASURE) %>% 
+  write.csv2(file = "stedfestingseksempel.csv",
+             row.names = FALSE)
+
+```
+
+
+
+
 ```{r intersections}
 # Tilhørende kryss
-unique_start_node_ids <- trafikklenker_top$START_NODE_OID %>% 
+unique_start_node_ids <- trafikklenker_selected$START_NODE_OID %>% 
    unique()
-unique_end_node_ids <- trafikklenker_top$END_NODE_OID %>% 
+unique_end_node_ids <- trafikklenker_selected$END_NODE_OID %>% 
    unique()
  
 unique_node_ids <- c(unique_start_node_ids, unique_end_node_ids) %>% 
@@ -214,23 +243,23 @@ trafikklenker_combined <- trafikklenker_selected %>%
 
 ```{r plot}
 leaflet(width = "100%",
-          height = 700,
-          options = leafletOptions(crs = nvdb_crs,
-                                   zoomControl = F)) %>%
+        height = 700,
+        options = leafletOptions(crs = nvdb_crs,
+                                 zoomControl = F)) %>%
   addTiles(urlTemplate = nvdb_map_url,
            attribution = nvdb_map_attribution) %>%
-   addPolylines(data = trafikklenker_combined, #trafikklenker_trondheim,
-                popup = ~htmlEscape(line_length),
-                highlightOptions = highlightOptions(bringToFront = TRUE,
-                                                    sendToBack = TRUE,
-                                                    color = "red",
-                                                    opacity = 0.7)) #%>% 
-  # addCircleMarkers(data = kryss,
-  #                  radius = 4,
-  #                  stroke = FALSE,
-  #                  fillOpacity = 0.9,
-  #                  fill = TRUE,
-  #                  fillColor = "black") #%>%
+  addPolylines(data = trafikklenker_combined, #trafikklenker_trondheim,
+               popup = ~htmlEscape(line_length),
+               highlightOptions = highlightOptions(bringToFront = TRUE,
+                                                   sendToBack = TRUE,
+                                                   color = "red",
+                                                   opacity = 0.7)) %>% 
+  addCircleMarkers(data = kryss,
+                   radius = 4,
+                   stroke = FALSE,
+                   fillOpacity = 0.9,
+                   fill = TRUE,
+                   fillColor = "black") #%>%
   #addPolygons(data = kommune_polygon,
   #            fill = FALSE)
 
@@ -238,13 +267,19 @@ leaflet(width = "100%",
 ```
 
 
+```{r ggplot}
+ggplot2::ggplot(trafikklenker_combined) +
+  geom_sf()
+```
+
+
 
 ```{r histogram}
-trafikklenker_combined %>% 
-  dplyr::mutate(numeric_lengths = as.numeric(line_length)) %>% 
-  ggplot2::ggplot(aes(x = numeric_lengths)) +
-  ggplot2::geom_histogram(binwidth = 1000) +
-  ggplot2::theme_minimal() +
-  ggplot2::ggtitle("Fordeling av trafikklenkenes lengder (m)")
+# trafikklenker_combined %>% 
+#   dplyr::mutate(numeric_lengths = as.numeric(line_length)) %>% 
+#   ggplot2::ggplot(aes(x = numeric_lengths)) +
+#   ggplot2::geom_histogram(binwidth = 1000) +
+#   ggplot2::theme_minimal() +
+#   ggplot2::ggtitle("Fordeling av trafikklenkenes lengder (m)")
 ```
 

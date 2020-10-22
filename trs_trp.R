@@ -219,3 +219,9 @@ mtrps <- get_manual_points_from_trpapi_httr()
 
 write.csv2(mtrps, file = "manuelle_punkter.csv",
            row.names = F)
+
+
+# TRS and TRP with legacy
+trs_trp_legacy <- get_trp_for_vti_httr()
+
+writexl::write_xlsx(trs_trp_legacy, path = "trafikkregistreiringspunkt_og_msnr.xlsx")
