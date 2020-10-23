@@ -17,3 +17,5 @@ vbv_data
 *gdb*
 trs_query.txt
 .RDataTmp
+*.docx
+*.zip
