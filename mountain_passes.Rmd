@@ -1,0 +1,172 @@
+---
+title: Fjelloverganger mellom Øst- og Vest-Norge
+output: 
+  word_document:
+    reference_docx: svv_notatmal3.docx
+    toc: true
+    toc_depth: 2
+    fig_caption: true
+    fig_width: 7
+---
+
+```{r setup, include = FALSE, echo = FALSE, warning=FALSE, message=FALSE}
+# Packages are loaded through sourcing rmd_setup.R
+source("H:/Programmering/R/byindeks/rmd_setup.R")
+
+# Traffic Data API calls to get points metadata and aadt
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+#source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
+```
+
+
+
+```{r get_data, include=FALSE}
+# TRPs
+trps <- tibble::tibble(trp_id = c("53365V521100",
+                                  "62909V181278",
+                                  "98792V181304",
+                                  "74937V180956",
+                                  "82976V1060642",
+                                  "48559V2741763"),
+                       fjellovergang = c("Haukelifjell",
+                                         "Hardangervidda",
+                                         "Hol - Aurland",
+                                         "Hemsedalsfjellet",
+                                         "Filefjell",
+                                         "Filefjell")
+                      )
+
+# TRP-metadata
+points <- get_points() %>%
+  dplyr::distinct(trp_id, .keep_all = T)
+
+trp_meta <- trps %>% 
+  dplyr::left_join(points) %>% 
+  dplyr::mutate(name = stringr::str_to_title(name, locale = "no")) %>% 
+  split_road_system_reference() %>% 
+  dplyr::select(trp_id, name, 
+                road_category_and_number,
+                county_name, municipality_name, fjellovergang,
+                lat, lon)
+
+# Fetching AADTs
+aadts <- get_aadt_by_length_for_trp_list(trps$trp_id)
+
+aadts_filtered <- aadts %>% 
+  dplyr::filter(year %in% c(2017, 2018, 2019),
+                length_range %in% c("[..,5.6)",
+                                    "[5.6,..)")) %>% 
+  dplyr::mutate(length_range = dplyr::case_when(length_range == "[..,5.6)" ~ "lette",
+                                                length_range == "[5.6,..)" ~ "tunge"),
+                length_quality = round(aadt_valid_length / aadt_total * 100, 
+                                       digits = 0)) %>% 
+  dplyr::select(trp_id, year, length_range, aadt_length_range, length_quality,
+                coverage, aadt_total) 
+  
+# length_quality is good, so we skip it
+aadts_length_range <- aadts_filtered %>%   
+  dplyr::select(trp_id, year, length_range, aadt = aadt_length_range, coverage)
+
+aadt_total <- aadts_filtered %>% 
+  dplyr::select(trp_id, year, aadt = aadt_total, coverage) %>% 
+  dplyr::mutate(length_range = "alle") %>% 
+  dplyr::distinct()
+
+aadt_long <- dplyr::bind_rows(aadts_length_range, aadt_total)
+
+trp_aadt_long <- trp_meta %>% 
+  dplyr::left_join(aadt_long) %>% 
+  # Too low coverage:
+  dplyr::filter(!(trp_id == "53365V521100" & year == 2017))
+
+# Must add the two Ev16 trps
+mountain_pass_data <- trp_aadt_long %>% 
+  dplyr::select(fjellovergang, road_category_and_number, year, length_range, aadt, coverage) %>% 
+  dplyr::group_by(fjellovergang, year, length_range) %>% 
+  dplyr::summarise(aadt = sum(aadt)) %>% 
+  dplyr::ungroup() %>% 
+  # Not good enough data on Filefjell in 2017 and 2018
+  dplyr::filter(!(fjellovergang == "Filefjell" & year %in% c(2017, 2018))) %>% 
+  dplyr::mutate(year = factor(year, levels = c("2017", "2018", "2019"))
+               ) %>% 
+  tidyr::complete(fjellovergang, year, length_range)
+```
+
+
+
+# Trafikkregistreringspunkt ved fjellovergangene
+
+
+```{r point_table}
+trp_aadt_long %>%
+  dplyr::filter(year == 2019) %>% 
+  dplyr::arrange(desc(lat)) %>% 
+  dplyr::select(name, road_category_and_number, length_range, aadt) %>% 
+  tidyr::pivot_wider(names_from = length_range, 
+                     values_from = aadt) %>% 
+  dplyr::relocate(alle, .before = lette) %>% 
+  dplyr::mutate(andel_tunge = round(100 * tunge / alle, digits = 0)) %>% 
+  flextable() %>%
+  colformat_num(j = 3:5,
+                big.mark = " ", digits = 0, na_str = "") %>%
+  set_header_labels(name = "Navn",
+                    road_category_and_number = "Veg",
+                    alle = "Alle",
+                    lette = "Lette",
+                    tunge = "Tunge",
+                    andel_tunge = "Andel tunge (%)") %>%
+  bold(part = "header") %>%
+  fontsize(size = 9, part = "all") %>%
+  font(fontname = "Lucida Sans Unicode", part = "all") %>%
+  bg(bg = "#ED9300", part = "header") %>%
+  border_remove() %>%
+  hline_top(part = "header", border = borderline) %>%
+  hline_bottom(part = "all", border = borderline) %>%
+  autofit() %>%
+  height_all(height = .2) %>%
+  padding(padding.top = .3,
+          padding.bottom = .3) %>%
+  set_caption("Trafikkregistreringspunkt og årsdøgntrafikk (ÅDT) for 2019. Skillet mellom lette og tunge kjøretøy er basert på målt lengde kortere eller lengre enn 5,6 m. Summen av lette og tunge kan avvike noe fra totalen på grunn av avrunding.")
+```
+
+I kartet nedenfor vises plasseringen av trafikkregistreringspunktene med ÅDT for 2019. 
+
+```{r map_trp_index}
+trp_aadt_long %>% 
+  dplyr::filter(year == 2019,
+                length_range == "alle") %>%
+  dplyr::rename(adt = aadt) %>% 
+  create_point_adt_map()
+```
+
+
+
+
+
+```{r plot, fig.height=8, fig.width=8}
+mountain_pass_data %>% 
+  ggplot2::ggplot(aes(x = fjellovergang, y = aadt, fill = year)) +
+  ggplot2::geom_col(position = position_dodge2(width = 0.5, preserve = "single")) +
+  ggplot2::facet_grid(rows = vars(length_range)) +
+  theme_light() +
+  theme(panel.grid.minor.x = element_blank()) +
+  scale_fill_manual(values = c("2017" = "#008ec2",
+                                "2018" = "#ed9300",
+                                "2019" = "#444f55"),
+                     name = "År") +
+  scale_y_continuous(breaks = c(500, 1000, 1500),
+                     limits = c(0, 1800)) +
+  labs(x = NULL, y = "Årsdøgntrafikk \n",
+       caption = "Data: Statens vegvesen") +
+  ggtitle("Årsdøgntrafikk ved fjelloverganger",
+          subtitle = "Inndelt i kjøretøyklasser") +
+  theme(legend.position = "bottom",
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank())
+```
+
+Alle data er hentet fra [www.vegvesen.no/trafikkdata/](https://www.vegvesen.no/trafikkdata/).
+
+
+
