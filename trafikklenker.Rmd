@@ -75,7 +75,7 @@ layers <- sf::st_layers(geopackage_file)
 # Query selected links based on start_node_id 1849767
 #link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE start_node_oid IN(90874, 2701394, 3112280)"
 # Query selected links
-link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE feature_oid IN('ef41fb3a-8b86-4e4a-a8a7-ec7ac6667345')"
+link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE feature_oid IN('5caf5717-4f1e-42ee-9dd1-51f810c365c3')"
 trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
                                  as_tibble = TRUE,
                                  query = link_query)
@@ -168,11 +168,11 @@ trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
 ```
 
 ```{r stedfesting}
-# query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE element_id IN(1818969)"
-# query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE feature_oid IN('ef41fb3a-8b86-4e4a-a8a7-ec7ac6667345')"
-# trafikklenker_stedfesting <- sf::st_read(geopackage_file, "Trafikklenker_stedfesting",
-#                                          as_tibble = TRUE,
-#                                          query = query_stedfesting)
+#query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE element_id IN(3112184)"
+query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE feature_oid IN('5caf5717-4f1e-42ee-9dd1-51f810c365c3')"
+trafikklenker_stedfesting <- sf::st_read(geopackage_file, "Trafikklenker_stedfesting",
+                                         as_tibble = TRUE,
+                                         query = query_stedfesting)
 # 
 # trafikklenker_stedfesting %>% 
 #   sf::st_drop_geometry() %>% 
