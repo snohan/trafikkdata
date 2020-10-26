@@ -28,7 +28,7 @@ write.csv2(trs_trp_distance, file = "stasjon_punkt_avstand.csv",
 trp <- getPointsFromTRPAPI()
 trp_with_commissions <- get_trp_with_commissions()
 #trp_trs <- get_trs_trp()
-trs_with_trp <- get_all_trs_with_trp()
+trs_with_trp <- get_all_trs_with_trp_httr()
 
 # trp_id and legacies
 trs_with_trp %>%
@@ -225,3 +225,13 @@ write.csv2(mtrps, file = "manuelle_punkter.csv",
 trs_trp_legacy <- get_trp_for_vti_httr()
 
 writexl::write_xlsx(trs_trp_legacy, path = "trafikkregistreiringspunkt_og_msnr.xlsx")
+
+
+# TRS with more than one trp
+trs_plural <- trs_with_trp %>%
+  dplyr::group_by(trs_id, trs_name, traffic_type, station_type) %>%
+  dplyr::summarise(no_trps = n()) %>%
+  dplyr::filter(no_trps > 1)
+
+write.csv2(trs_plural, file = "stasjoner_med_flere_punkt.csv",
+           row.names = F)
