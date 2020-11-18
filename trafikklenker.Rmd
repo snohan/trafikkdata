@@ -66,11 +66,12 @@ geopackage_file <- "Trafikklenkekandidater_20201021.gpkg"
 layers <- sf::st_layers(geopackage_file)
 
 # Exploring the top rows
-#top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 2 LIMIT 10"
+top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 2 LIMIT 10"
+top_row_query <- "SELECT * FROM \"TrafikkLenker\" LIMIT 10"
 #top_row_query <- "SELECT feature_oid, start_node_oid, end_node_oid FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL LIMIT 15"
-#trafikklenker_top <- sf::st_read(geopackage_file, "TrafikkLenker",
-#                                 as_tibble = TRUE,
-#                                 query = top_row_query)
+trafikklenker_top <- sf::st_read(geopackage_file, "TrafikkLenker",
+                                 as_tibble = TRUE,
+                                 query = top_row_query)
 
 # Query selected links based on start_node_id 1849767
 #link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE start_node_oid IN(90874, 2701394, 3112280)"

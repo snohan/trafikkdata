@@ -224,7 +224,12 @@ write.csv2(mtrps, file = "manuelle_punkter.csv",
 # TRS and TRP with legacy
 trs_trp_legacy <- get_trp_for_vti_httr()
 
-writexl::write_xlsx(trs_trp_legacy, path = "trafikkregistreiringspunkt_og_msnr.xlsx")
+writexl::write_xlsx(trs_trp_legacy, path = "trafikkregistreringspunkt_og_msnr.xlsx")
+
+writexl::write_xlsx(trs_with_trp, path = "trafikkregistreringspunkt_og_nye_msnr.xlsx")
+
+
+
 
 
 # TRS with more than one trp
@@ -235,3 +240,35 @@ trs_plural <- trs_with_trp %>%
 
 write.csv2(trs_plural, file = "stasjoner_med_flere_punkt.csv",
            row.names = F)
+
+
+
+# TRS with TRP and lanes ####
+trs_trp_lanes <- get_trs_trp_lanes_httr()
+
+write.csv2(trs_trp_lanes, file = "trs_trp_lanes.csv",
+           row.names = F)
+
+
+# TRS and commissions ####
+
+trs_commissions <- get_trs_trp_commissions_httr()
+
+trs_commissions_filtered <- trs_commissions %>%
+  dplyr::filter(operational_status == "OPERATIONAL")
+
+# Need to filter by last commission
+last_commission <- trs_commissions %>%
+  dplyr::group_by(trs_id) %>%
+  dplyr::summarise(max(commission_from)) %>%
+  dplyr::rename(last_commission = 2)
+
+trs_commissions_filtered_2 <- trs_commissions_filtered %>%
+  dplyr::left_join(last_commission) %>%
+  dplyr::filter(last_commission < "2017-11-01",
+                is.na(commission_to),
+                is.na(device_to)) %>%
+  dplyr::arrange(trs_id)
+
+writexl::write_xlsx(trs_commissions_filtered_2,
+                    path = "stasjoner_med_siste_igangsetting_pre_nov_2017.xlsx")
