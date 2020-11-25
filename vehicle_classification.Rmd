@@ -7,8 +7,10 @@ output: html_notebook
 ```{r setup, include = FALSE, echo = FALSE}
 # Packages
 library(tidyverse)
+library(jsonlite)
 library(flextable)
 library(httr)
+library(writexl)
 
 # knitr options
 knitr::opts_chunk$set(echo = FALSE,
@@ -26,8 +28,23 @@ Here comes something...
 # All (61 rows)
 vehicle_groups <- get_vehicle_groups()
 
+vehicle_technical_codes <- get_technical_codes()
+
+vehicle_info_fields <- get_vehicle_info_fields()
+
+vehicle_info <- get_vehicle_info()
+
+writexl::write_xlsx(vehicle_info, path = "lastebiler_over_12_tonn.xlsx")
+
+ # %>%
+ #      dplyr::select(tekn_aksler, tekn_aksler_drift, tekn_avreg_dato, tekn_egenvekt, tekn_kjtgrp,
+ #                    tekn_lengde, tekn_merke, tekn_reg_aar, tekn_reg_status,
+ #                    tekn_totvekt, tekn_vogntogvekt
+ #      )
+
+
 # Except trailers and beltebil (1e5 rows)
-vehicle_type_approvals <- get_vehicle_type_approvals()
+
 
 # Limited to still in use (4.4e6 rows)
 vehicles_of_approved_type
