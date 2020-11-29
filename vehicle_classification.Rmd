@@ -32,26 +32,52 @@ vehicle_technical_codes <- get_technical_codes()
 
 vehicle_info_fields <- get_vehicle_info_fields()
 
-vehicle_info <- get_vehicle_info()
+vehicle_info <- get_vehicle_info("O3")
 
-writexl::write_xlsx(vehicle_info, path = "lastebiler_over_12_tonn.xlsx")
+traffic_data_relevant_columns <- c("tekn_aksler",
+                                   "tekn_aksler_drift", 
+                                   "tekn_avreg_dato", 
+                                   "tekn_drivst",
+                                   "tekn_egenvekt",
+                                   "tekn_euronorm_ny",
+                                   "tekn_hybrid",
+                                   "tekn_hybrid_kategori",
+                                   "tekn_kjtgrp", 
+                                   "tekn_last_1",
+                                   "tekn_last_2",
+                                   "tekn_last_3",
+                                   "tekn_lengde", 
+                                   "tekn_luft_1",
+                                   "tekn_luft_2",
+                                   "tekn_luft_3",
+                                   "tekn_merkenavn",
+                                   "tekn_minavst_ms1",
+                                   "tekn_minavst_ms2",
+                                   "tekn_reg_aar", 
+                                   #"tekn_reg_status", 
+                                   "tekn_thv_m_brems",
+                                   "tekn_thv_u_brems",
+                                   "tekn_tknavn",
+                                   "tekn_totvekt", 
+                                   "tekn_vogntogvekt"
+                                   )
 
- # %>%
- #      dplyr::select(tekn_aksler, tekn_aksler_drift, tekn_avreg_dato, tekn_egenvekt, tekn_kjtgrp,
- #                    tekn_lengde, tekn_merke, tekn_reg_aar, tekn_reg_status,
- #                    tekn_totvekt, tekn_vogntogvekt
- #      )
+# A subset
+vegtek_columns_to_be_removed <- c("tekn_drivst",
+                                  "tekn_euronorm_ny",
+                                  "tekn_hybrid",
+                                  "tekn_hybrid_kategori",
+                                  "tekn_merkenavn")
 
+vehicle_info %>% 
+        dplyr::select(tidyselect::all_of(traffic_data_relevant_columns)) %>% 
+        write.csv2("kjoretoy_O3.csv",
+                   row.names = FALSE)
 
-# Except trailers and beltebil (1e5 rows)
-
-
-# Limited to still in use (4.4e6 rows)
-vehicles_of_approved_type
-
-# Limited to still in use (1e6 rows) and no trailers
-vehicles_approved_individually
-
+vehicle_info %>% 
+        dplyr::select(tidyselect::all_of(traffic_data_relevant_columns)) %>% 
+        dplyr::select(!tidyselect::all_of(vegtek_columns_to_be_removed)) %>% 
+        writexl::write_xlsx(path = "kjoretoy_O3.xlsx")
 
 ```
 

@@ -35,11 +35,13 @@ get_vehicle_info_fields <- function() {
 
 }
 
-
-get_vehicle_info <- function() {
+#technical_code <- "O1"
+get_vehicle_info <- function(technical_code) {
 
   # TODO: technical code as input
-  api_base_url <- "https://hotell.difi.no/api/json/vegvesen/kjoretoy?tekn_reg_status=Registrert&tekn_tknavn=N3&page="
+  api_base_url <- paste0("https://hotell.difi.no/api/json/vegvesen/kjoretoy?tekn_reg_status=Registrert&tekn_tknavn=",
+                         technical_code,
+                         "&page=")
 
   i = 1
   start_url <- paste0(api_base_url, i)
@@ -49,6 +51,9 @@ get_vehicle_info <- function() {
                         httr::add_headers(.headers = data_norge_headers))
 
   number_of_pages <- response$headers$`x-datahotel-total-pages` %>%
+    as.numeric()
+
+  number_of_vehicles <- response$headers$`x-datahotel-total-posts` %>%
     as.numeric()
 
   vehicle_entries <- tibble::tibble()
@@ -76,5 +81,5 @@ get_vehicle_info <- function() {
   return(vehicle_entries)
 }
 
-
+# TODO: a function that fetches number of vehicles per group, by querying for the first page per group
 
