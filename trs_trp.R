@@ -8,6 +8,7 @@ library(geosphere)
 library(writexl)
 
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 
 # Large distance between trs and trp ####
 trs_trp <- get_stations_and_trps_with_coordinates_from_TRPAPI_httr()
@@ -85,10 +86,11 @@ trs <- get_all_trs_with_trp()
 
 # or just
 bike_trps <- get_points() %>%
-  dplyr::distinct(trp_id, .keep_all = T) %>%
+  dplyr::group_by(trp_id) %>%
+  dplyr::slice(which.min(validFrom)) %>%
   dplyr::filter(traffic_type == "BICYCLE") %>%
   dplyr::select(trp_id, name, road_reference, county_name, municipality_name,
-                validFrom, validTo) %>%
+                first_commissioned = validFrom, operational_status) %>%
   dplyr::arrange(road_reference) %>%
   writexl::write_xlsx(path = "sykkelpunkter.xlsx")
 
