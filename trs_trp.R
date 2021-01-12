@@ -9,6 +9,7 @@ library(writexl)
 
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
 # Large distance between trs and trp ####
 trs_trp <- get_stations_and_trps_with_coordinates_from_TRPAPI_httr()
@@ -274,3 +275,13 @@ trs_commissions_filtered_2 <- trs_commissions_filtered %>%
 
 writexl::write_xlsx(trs_commissions_filtered_2,
                     path = "stasjoner_med_siste_igangsetting_pre_nov_2017.xlsx")
+
+
+# TRP with direction names ####
+trp_with_direction <- get_points_with_direction() %>%
+  split_road_system_reference() %>%
+  dplyr::arrange(county_no) %>%
+  dplyr::select(-road, -road_number) %>%
+  dplyr::relocate(road_category_and_number, .before = section_number)
+
+writexl::write_xlsx(trp_with_direction, path = "punkter_med_retningsnavn.xlsx")
