@@ -20,8 +20,8 @@ trs_trp_distance <- trs_trp %>%
                      function(row) {distGeo(c(row$stasjon_lon, row$stasjon_lat),
                                             c(row$punkt_lon, row$punkt_lat))
                   }),
-                  digits = 1)) #%>%
-  #dplyr::filter(distance > 100)
+                  digits = 1)) %>%
+  dplyr::filter(distance > 100)
 
 write.csv2(trs_trp_distance, file = "stasjon_punkt_avstand.csv",
            row.names = F)
@@ -97,6 +97,13 @@ bike_trps <- get_points() %>%
 
 # Periodic trps ####
 periodic_trps <- get_periodic_trps()
+
+trp_id_periodic <- periodic_trps %>%
+  dplyr::filter(!is.na(trp_id))
+
+write.csv2(trp_id_periodic,
+           "trp_id_periodic.csv",
+           row.names = F)
 
 parse_nortrafweb_csv <- function(filename, year) {
   # Parsing hellish nortrafweb-csvs with aadts to a tibble
