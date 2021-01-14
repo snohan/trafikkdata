@@ -105,6 +105,19 @@ write.csv2(trp_id_periodic,
            "trp_id_periodic.csv",
            row.names = F)
 
+# TRPs and their registration frequency
+periodic_trps_with_commission <- get_periodic_trps_with_commission()
+
+periodic_trs_and_trp_id <- get_periodic_trs_and_trp_id()
+
+# all trps
+all_trps <- get_points_from_trp_api()
+
+periodic_trps_and_their_trs <- periodic_trs_and_trp_id %>%
+  dplyr::filter(!is.na(trp_id)) %>%
+  dplyr::left_join(all_trps)
+
+# Parse NorTraf CSV ####
 parse_nortrafweb_csv <- function(filename, year) {
   # Parsing hellish nortrafweb-csvs with aadts to a tibble
   nortraf_csv <- read_csv2(filename,
