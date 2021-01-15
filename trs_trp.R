@@ -96,17 +96,29 @@ bike_trps <- get_points() %>%
   writexl::write_xlsx(path = "sykkelpunkter.xlsx")
 
 # Periodic trps ####
-periodic_trps <- get_periodic_trps()
-
-trp_id_periodic <- periodic_trps %>%
-  dplyr::filter(!is.na(trp_id))
-
-write.csv2(trp_id_periodic,
-           "trp_id_periodic.csv",
-           row.names = F)
+# periodic_trps <- get_periodic_trps()
+#
+# trp_id_periodic <- periodic_trps %>%
+#   dplyr::filter(!is.na(trp_id))
+#
+# write.csv2(trp_id_periodic,
+#            "trp_id_periodic.csv",
+#            row.names = F)
 
 # TRPs and their registration frequency
-periodic_trps_with_commission <- get_periodic_trps_with_commission()
+# Find all periodic trp with commissions in 2020
+interval_2020 <- lubridate::interval(ymd("2020-01-01"), ymd("2020-12-31"))
+
+periodic_trps_with_commission <- get_periodic_trps_with_commission() %>%
+  dplyr::filter(status != "PERMANENTLY_RETIRED",
+                trafficType == "VEHICLE",
+                commission_interval %within% interval_2020,
+                commission_length_in_days > 0)
+
+write.csv2(periodic_trps_with_commission,
+           "periodiske_registreringer_faste_sensorer_2020.csv",
+           row.names = F)
+
 
 periodic_trs_and_trp_id <- get_periodic_trs_and_trp_id()
 
@@ -116,6 +128,15 @@ all_trps <- get_points_from_trp_api()
 periodic_trps_and_their_trs <- periodic_trs_and_trp_id %>%
   dplyr::filter(!is.na(trp_id)) %>%
   dplyr::left_join(all_trps)
+
+
+
+trs_commission <- get_trs_trp_commissions_httr()
+
+
+
+periodic_trp <- periodic_trs_and_trp_id %>%
+  dplyr::filter(!is.na(trp_id))
 
 # Parse NorTraf CSV ####
 parse_nortrafweb_csv <- function(filename, year) {
