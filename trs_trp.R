@@ -1,9 +1,5 @@
 # TRS and TRP
 
-library(tidyverse)
-library(jsonlite)
-library(httr)
-library(ghql)
 library(geosphere)
 library(writexl)
 
@@ -38,7 +34,7 @@ trs_with_trp %>%
   write.csv2(file = "trp_id_and_nortraf_mpn.csv",
              row.names = F)
 
-# Stations with AADT in Nortraf in 2014, 2013 or 2012
+# Stations with AADT in Nortraf in 2014, 2013 or 2012 ####
 trs_nortraf <- read_csv2("trs_from_nortraf_with_adt_in_2014-2012.csv")
 
 #trp_from_kristin <- read_csv2("trp_fra_kristin.csv")
@@ -94,6 +90,8 @@ bike_trps <- get_points() %>%
                 first_commissioned = validFrom, operational_status) %>%
   dplyr::arrange(road_reference) %>%
   writexl::write_xlsx(path = "sykkelpunkter.xlsx")
+
+
 
 # Periodic trps ####
 # periodic_trps <- get_periodic_trps()
@@ -265,7 +263,7 @@ write.csv2(mtrps, file = "manuelle_punkter.csv",
            row.names = F)
 
 
-# TRS and TRP with legacy
+# TRS and TRP with legacy ####
 trs_trp_legacy <- get_trp_for_vti_httr()
 
 writexl::write_xlsx(trs_trp_legacy, path = "trafikkregistreringspunkt_og_msnr.xlsx")
@@ -276,7 +274,7 @@ writexl::write_xlsx(trs_with_trp, path = "trafikkregistreringspunkt_og_nye_msnr.
 
 
 
-# TRS with more than one trp
+# TRS with more than one trp ####
 trs_plural <- trs_with_trp %>%
   dplyr::group_by(trs_id, trs_name, traffic_type, station_type) %>%
   dplyr::summarise(no_trps = n()) %>%
