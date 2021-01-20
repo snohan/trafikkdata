@@ -8,7 +8,6 @@ source("H:/Programmering/R/byindeks/rmd_setup.R")
 library(htmltools)
 ```
 
-
 ```{r points, include = FALSE}
 radar_measurements <- 
   read.csv2("periodic_data/toporegistreringer_2020.csv")
@@ -16,7 +15,6 @@ radar_measurements <-
 radar_points <-
   read.csv2("periodic_data/topopunkt_2020.csv")
 ```
-
 
 ```{r map_trp}
 # labels on two lines
@@ -55,4 +53,3 @@ leaflet(width = "100%",
     fillOpacity = 0.7
   )
 ```
-

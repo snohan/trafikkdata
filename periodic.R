@@ -11,7 +11,7 @@ points_metadata <- get_points() %>%
   dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
 
 # Periodic registrations with permanent sensors ####
-
+# Fetched from file made in trs_trp.R
 periodic_inductive <- read.csv2("periodiske_registreringer_faste_sensorer_2020.csv") %>%
   dplyr::select(trp_id, traffic_type = trafficType, status, registration_frequency, road_link_position,
                 lat, lon, commission_interval, commission_length_in_days)
@@ -59,3 +59,9 @@ points_inductive_estimated_aadt <- estimated_aadt %>%
 write.csv2(points_inductive_estimated_aadt,
            file = "periodic_data/periodiske_punkt_faste_sensorer_estimert_aadt.csv",
            row.names = F)
+
+# TOPO radars ####
+# See atki_api.R
+
+# Armadillo radars ####
+# See API?

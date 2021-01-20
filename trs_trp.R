@@ -103,8 +103,8 @@ bike_trps <- get_points() %>%
 #            "trp_id_periodic.csv",
 #            row.names = F)
 
-# TRPs and their registration frequency
-# Find all periodic trp with commissions in 2020
+
+# Periodic trps with commissions in 2020 ####
 interval_2020 <- lubridate::interval(ymd("2020-01-01"), ymd("2020-12-31"))
 
 periodic_trps_with_commission <- get_periodic_trps_with_commission() %>%
@@ -118,8 +118,9 @@ write.csv2(periodic_trps_with_commission,
            row.names = F)
 
 
-periodic_trs_and_trp_id <- get_periodic_trs_and_trp_id()
-
+# TRPs and their registration frequency ####
+#periodic_trs_and_trp_id <- get_periodic_trs_and_trp_id()
+# TODO: clean code and use public API when possible
 # all trps
 all_trps <- get_points_from_trp_api()
 

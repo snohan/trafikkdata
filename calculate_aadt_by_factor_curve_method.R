@@ -1,8 +1,9 @@
 # The Factor Curve Method for estimating AADT from periodic registrations
 
-# Alternative: use nearby continuous points' variation curves
+# Alternative: use nearby continuous points' variation curves, a.k.a. the reference method, by
+# fetching e.g. 10 nearest points with high quality curves for the year.
 
-# Factor_curves
+# Defining the factor curves ####
 factor_curve_yearly <- read.csv2("factor_curve_method/factor_curves_yearly.csv") %>%
   tidyr::pivot_longer(cols = M1:M7, names_to = "curve", values_to = "factor_yearly") %>%
   dplyr::mutate(factor_yearly = factor_yearly / 100)
@@ -11,12 +12,14 @@ factor_curve_weekly <- read.csv2("factor_curve_method/factor_curves_weekly.csv")
   tidyr::pivot_longer(cols = M1:M7, names_to = "curve", values_to = "factor_weekly") %>%
   dplyr::mutate(factor_weekly = factor_weekly / 100)
 
-# Calculate aadt by daily traffic
+
+# Function to calculate aadt by daily traffic ####
 
 calculate_aadt_by_daily_traffic <- function(daily_traffic) {
 
   # Daily traffic with coverage > 99 %, i.e. hourly factor is 1.
   # Calculates both estimated AADT
+  # TODO: calculate uncertainty
 
   daily_traffic_expanded <- daily_traffic %>%
     dplyr::left_join(factor_curve_yearly, by = c("weekno" = "uke")) %>%
@@ -33,8 +36,10 @@ calculate_aadt_by_daily_traffic <- function(daily_traffic) {
     dplyr::summarise(aadt = round(mean(estimated_aadt),
                                   digits = -1),
                      squares = sum((estimated_aadt - aadt)^2)) %>%
-    dplyr::slice(which.min(squares))
+    #dplyr::slice(which.min(squares)) %>% # better to use:
+    dplyr::slice_min(squares)
 
+  # TODO: extract as own function?
   ratio_heavy <- daily_traffic %>%
     dplyr::filter(valid_length > 95) %>%
     dplyr::group_by(point_id) %>%
@@ -49,7 +54,9 @@ calculate_aadt_by_daily_traffic <- function(daily_traffic) {
   return(final_aadt_estimate_with_heavy)
 }
 
-# Plot
+# TODO: likewise function for radarpoints (lacking valid_length)
+
+# Plot to manually check ####
 
 # daily_traffic_expanded %>%
 #   dplyr::filter(point_name == "Krossen",
