@@ -33,7 +33,7 @@ calculate_aadt_by_daily_traffic <- function(daily_traffic) {
 
   final_aadt_estimate <- daily_traffic_expanded %>%
     dplyr::group_by(point_id, curve) %>%
-    dplyr::summarise(aadt = round(mean(estimated_aadt),
+    dplyr::summarise(aadt = round(mean(estimated_aadt, na.rm = TRUE),
                                   digits = -1),
                      squares = sum((estimated_aadt - aadt)^2)) %>%
     #dplyr::slice(which.min(squares)) %>% # better to use:
@@ -55,6 +55,40 @@ calculate_aadt_by_daily_traffic <- function(daily_traffic) {
 }
 
 # TODO: likewise function for radarpoints (lacking valid_length)
+calculate_aadt_by_daily_traffic_radar <- function(daily_traffic) {
+
+  # Complete daily traffic, i.e. hourly factor is 1.
+  # TODO: calculate uncertainty
+
+  daily_traffic_expanded <- daily_traffic %>%
+    dplyr::left_join(factor_curve_yearly, by = c("weekno" = "uke")) %>%
+    dplyr::left_join(factor_curve_weekly, by = c("dayno" = "ukedag",
+                                                 "curve" = "curve"),
+                     suffix = c("_yearly", "_weekly")) %>%
+    tibble::as_tibble() %>%
+    dplyr::mutate(
+      combined_factor = factor_yearly * factor_weekly,
+      estimated_aadt = total_volume / combined_factor)
+
+  final_aadt_estimate <- daily_traffic_expanded %>%
+    dplyr::group_by(point_id, curve) %>%
+    dplyr::summarise(aadt = round(mean(estimated_aadt, na.rm = TRUE),
+                                  digits = -1),
+                     squares = sum((estimated_aadt - aadt)^2)) %>%
+    dplyr::slice_min(squares)
+
+  ratio_heavy <- daily_traffic %>%
+    dplyr::group_by(point_id) %>%
+    dplyr::summarise(heavy_ratio = round(mean(heavy_ratio, na.rm = TRUE),
+                                         digits = 0),
+                     complete_days = n())
+
+  final_aadt_estimate_with_heavy <- final_aadt_estimate %>%
+    dplyr::left_join(ratio_heavy) %>%
+    dplyr::select(site_id = point_id, complete_days, curve, aadt, heavy_ratio)
+
+  return(final_aadt_estimate_with_heavy)
+}
 
 # Plot to manually check ####
 
