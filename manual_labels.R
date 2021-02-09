@@ -1,11 +1,9 @@
 # Get all manual labels from trp-api and write to csv
 
-library(tidyverse)
-library(httr)
-library(ghql)
-library(lubridate)
+library(writexl)
 
-manual_labels <- get_manual_labels()
+source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 
-write.csv2(manual_labels, file = "manuelle_merkinger.csv",
-           row.names = F)
+manual_labels <- get_manual_labels_by_county("50", "F")
+
+writexl::write_xlsx(manual_labels, path = "manuelle_merkinger.xlsx")

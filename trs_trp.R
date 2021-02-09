@@ -109,19 +109,19 @@ write.csv2(periodic_trps_with_commission,
 
 #
 # TRPs and their registration frequency ####
-
 # To check correctness of trp info
+# TODO: clean code and use public API when possible?
 
-periodic_trs_and_trp_id <- get_periodic_trs_and_trp_id()
+trs_and_trp_id <- get_trs_and_trp_id() # 4656 / 4619
 
+all_trps <- get_points_from_trp_api() # 3569
 
-# TODO: clean code and use public API when possible
-# all trps, including periodic
-all_trps <- get_points_from_trp_api()
-
-periodic_trps_and_their_trs <- periodic_trs_and_trp_id %>%
-  dplyr::filter(!is.na(trp_id)) %>%
-  dplyr::left_join(all_trps)
+trps_and_their_trs <- all_trps %>%
+  dplyr::left_join(trs_and_trp_id) %>%
+  split_road_system_reference() %>%
+  # Choose one filter:
+  dplyr::filter(registration_frequency == "UNKNOWN") # 25
+  #dplyr::filter(is.na(trs_id)) # 192
 
 
 

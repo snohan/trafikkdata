@@ -59,8 +59,8 @@ nvdb_crs <- leafletCRS(
 ```
 
 ```{r read_data, message=FALSE, include=FALSE}
-#geopackage_file <- "trafikklenker_20200915130130.gpkg"
-geopackage_file <- "Trafikklenkekandidater_20201021.gpkg"
+#geopackage_file <- "Trafikklenkekandidater_20201021.gpkg"
+geopackage_file <- "Trafikklenkekandidater_20210115.gpkg"
 
 # To see layers in gpkg file
 layers <- sf::st_layers(geopackage_file)
@@ -76,7 +76,7 @@ trafikklenker_top <- sf::st_read(geopackage_file, "TrafikkLenker",
 # Query selected links based on start_node_id 1849767
 #link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE start_node_oid IN(90874, 2701394, 3112280)"
 # Query selected links
-link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE feature_oid IN('5caf5717-4f1e-42ee-9dd1-51f810c365c3')"
+link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE id IN('84d8ef5d-967c-457b-a041-b8cf5772eeed')"
 trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
                                  as_tibble = TRUE,
                                  query = link_query)
