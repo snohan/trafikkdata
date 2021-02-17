@@ -1,5 +1,6 @@
 # Fetch daily data and calculate aadt by using factor curves
 
+library(writexl)
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
@@ -60,8 +61,45 @@ write.csv2(points_inductive_estimated_aadt,
            file = "periodic_data/periodiske_punkt_faste_sensorer_estimert_aadt.csv",
            row.names = F)
 
+
+
 # TOPO radars ####
 # See atki_api.R
 
 # Armadillo radars ####
-# See API?
+# See tetryon_api
+
+
+# Gather all in an Excel file for sharing ####
+periodic_inductive <- read.csv2("periodic_data/periodiske_punkt_faste_sensorer_estimert_aadt.csv") %>%
+  dplyr::select(trp_id, name, road_reference, county_name, municipality_name,
+                number_of_days, factor_curve = curve, aadt, heavy_ratio) %>%
+  dplyr::mutate(equipment = "inductive loops")
+
+municipalities <- get_municipalities()
+counties <- get_counties()
+municipalities_and_counties <- dplyr::left_join(municipalities, counties)
+municipality_info_chosen <- municipalities_and_counties %>%
+  dplyr::select(municipality_number, municipality_name, county_name)
+
+periodic_topo <- read.csv2("periodic_data/topo_estimates.csv") %>%
+  dplyr::select(trp_id = site_id, road_reference, municipality_number = municipality,
+                number_of_days = complete_days, factor_curve = curve, aadt, heavy_ratio) %>%
+  dplyr::left_join(municipality_info_chosen) %>%
+  dplyr::mutate(name = NA,
+                equipment = "TOPO radar") %>%
+  dplyr::select(-municipality_number)
+
+
+#peridoic_armadillo <- read.csv2("periodic_data/armadillo_estimates.csv")
+
+periodic_aadt_estimates <- dplyr::bind_rows(
+  periodic_inductive,
+  periodic_topo
+  ) %>%
+  split_road_system_reference() %>%
+  dplyr::select(-(road:intersection_meter), -road_number, -road_category_and_number) %>%
+  dplyr::relocate(road_category, .before = road_reference) %>%
+  dplyr::arrange(county_name)
+
+writexl::write_xlsx(periodic_aadt_estimates, path = "periodic_data/aadt_periodiske_registreringer_2020.xlsx")

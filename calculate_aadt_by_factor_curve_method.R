@@ -74,6 +74,10 @@ calculate_aadt_by_daily_traffic_radar <- function(daily_traffic) {
     dplyr::group_by(point_id, curve) %>%
     dplyr::summarise(aadt = round(mean(estimated_aadt, na.rm = TRUE),
                                   digits = -1),
+                     standard_deviation = round(sd(estimated_aadt, na.rm = TRUE), digits = 0),
+                     n_days = n(),
+                     # TODO: multiply SE by finite population correction factor?
+                     standard_error = round(standard_deviation / sqrt(n_days), digits = 0),
                      squares = sum((estimated_aadt - aadt)^2)) %>%
     dplyr::slice_min(squares)
 
@@ -85,7 +89,8 @@ calculate_aadt_by_daily_traffic_radar <- function(daily_traffic) {
 
   final_aadt_estimate_with_heavy <- final_aadt_estimate %>%
     dplyr::left_join(ratio_heavy) %>%
-    dplyr::select(site_id = point_id, complete_days, curve, aadt, heavy_ratio)
+    dplyr::select(site_id = point_id, complete_days, curve, aadt, standard_error,
+                  standard_deviation, heavy_ratio)
 
   return(final_aadt_estimate_with_heavy)
 }
