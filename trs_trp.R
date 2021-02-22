@@ -127,10 +127,14 @@ trps_and_their_trs <- all_trps %>%
 
 trs_commission <- get_trs_trp_commissions_httr()
 
+# Periodic registrations from NorTraf ####
+periodic_trps <- get_trs_and_trp_id() %>%
+  dplyr::filter(trs_type == "PERIODIC")
 
+# TODO: find relevant info for each trs to join with outcome of nortraf-csvs
 
-periodic_trp <- periodic_trs_and_trp_id %>%
-  dplyr::filter(!is.na(trp_id))
+# periodic_trp <- periodic_trs_and_trp_id %>%
+#   dplyr::filter(!is.na(trp_id))
 
 # Parse NorTraf CSV ####
 parse_nortrafweb_csv <- function(filename, year) {
@@ -320,3 +324,16 @@ trp_with_direction <- get_points_with_direction() %>%
   dplyr::relocate(road_category_and_number, .before = section_number)
 
 writexl::write_xlsx(trp_with_direction, path = "punkter_med_retningsnavn.xlsx")
+
+
+# TRS' first commission ####
+
+trs_commissions <- get_trs_trp_commissions_httr()
+
+first_commission <- trs_commissions %>%
+  dplyr::group_by(trs_id) %>%
+  dplyr::slice_min(commission_from, with_ties = FALSE)
+
+writexl::write_xlsx(first_commission, path = "stasjoners_forste_igangsetting.xlsx")
+
+

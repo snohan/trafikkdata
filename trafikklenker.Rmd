@@ -15,6 +15,8 @@ library(DBI)
 library(RSQLite)
 
 source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
 # knitr options ####
 knitr::opts_chunk$set(echo = FALSE,
@@ -55,7 +57,8 @@ nvdb_crs <- leafletCRS(
   ),
   origin = c(-2500000.0, 9045984.0))
 
-#alle_kommuner <- hent_alle_kommuner_v3()
+#alle_kommune_polygoner <- hent_alle_kommuner_v3()
+kommuner <- get_municipalities()
 ```
 
 
@@ -64,26 +67,34 @@ nvdb_crs <- leafletCRS(
 geopackage_file <- "Trafikklenker_20210216150826.gpkg"
 
 # To see layers in gpkg file
-layers <- sf::st_layers(geopackage_file)
+#layers <- sf::st_layers(geopackage_file)
 ```
 
 ```{r explore_rows, message=FALSE, include=FALSE}
 # Exploring the top rows
 #top_row_query <- "SELECT * FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL AND min_funksjonell_vegklasse IS 2 LIMIT 10"
-top_row_query <- "SELECT * FROM \"TrafikkLenker\" LIMIT 10"
+#top_row_query <- "SELECT * FROM \"TrafikkLenker\" LIMIT 10"
 #top_row_query <- "SELECT feature_oid, start_node_oid, end_node_oid FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL LIMIT 15"
-trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
-                                 as_tibble = TRUE,
-                                 query = top_row_query)
+# trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
+#                                  as_tibble = TRUE,
+#                                  query = top_row_query)
 
-# Query selected links based on start_node_id 1849767
+
+
 #link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE start_node_oid IN(3283021)"
-link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE roadref_category IS 'E' AND roadref_number IS 134"
-# Query selected links
+link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE roadref_category IS 'E' AND roadref_number IS 16"
 #link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE id IN('e18dc778-b686-435c-b77d-2460e4ea421d')"
 trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
                                       as_tibble = TRUE,
                                       query = link_query)
+
+trafikklenker_selected_2 <- trafikklenker_selected %>% 
+  tidyr::separate(MUNICIPALITY, into = c("municipality_1", "municipality_2"),
+                  sep = ",", fill = "right") %>% 
+  dplyr::mutate(county_1 = stringr::str_sub(municipality_1, 1, 2)) %>% 
+  dplyr::filter(county_1 == "46")
+
+trafikklenker_selected <- trafikklenker_selected_2
 
 # trafikklenker_selected %>% 
 #   sf::st_drop_geometry() %>% 
@@ -123,8 +134,6 @@ trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
 # Read many
 #element_query <- "SELECT feature_oid, start_node_oid, end_node_oid, geometry FROM \"Trafikklenker\" LIMIT 50000;"
 #element_query <- "SELECT * FROM \"Trafikklenker\" LIMIT 5;"
-
-# TODO: query by road number (via NVDB API to find all element IDs belonging to road number)
 
 # trafikklenker_element <- sf::st_read(geopackage_file, "TrafikkLenker",
 #                                      as_tibble = TRUE,
@@ -179,10 +188,10 @@ trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
 
 ```{r stedfesting}
 #query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE element_id IN(3112184)"
-query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE feature_oid IN('5caf5717-4f1e-42ee-9dd1-51f810c365c3')"
-trafikklenker_stedfesting <- sf::st_read(geopackage_file, "Trafikklenker_stedfesting",
-                                         as_tibble = TRUE,
-                                         query = query_stedfesting)
+# query_stedfesting <- "SELECT * FROM \"Trafikklenker_stedfesting\" WHERE feature_oid IN('5caf5717-4f1e-42ee-9dd1-51f810c365c3')"
+# trafikklenker_stedfesting <- sf::st_read(geopackage_file, "Trafikklenker_stedfesting",
+#                                          as_tibble = TRUE,
+#                                          query = query_stedfesting)
 # 
 # trafikklenker_stedfesting %>% 
 #   sf::st_drop_geometry() %>% 
@@ -215,7 +224,7 @@ kryss <- sf::st_read(geopackage_file, "Kryss",
                      as_tibble = TRUE,
                       query = kryss_query) %>% 
    sf::st_zm(drop = T, what = "ZM") %>% 
-   dplyr::select(GEOMETRY) %>% 
+   #dplyr::select(GEOMETRY) %>% 
    sf::st_transform("+proj=longlat +datum=WGS84")
 ```
 
@@ -224,14 +233,19 @@ kryss <- sf::st_read(geopackage_file, "Kryss",
 ```{r transform_geometry}
 trafikklenker_combined <- trafikklenker_selected %>%
   sf::st_zm(drop = T, what = "ZM") %>% 
-  dplyr::select(ID, START_NODE_OID, END_NODE_OID, DIRECTION, COMMENT, ROADREF_CATEGORY,
-                ROADREF_NUMBER, ROADREF_START, ROADREF_END) %>% 
+  dplyr::rename(road_reference = ROADREF_START) %>% 
+  split_road_system_reference() %>% 
+  dplyr::select(ID, START_NODE_OID, END_NODE_OID,
+                ROADREF_START = road_reference, ROADREF_END, ROADREF_NUMBER,ROADREF_CATEGORY,
+                DIRECTION, COMMENT) %>% 
   #dplyr::select(GEOMETRY, ID) %>% 
   #dplyr::group_by(FEATURE_OID) %>% 
   #dplyr::summarise(combined_geometry = sf::st_combine(GEOMETRY)) %>% 
   dplyr::mutate(line_length = round(sf::st_length(GEOMETRY),
                                     digits = 0)) %>% 
-  dplyr::mutate(link_label = paste(ROADREF_START, ROADREF_END, line_length, sep = "<br/>"),
+  dplyr::mutate(link_label = paste(ROADREF_START, ROADREF_END, line_length,
+                                   START_NODE_OID, END_NODE_OID,
+                                   sep = "<br/>"),
                 link_label = lapply(link_label, htmltools::HTML)) %>% 
   # Need to transform for leaflet plotting
   sf::st_transform("+proj=longlat +datum=WGS84")
@@ -262,37 +276,36 @@ leaflet(width = "100%",
   addTiles(urlTemplate = nvdb_map_url,
            attribution = nvdb_map_attribution) %>%
   addPolylines(data = trafikklenker_combined, #trafikklenker_trondheim,
-               label = ~link_label,
+               popup = ~link_label,
                highlightOptions = highlightOptions(bringToFront = TRUE,
-                                                   sendToBack = TRUE,
+                                                   sendToBack = FALSE,
                                                    color = "red",
-                                                   opacity = 0.7)) %>% 
+                                                   opacity = 0.6)) %>% 
   addCircleMarkers(data = kryss,
-                   radius = 4,
+                   popup = ~FEATURE_OID,
+                   radius = 5,
                    stroke = FALSE,
                    fillOpacity = 0.9,
                    fill = TRUE,
                    fillColor = "black") #%>%
   #addPolygons(data = kommune_polygon,
   #            fill = FALSE)
-
-# TODO: Add more labels
 ```
 
 
 ```{r ggplot_links}
-ggplot2::ggplot(trafikklenker_combined) +
-  geom_sf()
+# ggplot2::ggplot(trafikklenker_combined) +
+#   geom_sf()
 ```
 
 
 
 ```{r histogram}
-trafikklenker_combined %>%
-  dplyr::mutate(numeric_lengths = as.numeric(line_length)) %>%
-  ggplot2::ggplot(aes(x = numeric_lengths)) +
-  ggplot2::geom_histogram(binwidth = 1000) +
-  ggplot2::theme_minimal() +
-  ggplot2::ggtitle("Fordeling av trafikklenkenes lengder (m)")
+# trafikklenker_combined %>%
+#   dplyr::mutate(numeric_lengths = as.numeric(line_length)) %>%
+#   ggplot2::ggplot(aes(x = numeric_lengths)) +
+#   ggplot2::geom_histogram(binwidth = 1000) +
+#   ggplot2::theme_minimal() +
+#   ggplot2::ggtitle("Fordeling av trafikklenkenes lengder (m)")
 ```
 
