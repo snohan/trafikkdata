@@ -128,10 +128,11 @@ trps_and_their_trs <- all_trps %>%
 trs_commission <- get_trs_trp_commissions_httr()
 
 # Periodic registrations from NorTraf ####
-periodic_trps <- get_trs_and_trp_id() %>%
-  dplyr::filter(trs_type == "PERIODIC")
+# periodic_trps <- get_trs_and_trp_id() %>%
+#   dplyr::filter(trs_type == "PERIODIC")
 
-# TODO: find relevant info for each trs to join with outcome of nortraf-csvs
+# Find relevant info for each trs to join with outcome of nortraf-csvs
+trs_info <- get_trs_info()
 
 # periodic_trp <- periodic_trs_and_trp_id %>%
 #   dplyr::filter(!is.na(trp_id))
@@ -243,18 +244,44 @@ periodic_aadt_length_2019 <- bind_rows(
   parse_nortrafweb_csv_with_direction_and_length("periodisk_adt/periodiske_n3_2019_retning_lengde.csv", 2019)
 )
 
-periodic_trps_2018 <- left_join(periodic_trps,
-                                periodic_aadt_length_2018)
+# For NR
+# periodic_trps_2018 <- dplyr::inner_join(trs_info,
+#                                         periodic_aadt_length_2018)
+#
+# periodic_trps_2019 <- dplyr::inner_join(trs_info,
+#                                         periodic_aadt_length_2019)
+#
+# write.csv2(periodic_trps_2018, "periodisk_adt/periodiske_punkt_2018_lengde_retning.csv",
+#            row.names = F)
+#
+# write.csv2(periodic_trps_2019, "periodisk_adt/periodiske_punkt_2019_lengde_retning.csv",
+#            row.names = F)
 
-periodic_trps_2019 <- left_join(periodic_trps,
-                                periodic_aadt_length_2019)
+# For manual AADT inventory
+periodic_trps_2018_2019 <-
+  dplyr::bind_rows(
+    periodic_aadt_length_2018,
+    periodic_aadt_length_2019
+  ) %>%
+  dplyr::mutate(adt = as.numeric(adt)) %>%
+  dplyr::group_by(trs_id, year, length_class) %>%
+  dplyr::summarise(adt = round(sum(adt), digits = -1)) %>%
+  dplyr::mutate(length_class = dplyr::case_when(
+    length_class == "Alle" ~ "alle",
+    length_class == "Mindre enn 5,6m" ~ "lette",
+    length_class == "Større eller lik 5,6m" ~ "tunge"
+  )) %>%
+  tidyr::pivot_wider(names_from = length_class, values_from = adt) %>%
+  dplyr::mutate(heavy_ratio = round(tunge / alle * 100, digits = 0)) %>%
+  dplyr::select(trs_id, year, adt = alle, heavy_ratio) %>%
+  dplyr::inner_join(trs_info) %>%
+  dplyr::filter(traffic_type == "VEHICLE") %>%
+  split_road_system_reference() %>%
+  dplyr::select(trs_id, name, road_category, road_reference, county_name,
+                municipality_name, year, adt, heavy_ratio)
 
-write.csv2(periodic_trps_2018, "periodisk_adt/periodiske_punkt_2018_lengde_retning.csv",
-           row.names = F)
-
-write.csv2(periodic_trps_2019, "periodisk_adt/periodiske_punkt_2019_lengde_retning.csv",
-           row.names = F)
-
+writexl::write_xlsx(periodic_trps_2018_2019,
+                    path = "periodisk_adt/aadt_periodiske_punkt_faste_sensorer_2018_2019.xlsx")
 
 # Manual TRPs ####
 mtrps <- get_manual_points_from_trpapi_httr()
