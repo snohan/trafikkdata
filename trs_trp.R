@@ -342,6 +342,13 @@ trs_commissions_filtered_2 <- trs_commissions_filtered %>%
 writexl::write_xlsx(trs_commissions_filtered_2,
                     path = "stasjoner_med_siste_igangsetting_pre_nov_2017.xlsx")
 
+# Check all commissions
+
+trs_all_commissions <- get_trs_commissions()
+
+writexl::write_xlsx(trs_all_commissions,
+                    path = "stasjoners_igangsettinger.xlsx")
+
 
 # TRP with direction names ####
 trp_with_direction <- get_points_with_direction() %>%
