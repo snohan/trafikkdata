@@ -76,6 +76,7 @@ periodic_inductive <- read.csv2("periodic_data/periodiske_punkt_faste_sensorer_e
                 number_of_days, factor_curve = curve, aadt, heavy_ratio) %>%
   dplyr::mutate(equipment = "inductive loops")
 
+# Need geo info
 municipalities <- get_municipalities()
 counties <- get_counties()
 municipalities_and_counties <- dplyr::left_join(municipalities, counties)
@@ -91,11 +92,12 @@ periodic_topo <- read.csv2("periodic_data/topo_estimates.csv") %>%
   dplyr::select(-municipality_number)
 
 
-#peridoic_armadillo <- read.csv2("periodic_data/armadillo_estimates.csv")
+#periodic_armadillo <- read.csv2("periodic_data/armadillo_estimates.csv")
 
 periodic_aadt_estimates <- dplyr::bind_rows(
   periodic_inductive,
   periodic_topo
+  #periodic_armadillo
   ) %>%
   split_road_system_reference() %>%
   dplyr::select(-(road:intersection_meter), -road_number, -road_category_and_number) %>%

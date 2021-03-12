@@ -371,3 +371,30 @@ first_commission <- trs_commissions %>%
 writexl::write_xlsx(first_commission, path = "stasjoners_forste_igangsetting.xlsx")
 
 
+
+# All stations and their trps ####
+trs_and_trp_id <- get_trs_and_trp_id()
+
+trs_info <- get_trs_info() %>%
+  dplyr::select(trs_id,
+                trs_road_category = road_category,
+                trs_road_reference = road_reference)
+
+trp_info <- get_points_from_trp_api() %>%
+  dplyr::select(trp_id,
+                legacy_nortraf_mpn,
+                trp_name = name,
+                trp_status,
+                registration_frequency,
+                road_reference,
+                municipality_name,
+                county_name)
+
+all_trs <- trs_and_trp_id %>%
+  dplyr::left_join(trs_info) %>%
+  dplyr::left_join(trp_info) %>%
+  dplyr::relocate(trp_id, .before = trp_name) %>%
+  dplyr::mutate(trs_id = as.numeric(trs_id)) %>%
+  dplyr::arrange(trs_id)
+
+writexl::write_xlsx(all_trs, path = "all_stations.xlsx")
