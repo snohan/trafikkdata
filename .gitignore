@@ -9,6 +9,7 @@
 kibanadata
 *_cache
 atki_api.R
+tetryon_api.R
 *.xml
 kurs.R
 emu3*
