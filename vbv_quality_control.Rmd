@@ -8,7 +8,7 @@ output:
     toc_float: 
       collapsed: false
       smooth_scroll: false
-    toc_depth: 3
+    toc_depth: 4
 ---
 
 ```{r setup, message=F}
@@ -21,7 +21,8 @@ knitr::opts_chunk$set(echo = FALSE,
                       warning = FALSE,
                       message = FALSE,
                       error = FALSE,
-                      cache = TRUE)
+                      cache = TRUE,
+                      dev = "ragg_png")
 ```
 
 ```{r functions}
@@ -126,8 +127,8 @@ vbv_postterminalen <-
   read_kibana_vbv("vbv_data/postterminalen.csv")
 vbv_elgeseter <- 
   read_kibana_vbv("vbv_data/elgeseter_bru.csv")
-# Ser på Elgeseter bru 24.02.2020 da det var mye snø og neppe noen faktiske mc
-# eller skuter
+
+# Ser på Elgeseter bru 24.02.2020 da det var mye snø og neppe noen faktiske mc eller skuter
 vbv_elgeseter_2 <- 
   read_kibana_vbv("vbv_data/elgeseter_bru_20200224.csv")
 vbv_moholtlia <- 
@@ -188,13 +189,16 @@ Etter å ha sett på mye data i Kibana (visualisering "Ukjent lengde histogram")
 - **Qspeed større enn 3: de fleste utslagene skyldes denne regelen.** De aktuelle reglene er i avsnittet over merket med rødt.
 
 
-# Normalsituasjon
+# Sjekk av Loop Monitor
+Gjennomført februar 2020.
+
+## Normalsituasjon
 Ved god flyt i trafikken, god kvalitet på sløyfene og ingen delvise passeringer blir datakvaliteten veldig god, også får lengdemålingene.
 
 Eksempel kommer.
 
 
-# Feilsituasjoner og eksempler
+## Feilsituasjoner
 Årsaker til lav datakvalitet kan grovt deles inn i tre kategorier:
 
 - Feil på sløyfer:
@@ -207,16 +211,16 @@ Eksempel kommer.
 I det følgende er det sett på data fra 20. februar 2020, om ikke annet er oppgitt.
 
 
-## Feil på sløyfer
+### Feil på sløyfer
 
 
-### Sløyfer med ulik frekvens
+#### Sløyfer med ulik frekvens
 Dagens regelsett gir ukjent lengde for de fleste passeringer i felt der det er stor forskjell i frekvensen på de to sløyfene. Typisk eksempel er der hvor en sløyfe har omkring 65 kHz og den andre ligger rundt 85 kHz. Sistnevnte er normalt frekvensnivå.
 
 Hva som er grunnen til at en sløyfe har omtrent 20 kHz lavere frekvens enn normalt, er ukjent.
 
 
-#### E18 Asker (LM)
+##### E18 Asker (LM)
 Egenskaper:
 
 - Fire felt.
@@ -233,7 +237,7 @@ Vurdering:
 - Ulik frekvens på sløyfene i felt 3 gir høyere qspeed-verdier her, men både lengde- og fartsmålinger virker helt greie likevel.
 
 
-#### F44 Søyland (LM)
+##### F44 Søyland (LM)
 Egenskaper:
 
 - To felt.
@@ -244,7 +248,7 @@ Egenskaper:
 plot_all_in_one(vbv_data_soyland)
 ```
 
-#### Øysand F05
+##### Øysand F05
 Egenskaper:
 
 - To felt.
@@ -257,9 +261,9 @@ plot_all_in_one(vbv_f05)
 
 
 
-### Lav frekvens på alle sløyfer
+#### Lav frekvens på alle sløyfer
 
-#### F5004 Hollundsvegen (LM)
+##### F5004 Hollundsvegen (LM)
 Egenskaper:
 
 - To felt.
@@ -270,7 +274,7 @@ Egenskaper:
 plot_all_in_one(vbv_data_hollundsvegen)
 ```
 
-#### Svortland vest
+##### Svortland vest
 Egenskaper:
 
 - To felt.
@@ -281,9 +285,9 @@ Egenskaper:
 plot_all_in_one(vbv_data_svortland_vest)
 ```
 
-### Brudd eller dårlig koblet sløyfe
+#### Brudd eller dårlig koblet sløyfe
 
-#### Moholtlia
+##### Moholtlia
 
 Egenskaper:
 
@@ -296,7 +300,7 @@ plot_all_in_one(vbv_moholtlia)
 ```
 
 
-## Saktegående trafikk
+### Saktegående trafikk
 
 #### Svortland øst
 Egenskaper:
@@ -366,7 +370,7 @@ Egenskaper:
 plot_all_in_one(vbv_elgeseter)
 ```
   
-### Data fra 24. februar 2020
+##### Data fra 24. februar 2020
 Mye snøfall, ingen forventede mc, skuter o.l.
   
 
@@ -401,7 +405,10 @@ vbv_elgeseter_2 %>%
 ```
 
 
-## E6 Skullerud (LM)
+### Feltskifte
+Ved felskifte akkurat over sensorene blir det delvis passering av sløyfene.
+
+#### E6 Skullerud (LM)
 Egenskaper:
 
 - God flyt i trafikken, noe saktegående i felt 2.
@@ -413,28 +420,41 @@ Egenskaper:
 plot_all_in_one(vbv_skullerud)
 ```
 
+
+# Sjekk av EMU3
+
+## Normalsituasjon
+Øysand
+
+## Feilsituasjoner
+
+
+
+
 # Test på Øysand
-På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omskring 65  og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger. Er disse likevel gode nok når vi har fasit på lengdemålinger fra Kjøretøyregisteret.
+På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omkring 65  og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger. Er disse likevel gode nok når vi har fasit på lengdemålinger fra Kjøretøyregisteret?
+
 
 
 # Vurdering av resultater
 
+## Loop Monitor
 
-## Ulik frekvens på sløyfer
+### Ulik frekvens på sløyfer
 Selv om ulik frekvens på sløyfer gir høyere verdier på qspeed, ser både lengde- og fartsmålinger helt greie ut. Bruk av qspeed som indikator på lav datakvalitet er derfor ikke hensiktsmessig.
 
 
-## Klassifisering
+### Klassifisering
 Klare vi skille ut fakiske motorsykler?
 Er alle lengder under 2 m faktiske lette kjøretøy?
 
 
-## Typiske lengder som blir underkjent
+### Typiske lengder som blir underkjent
 
 - Lengder mellom 1 og 2 m forekommer relativt hyppig blant de underkjente, og fanges opp av qspeed-regelen. **Kan vi tro alle disse er LETTE?**
 - Øvrig lengdefordeling fra 2,5 m og oppover ligner veldig på den for godkjente lengder.
 
-## Typiske steder med høy andel ukjente
+### Typiske steder med høy andel ukjente
 
 - Flerfeltsveg, pga. feltskifte?
 - Kø, dvs. nære kryss og trafikklys o.l.
@@ -442,21 +462,30 @@ Er alle lengder under 2 m faktiske lette kjøretøy?
 - Ramper, stor endring i fart.
 
 
-### Kø
+#### Kø
 Gir både en del lengder 1,2 - 2 m, og 20-29 m. Mange feilklassifiseres som MC.
 
 
-### Delvis passering av sløyfer
+#### Delvis passering av sløyfer
 Gir stor andel 1,2 - 2 m selv med fart godt over 15 km/h.
 
-### Feil på sløyfe
+#### Feil på sløyfe
 Dersom en av to sløyfer er ødelagt (frakoblet e.l.) blir det mange 29 m.
 
 
+## EMU3
+
+
 # Konklusjon
+
+## Loop Monitor
 Resultatene av denne undersøkelsen viser at vi må justere enkelte regler. Det er reglene som benytter qspeed vi må endre, dvs. ta helt bort. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengdeklassifisering enn det vi gjør i dag.
 
 Enkelte situasjoner fører til for lav kvalitet på lengdemålingene og disse bør i størst mulig grad fanges opp av kvalitetsreglene. Dette gjelder i hovedsak der hvor det er kø, delvis passeringer eller feil på sløyfer.
+
+## EMU3
+
+
 
 
 

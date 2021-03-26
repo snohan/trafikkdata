@@ -64,10 +64,10 @@ kommuner <- get_municipalities()
 
 ```{r file_path, include=FALSE}
 #geopackage_file <- "Trafikklenkekandidater_20201021.gpkg"
-geopackage_file <- "Trafikklenker_20210216150826.gpkg"
+geopackage_file <- "Trafikklenker_20210317104831.gpkg"
 
 # To see layers in gpkg file
-#layers <- sf::st_layers(geopackage_file)
+layers <- sf::st_layers(geopackage_file)
 ```
 
 ```{r explore_rows, message=FALSE, include=FALSE}
@@ -82,7 +82,7 @@ geopackage_file <- "Trafikklenker_20210216150826.gpkg"
 
 
 #link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE start_node_oid IN(3283021)"
-link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE roadref_category IS 'E' AND roadref_number IS 16"
+link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE roadref_category IS 'R' AND roadref_number IS 13"
 #link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE id IN('e18dc778-b686-435c-b77d-2460e4ea421d')"
 trafikklenker_selected <- sf::st_read(geopackage_file, "TrafikkLenker",
                                       as_tibble = TRUE,
@@ -92,7 +92,7 @@ trafikklenker_selected_2 <- trafikklenker_selected %>%
   tidyr::separate(MUNICIPALITY, into = c("municipality_1", "municipality_2"),
                   sep = ",", fill = "right") %>% 
   dplyr::mutate(county_1 = stringr::str_sub(municipality_1, 1, 2)) %>% 
-  dplyr::filter(county_1 == "46")
+  dplyr::filter(county_1 %in% c("11", "46"))
 
 trafikklenker_selected <- trafikklenker_selected_2
 

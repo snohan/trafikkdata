@@ -1,6 +1,7 @@
 # TRS and TRP
 
 library(geosphere)
+library(readxl)
 library(writexl)
 
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
@@ -23,10 +24,11 @@ write.csv2(trs_trp_distance, file = "stasjon_punkt_avstand.csv",
            row.names = F)
 
 # Points ####
-trp <- getPointsFromTRPAPI()
+trp <- get_points_from_trp_api()
 trp_with_commissions <- get_trp_with_commissions()
 #trp_trs <- get_trs_trp()
-trs_with_trp <- get_all_trs_with_trp_httr()
+trs_with_trp <- get_all_trs_with_trp()
+trs_with_trp_via_sensorconfig <- get_all_trs_with_trp_via_sensorconfig()
 
 # trp_id and legacies
 trs_with_trp %>%
@@ -74,7 +76,9 @@ trp_no_legacy <- trp_with_commissions %>%
   dplyr::arrange(trs_id)
 
 # Points without stations ####
-trp_without_trs <- dplyr::anti_join(trp, trs_with_trp)
+trp_without_trs <- dplyr::anti_join(trp, trs_with_trp) %>%
+  dplyr::anti_join(trs_with_trp_via_sensorconfig) %>%
+  dplyr::filter(!stringr::str_detect(trp_status, ".*RETIRED"))
 # TODO: filter out stations without commissions, or why are they not part of
 # station-query
 
@@ -283,6 +287,37 @@ periodic_trps_2018_2019 <-
 writexl::write_xlsx(periodic_trps_2018_2019,
                     path = "periodisk_adt/aadt_periodiske_punkt_faste_sensorer_2018_2019.xlsx")
 
+# Add new road reference to station list from nortraf ####
+nortraf_n2 <- readxl::read_xlsx("periodisk_adt_nortraf/nortraf_trs_n2.xlsx",
+                                skip = 4) %>%
+  dplyr::mutate(Nummer = as.character(Nummer))
+
+trs_ny_vegref <- trs_info %>%
+  dplyr::select(Nummer = trs_id, Vegreferanse_ny = road_reference,
+                Fylke_ny = county_name, Kommune_ny = municipality_name)
+
+nortraf_n2_added <- nortraf_n2 %>%
+  dplyr::left_join(trs_ny_vegref) %>%
+  dplyr::relocate(Vegreferanse_ny, .after = Vegreferanse) %>%
+  dplyr::relocate(Fylke_ny, .after = Fylke) %>%
+  dplyr::relocate(Kommune_ny, .after = Kommune)
+
+writexl::write_xlsx(nortraf_n2_added,
+                    path = "periodisk_adt_nortraf/nortraf_n2_added.xlsx")
+
+nortraf_n3 <- readxl::read_xlsx("periodisk_adt_nortraf/nortraf_trs_n3.xlsx",
+                                skip = 4) %>%
+  dplyr::mutate(Nummer = as.character(Nummer))
+
+nortraf_n3_added <- nortraf_n3 %>%
+  dplyr::left_join(trs_ny_vegref) %>%
+  dplyr::relocate(Vegreferanse_ny, .after = Vegreferanse) %>%
+  dplyr::relocate(Fylke_ny, .after = Fylke) %>%
+  dplyr::relocate(Kommune_ny, .after = Kommune)
+
+writexl::write_xlsx(nortraf_n3_added,
+                    path = "periodisk_adt_nortraf/nortraf_n3_added.xlsx")
+
 # Manual TRPs ####
 mtrps <- get_manual_points_from_trpapi_httr()
 
@@ -398,3 +433,82 @@ all_trs <- trs_and_trp_id %>%
   dplyr::arrange(trs_id)
 
 writexl::write_xlsx(all_trs, path = "all_stations.xlsx")
+
+
+# TRS history ####
+trs_history <- get_trs_history()
+
+# TRS and sensorconfig errors ####
+sensorconfig_errors <- get_all_trs_with_trp_via_sensorconfig() %>%
+  dplyr::filter(purrr::map_lgl(errors, ~!rlang::is_empty(.x)))
+
+trs_with_missing_lanes <- sensorconfig_errors %>%
+  dplyr::filter(str_detect(errors, "mangler"))
+
+points <- get_points_from_trp_api() %>%
+  dplyr::select(trp_id, road_reference, county_name, municipality_name)
+
+trs_with_trp_per_direction <- trs_with_missing_lanes %>%
+  dplyr::left_join(points) %>%
+  dplyr::filter(trs_id %in% c("3000094",
+                              "3000095",
+                              "3000428",
+                              "300143",
+                              "300146",
+                              "300171",
+                              "300172",
+                              "300200",
+                              "300201",
+                              "300507",
+                              "300511",
+                              "300226",
+                              "300227",
+                              "300228",
+                              "300229",
+                              "300221",
+                              "300222",
+                              "300502",
+                              "3000090")) %>%
+  # Manually group trps
+  dplyr::arrange(road_reference) %>%
+  dplyr::select(trp_id, trp_name, road_reference, county_name, municipality_name) %>%
+  tibble::rowid_to_column("row_id") %>%
+  dplyr::mutate(virtual_trp = (2 * row_id + 1 + (-1)^(row_id + 1)) / 4) %>%
+  dplyr::select(-row_id)
+
+trp_per_direction_aadt <- get_aadt_by_length_for_trp_list(trs_with_trp_per_direction$trp_id)
+
+trp_per_direction_aadt_filtered <- trp_per_direction_aadt %>%
+  dplyr::select(trp_id, year, length_range, aadt_length_range, aadt_valid_length,
+                aadt_total, coverage) %>%
+  dplyr::filter(length_range %in% c("[..,5.6)", "[5.6,..)"),
+                coverage > 50) %>%
+  dplyr::mutate(length_quality = round(100 * aadt_valid_length / aadt_total, digits = 1)) %>%
+  dplyr::select(-aadt_valid_length) %>%
+  dplyr::mutate(length_range = dplyr::case_when(
+    length_range == "[..,5.6)" ~ "lette",
+    length_range == "[5.6,..)" ~ "tunge"
+  ))
+
+virtual_trps <- trs_with_trp_per_direction %>%
+  dplyr::left_join(trp_per_direction_aadt_filtered) %>%
+  dplyr::group_by(virtual_trp, year, length_range) %>%
+  dplyr::summarise(aadt_length_range = sum(aadt_length_range),
+                   virtual_aadt_total = sum(aadt_total),
+                   virtual_coverage = round(mean(coverage), digits = 1),
+                   virtual_length_quality = round(mean(length_quality), digits = 1)) %>%
+  tidyr::pivot_wider(names_from = length_range, values_from = aadt_length_range,
+                     names_prefix = "virtual_aadt_") %>%
+  dplyr::mutate(virtual_andel_tunge = round(100 * virtual_aadt_tunge / virtual_aadt_total, digits = 0))
+
+trp_with_aadt <- trp_per_direction_aadt_filtered %>%
+  tidyr::pivot_wider(names_from = length_range, values_from = aadt_length_range,
+                     names_prefix = "aadt_") %>%
+  dplyr::mutate(andel_tunge = round(100 * aadt_tunge / aadt_total, digits = 0))
+
+virtual_trps_with_aadt <- trs_with_trp_per_direction %>%
+  dplyr::left_join(trp_with_aadt) %>%
+  dplyr::left_join(virtual_trps, by = c("virtual_trp" = "virtual_trp", "year" = "year"))
+
+writexl::write_xlsx(virtual_trps_with_aadt,
+                    path = "adt_rapporter/virtuelle_punkter_fra_delretning.xlsx")
