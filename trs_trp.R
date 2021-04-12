@@ -8,8 +8,9 @@ source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
-# Large distance between trs and trp ####
-trs_trp <- get_stations_and_trps_with_coordinates_from_TRPAPI_httr()
+
+# Large distance between trs and trp ----
+trs_trp <- get_trs_and_trps_with_coordinates_from_trp_api()
 
 trs_trp_distance <- trs_trp %>%
   dplyr::mutate(distance = round(
@@ -18,12 +19,15 @@ trs_trp_distance <- trs_trp %>%
                                             c(row$punkt_lon, row$punkt_lat))
                   }),
                   digits = 1)) %>%
-  dplyr::filter(distance > 100)
+  dplyr::filter(distance > 100) %>%
+  dplyr::arrange(desc(distance))
 
 write.csv2(trs_trp_distance, file = "stasjon_punkt_avstand.csv",
            row.names = F)
 
-# Points ####
+
+
+# Trps ----
 trp <- get_points_from_trp_api()
 trp_with_commissions <- get_trp_with_commissions()
 #trp_trs <- get_trs_trp()
@@ -438,9 +442,46 @@ writexl::write_xlsx(all_trs, path = "all_stations.xlsx")
 # TRS history ####
 trs_history <- get_trs_history()
 
-# TRS and sensorconfig errors ####
+# TRS and sensorconfig errors ----
 sensorconfig_errors <- get_all_trs_with_trp_via_sensorconfig() %>%
   dplyr::filter(purrr::map_lgl(errors, ~!rlang::is_empty(.x)))
+
+# to filter out accepted errors
+accepted_errors <- c("3000090",
+                     "200062",
+                     "1200236",
+                     "1200238",
+                     "1200258",
+                     "1900114",
+                     "1200129",
+                     "300171",
+                     "300172",
+                     "300143",
+                     "300146",
+                     "300221",
+                     "300222",
+                     "300200",
+                     "300201",
+                     "300226",
+                     "300227",
+                     "3000095",
+                     "3000094",
+                     "3000428",
+                     "300228",
+                     "300229",
+                     "3000482",
+                     "3000507",
+                     "3000511",
+                     "3000397",
+                     "3000398",
+                     "3000502")
+
+sensorconfig_errors_filterd <- sensorconfig_errors %>%
+  dplyr::filter(station_type == "CONTINUOUS",
+                !(trs_id %in% accepted_errors),
+                operational_status %in% c("OPERATIONAL",
+                                          "NON-OPERATIONAL"))
+
 
 trs_with_missing_lanes <- sensorconfig_errors %>%
   dplyr::filter(str_detect(errors, "mangler"))
@@ -448,6 +489,7 @@ trs_with_missing_lanes <- sensorconfig_errors %>%
 points <- get_points_from_trp_api() %>%
   dplyr::select(trp_id, road_reference, county_name, municipality_name)
 
+## Trs with trp per direction ----
 trs_with_trp_per_direction <- trs_with_missing_lanes %>%
   dplyr::left_join(points) %>%
   dplyr::filter(trs_id %in% c("3000094",
