@@ -141,27 +141,31 @@ vbv_skullerud <-
 
 
 # Regler for kvalitetskontroll av enkeltkjøretøyregistreringer
-Vi har regler som gjelder generelt, og noen som gjelder spesifikt per apparattype.
+Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i rådatabasen uten videre presessering. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for kontrollerte data.
 
 
 ## Dagens regler
+Reglene ble utarbeidet i samråd med dataloggerleverandørene, samt basert på egen testing.
+
+Reglene for kvalitetskontroll er inndelt i to hovedkategorier: et sett som gjelder alle data, og ett sett som gjelder spesifikt per dataloggertype.
+
 For **alle utstyrstyper** for motorkjøretøy må følgende ved hver enkelt registrering merkes ugyldig dersom:
 
 - Selve registreringen:
   - Kjørefeltverdien er fraværende.
-  - Kjørefeltverdien er utenfor de kjørefeltene som eksisterer på vegsnittet.
+  - Kjørefeltverdien er utenfor de kjørefeltene som eksisterer på trafikkregistreringspunktet.
   - Eventnummer er "null".
 - Lengde og klassifisering:
   - Lengde er < 1 m eller > 27 m.
 - Fart:
-  - Absoluttverdi av fart > 300 km/h
+  - Absoluttverdi av fart > 300 km/h.
 
 For **Loop Monitor** skal følgende merkes som ugyldig hvis:
 
 - Fart, lengde og klassifisering:
-  - Absoluttverdi av fart < 7 km/h.
+  - Absoluttverdi av fart < 7 km/h. Loop Monitor angir ingen lengde når farten er så lav.
 - Fart og lengde:
-  - <p style="color:red">Speed_quality >= 3 % for fart >= 100 km/h, eller >= 3 km/h for fart < 100 km/h. (Speed_quality er absolutt avvik (i km/h) mellom loop 1 og 2)</p>
+  - <p style="color:red">Speed_quality >= 3 % for fart >= 100 km/h, eller >= 3 km/h for fart < 100 km/h. (Speed_quality er absolutt avvik (i km/h) mellom loop 1 og 2) OBS! DENNE REGELEN BLE I MARS 2020 ENDRET TIL 25 % / 25 km/h.</p>
 - Klassifisering:
   - Signalkoden inneholder oddetall eller 0, unntatt 0202.
 
@@ -172,30 +176,41 @@ For **EMU3** skal følgende merkes ugyldig hvis:
 - Fart, lengde og klassifisering:
   - <p style="color:red">Speed_quality ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).</p>
   
+  
+# Formålet med vurderingen av reglene
+Noen trafikkregistreringspunkter er høy andel underkjente lengdemålinger. Er dette reellt eller er reglene for strenge?
 
-## Passer reglene med den reelle datakvaliteten?
-Noen trafikkregistreringspunkter har høy andel ukjente **lengder**. Hva er grunnen til det?
+Det antas at kvaliteten på fartsmålingene henger nøye sammen med kvaliteten på lengdemålingene. Det er kjøretøylengden vi kan finne fasit på i kjøretøyregisteret, så derfor er dette fokus for vurderingen. Det samme gjelder også kjøretøyklassifiseringen.
 
-Kan det være at dagens regelsett er for strengt?
+Spørsmålet er om reglene passer med den reelle datakvaliteten. Hva er grunnene til at lengdemålingene blir underkjente?
 
-Målet er å vurdere dagens regelsett og eventuelt justere reglene. Om reglene justeres, skal alle data i Datainn reberegnes tilbake til 2014.
+Målet er å vurdere dagens regelsett og eventuelt justere reglene. Om reglene justeres, skal alle data i Trafikkdatasystemet reberegnes tilbake til 2014.
 
 
-## Hvilke regler fører til underkjente lengder
-Etter å ha sett på mye data i Kibana (visualisering "Ukjent lengde histogram"), viser det seg at reglene som underkjenner lengdemålingene fordeler seg slik:
+## Hvilke regler fører til underkjente lengder?
+Etter å ha sett på mye data i Kibana (visualisering "Ukjent lengde histogram"), viser det seg at reglene som underkjenner lengdemålingene fordeler seg som følger.
+
+Loop Monitor:
 
 - Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne regelen.
 - Lengde utenfor (1, 27) m: noen få utslag av denne regelen.
 - **Qspeed større enn 3: de fleste utslagene skyldes denne regelen.** De aktuelle reglene er i avsnittet over merket med rødt.
 
+EMU3:
+
+- Fart under 7 km/h: <p style="color:red">TODO</p>
+- Lengde utenfor (1, 27) m: <p style="color:red">TODO</p>
+- Speed_quality ≠ 0: <p style="color:red">TODO</p>
+
+Det kan være hensiktsmessig å sammenligne med en normal fordeling av lengder og klasser. Det er naturlig nok stedlige forskjeller, men disse kan eventuelt forklares.
+
 
 # Sjekk av Loop Monitor
 Gjennomført februar 2020.
 
-## Normalsituasjon
-Ved god flyt i trafikken, god kvalitet på sløyfene og ingen delvise passeringer blir datakvaliteten veldig god, også får lengdemålingene.
 
-Eksempel kommer.
+## Normalsituasjon
+Ved god flyt i trafikken, god kvalitet på sløyfene og ingen delvise passeringer blir datakvaliteten veldig god, også for lengdemålingene.
 
 
 ## Feilsituasjoner
@@ -220,7 +235,7 @@ Dagens regelsett gir ukjent lengde for de fleste passeringer i felt der det er s
 Hva som er grunnen til at en sløyfe har omtrent 20 kHz lavere frekvens enn normalt, er ukjent.
 
 
-##### E18 Asker (LM)
+##### Ev 18 Asker (LM)
 Egenskaper:
 
 - Fire felt.
@@ -234,10 +249,10 @@ plot_all_in_one(vbv_data_asker)
 
 Vurdering:
 
-- Ulik frekvens på sløyfene i felt 3 gir høyere qspeed-verdier her, men både lengde- og fartsmålinger virker helt greie likevel.
+- Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
 
 
-##### F44 Søyland (LM)
+##### Fv 44 Søyland (LM)
 Egenskaper:
 
 - To felt.
@@ -248,7 +263,12 @@ Egenskaper:
 plot_all_in_one(vbv_data_soyland)
 ```
 
-##### Øysand F05
+Vurdering:
+
+- Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
+
+
+##### Ev 39 Øysand F05
 Egenskaper:
 
 - To felt.
@@ -259,11 +279,14 @@ Egenskaper:
 plot_all_in_one(vbv_f05)
 ```
 
+Vurdering:
+
+- Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
 
 
 #### Lav frekvens på alle sløyfer
 
-##### F5004 Hollundsvegen (LM)
+##### Fv 5004 Hollundsvegen (LM)
 Egenskaper:
 
 - To felt.
@@ -274,7 +297,7 @@ Egenskaper:
 plot_all_in_one(vbv_data_hollundsvegen)
 ```
 
-##### Svortland vest
+##### Fv 542 Svortland vest
 Egenskaper:
 
 - To felt.
@@ -287,7 +310,7 @@ plot_all_in_one(vbv_data_svortland_vest)
 
 #### Brudd eller dårlig koblet sløyfe
 
-##### Moholtlia
+##### Ev 6 Moholtlia
 
 Egenskaper:
 
@@ -299,29 +322,38 @@ Egenskaper:
 plot_all_in_one(vbv_moholtlia)
 ```
 
+Vurdering:
+
+- Når vi ser på fartsmålingene i felt 4, ser vi at de fleste kjøretøy får omtrent maksimal qspeed, dvs. at den ene fartsmålingen er nær null uansett.
+- Mange av lengdemålingene får en bestemt maksimal- eller minimumsverdi av LM, som i begge tilfeller er utenfor vårt godkjenningsintervall.
+
 
 ### Saktegående trafikk
 
-#### Svortland øst
+#### Fv 542 Svortland øst
 Egenskaper:
 
 - To felt.
 - Tidvis saktegående trafikk
-- Alle fire sløyfer har frekvens på ca. 85 kHz.
+- Alle fire sløyfer har normal frekvens på ca. 85 kHz.
 
 ```{r svortlando, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_data_svortland_ost)
 ```
 
+Vurdering: 
 
-#### F862 Postterminalen (LM)
+- Noen lave hastigheter gir bestemte feilverdier for lengde, satt av LM. Disse er utenfor vårt toleranseområde for lengde, men har ikke særlig høy qspeed. 
+
+
+#### Fv 862 Postterminalen (LM)
 
 ![Postterminalen](vbv_data/postterminalen.PNG)
 
 
 Egenskaper:
 
-- Tre felt, men felt 2 er flettefelt, så sikkert en del delvise passeringer.
+- Tre felt, men felt 2 er flettefelt, så sikkert en del delvise sløyfepasseringer.
 - Tidvis saktegående trafikk. Forventer en del kø i felt 1.
 - Alle sløyfer viser normal frekvens på rundt 85 kHz.
 
@@ -337,7 +369,7 @@ vbv_postterminalen %>%
   plot_all_in_one()
 ```
 
-Zommer inn
+Zoomer inn.
 
 ```{r postterminalen2_korte_zoom, fig.height=12, fig.width=8}
 vbv_postterminalen %>% 
@@ -354,7 +386,12 @@ vbv_postterminalen %>%
     theme_minimal()
 ```
 
-#### F6690 Elgeseter bru
+Vurdering:
+
+-
+
+
+#### Fv 6690 Elgeseter bru
 Egenskaper:
 
 - Fire felt.
@@ -370,6 +407,11 @@ Egenskaper:
 plot_all_in_one(vbv_elgeseter)
 ```
   
+Vurdering: 
+
+- En del tilfeller at at qspeed er større enn fartsmålingen. Det må komme av at de to fartsmålingene har ulikt fortegn. Kan dette være en indikasjon på delvis sløyfepassering og/eller saktegående trafikk?
+
+
 ##### Data fra 24. februar 2020
 Mye snøfall, ingen forventede mc, skuter o.l.
   
@@ -379,7 +421,7 @@ plot_all_in_one(vbv_elgeseter_2)
 ```
 
 
-Ser kun på registreringer som enten er klassifisert som MC eller har lengde under 3,5 m.
+Ser nærmere på registreringer som enten er klassifisert som MC eller har lengde under 3,5 m.
 
 ```{r elgeseter2_korte, fig.height=12, fig.width=8}
 vbv_elgeseter_2 %>% 
@@ -387,7 +429,7 @@ vbv_elgeseter_2 %>%
   plot_all_in_one()
 ```
 
-Zommer inn
+Zoomer inn.
 
 ```{r elgeseter2_korte_zoom, fig.height=12, fig.width=8}
 vbv_elgeseter_2 %>% 
@@ -404,11 +446,15 @@ vbv_elgeseter_2 %>%
     theme_minimal()
 ```
 
+Vurdering:
+
+-
+
 
 ### Feltskifte
 Ved felskifte akkurat over sensorene blir det delvis passering av sløyfene.
 
-#### E6 Skullerud (LM)
+#### Ev 6 Skullerud (LM)
 Egenskaper:
 
 - God flyt i trafikken, noe saktegående i felt 2.
@@ -419,6 +465,10 @@ Egenskaper:
 ```{r skullerud, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_skullerud)
 ```
+
+Vurdering:
+
+- 
 
 
 # Sjekk av EMU3
@@ -479,7 +529,7 @@ Dersom en av to sløyfer er ødelagt (frakoblet e.l.) blir det mange 29 m.
 # Konklusjon
 
 ## Loop Monitor
-Resultatene av denne undersøkelsen viser at vi må justere enkelte regler. Det er reglene som benytter qspeed vi må endre, dvs. ta helt bort. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengdeklassifisering enn det vi gjør i dag.
+Resultatene av denne undersøkelsen viser at vi må justere enkelte regler. Det er reglene som benytter qspeed vi må endre, dvs. øke grenseverdien får når qspeed fører til underkjent lengde og klassifisering. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengde- og kjøretøyklassifisering enn det vi gjør i dag.
 
 Enkelte situasjoner fører til for lav kvalitet på lengdemålingene og disse bør i størst mulig grad fanges opp av kvalitetsreglene. Dette gjelder i hovedsak der hvor det er kø, delvis passeringer eller feil på sløyfer.
 
