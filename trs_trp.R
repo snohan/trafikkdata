@@ -446,7 +446,7 @@ trs_history <- get_trs_history()
 sensorconfig_errors <- get_all_trs_with_trp_via_sensorconfig() %>%
   dplyr::filter(purrr::map_lgl(errors, ~!rlang::is_empty(.x)))
 
-# to filter out accepted errors
+# to filter out accepted errors (updated 2021-04-12)
 accepted_errors <- c("3000090",
                      "200062",
                      "1200236",
@@ -476,13 +476,14 @@ accepted_errors <- c("3000090",
                      "3000398",
                      "3000502")
 
-sensorconfig_errors_filterd <- sensorconfig_errors %>%
+sensorconfig_errors_filtered <- sensorconfig_errors %>%
   dplyr::filter(station_type == "CONTINUOUS",
                 !(trs_id %in% accepted_errors),
                 operational_status %in% c("OPERATIONAL",
-                                          "NON-OPERATIONAL"))
+                                          "NON-OPERATIONAL")) %>%
+  dplyr::arrange(as.numeric(trs_id))
 
-
+## Missing lanes ----
 trs_with_missing_lanes <- sensorconfig_errors %>%
   dplyr::filter(str_detect(errors, "mangler"))
 
