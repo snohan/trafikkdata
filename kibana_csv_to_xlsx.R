@@ -9,15 +9,15 @@ points_metadata <- get_points() %>%
   dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
 
 # Read kibana exported csv file
-data_from_csv <- read.csv2("spesialbestillinger/agderpd.csv") %>%
+data_from_csv <- read.csv2("spesialbestillinger/agderpd2.csv") %>%
   dplyr::filter(valid_event == "true") %>%
   dplyr::rename(trp_id = traffic_registration_point_id) %>%
   dplyr::left_join(points_metadata) %>%
   dplyr::select(trp_id, name, road_reference, county_name, municipality_name,
-                timestamp = event_timestamp, lane, length, speed, vehicle_class = vehicle_type,
+                timestamp = event_timestamp, time_gap, lane, length, speed, vehicle_class = vehicle_type_raw,
                 valid_length, valid_speed, valid_class = valid_classification,
                 wrong_direction, datalogger_type) %>%
   dplyr::arrange(trp_id, timestamp)
 
-writexl::write_xlsx(data_from_csv, path = "spesialbestillinger/agderpd.xlsx")
+writexl::write_xlsx(data_from_csv, path = "spesialbestillinger/agderpd2.xlsx")
 
