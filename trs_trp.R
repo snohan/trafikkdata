@@ -9,7 +9,8 @@ source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
 
-# Large distance between trs and trp ----
+# Large distance from TRS to TRP ----
+# Note that bike trps with LM should not be more than 10 m away
 trs_trp <- get_trs_and_trps_with_coordinates_from_trp_api()
 
 trs_trp_distance <- trs_trp %>%
@@ -26,21 +27,36 @@ write.csv2(trs_trp_distance, file = "stasjon_punkt_avstand.csv",
            row.names = F)
 
 
-
-# Trps ----
+# TRPs ----
 trp <- get_points_from_trp_api()
 trp_with_commissions <- get_trp_with_commissions()
 #trp_trs <- get_trs_trp()
 trs_with_trp <- get_all_trs_with_trp()
 trs_with_trp_via_sensorconfig <- get_all_trs_with_trp_via_sensorconfig()
 
-# trp_id and legacies
+# TRPs and lanes ----
+trp <- get_points()
+
+trp_tidy <- trp %>%
+  dplyr::distinct(trp_id, .keep_all = T) %>%
+  dplyr::select(trp_id, name, traffic_type, registration_frequency,
+                road_reference, county_name, municipality_name,
+                operational_status, lane_numbers) %>%
+  dplyr::mutate(name = stringr::str_to_title(name, locale = "no")) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(lanes = toString(lane_numbers)) %>%
+  dplyr::select(-lane_numbers)
+
+writexl::write_xlsx(trp_tidy, path = "trs_trp/punkter_med_feltnummer.xlsx")
+
+# TRP and legacies ----
 trs_with_trp %>%
   dplyr::filter(!is.na(legacyNortrafMpn)) %>%
   write.csv2(file = "trp_id_and_nortraf_mpn.csv",
              row.names = F)
 
-# Stations with AADT in Nortraf in 2014, 2013 or 2012 ####
+
+## TRS with AADT in Nortraf in 2014, 2013 or 2012 ####
 trs_nortraf <- read_csv2("trs_from_nortraf_with_adt_in_2014-2012.csv")
 
 #trp_from_kristin <- read_csv2("trp_fra_kristin.csv")
@@ -62,7 +78,8 @@ trp_shant_legacy <- c("78233V444025", # Rud, added to TRS after Nortraf.
                       "12426B2798733" # Trikkestallen
 )
 
-# Points without legacyNortrafMpn ####
+
+## TRPs without legacyNortrafMpn ----
 trp_no_legacy <- trp_with_commissions %>%
   dplyr::filter(is.na(legacyNortrafMpn)) %>%
   # Do all have a commission?
@@ -79,14 +96,16 @@ trp_no_legacy <- trp_with_commissions %>%
   dplyr::filter(!(trp_id %in% trp_shant_legacy)) %>%
   dplyr::arrange(trs_id)
 
-# Points without stations ####
+
+# TRP without TRS ----
 trp_without_trs <- dplyr::anti_join(trp, trs_with_trp) %>%
   dplyr::anti_join(trs_with_trp_via_sensorconfig) %>%
   dplyr::filter(!stringr::str_detect(trp_status, ".*RETIRED"))
 # TODO: filter out stations without commissions, or why are they not part of
 # station-query
 
-# Bike trps, revised approve list ####
+
+# Bike TRPs, revised approve list ----
 trs <- get_all_trs_with_trp()
 
 # or just
@@ -100,7 +119,7 @@ bike_trps <- get_points() %>%
   writexl::write_xlsx(path = "sykkelpunkter.xlsx")
 
 
-# Periodic trps with commissions in 2020 ####
+# Periodic trps with commissions in 2020 ----
 # For use in estimating AADT
 
 interval_2020 <- lubridate::interval(ymd("2020-01-01"), ymd("2020-12-31"))
@@ -115,8 +134,8 @@ write.csv2(periodic_trps_with_commission,
            "periodiske_registreringer_faste_sensorer_2020.csv",
            row.names = F)
 
-#
-# TRPs and their registration frequency ####
+
+# TRPs and their registration frequency ----
 # To check correctness of trp info
 # TODO: clean code and use public API when possible?
 
@@ -131,11 +150,10 @@ trps_and_their_trs <- all_trps %>%
   dplyr::filter(registration_frequency == "UNKNOWN") # 25
   #dplyr::filter(is.na(trs_id)) # 192
 
-
-
 trs_commission <- get_trs_trp_commissions_httr()
 
-# Periodic registrations from NorTraf ####
+
+# Periodic registrations from NorTraf ----
 # periodic_trps <- get_trs_and_trp_id() %>%
 #   dplyr::filter(trs_type == "PERIODIC")
 
@@ -145,7 +163,7 @@ trs_info <- get_trs_info()
 # periodic_trp <- periodic_trs_and_trp_id %>%
 #   dplyr::filter(!is.na(trp_id))
 
-# Parse NorTraf CSV ####
+## Parse NorTraf CSV ----
 parse_nortrafweb_csv <- function(filename, year) {
   # Parsing hellish nortrafweb-csvs with aadts to a tibble
   nortraf_csv <- read_csv2(filename,
@@ -291,7 +309,8 @@ periodic_trps_2018_2019 <-
 writexl::write_xlsx(periodic_trps_2018_2019,
                     path = "periodisk_adt/aadt_periodiske_punkt_faste_sensorer_2018_2019.xlsx")
 
-# Add new road reference to station list from nortraf ####
+
+# Add new road reference to TRS list from nortraf ----
 nortraf_n2 <- readxl::read_xlsx("periodisk_adt_nortraf/nortraf_trs_n2.xlsx",
                                 skip = 4) %>%
   dplyr::mutate(Nummer = as.character(Nummer))
@@ -322,14 +341,15 @@ nortraf_n3_added <- nortraf_n3 %>%
 writexl::write_xlsx(nortraf_n3_added,
                     path = "periodisk_adt_nortraf/nortraf_n3_added.xlsx")
 
-# Manual TRPs ####
+
+# Manual TRPs ----
 mtrps <- get_manual_points_from_trpapi_httr()
 
 write.csv2(mtrps, file = "manuelle_punkter.csv",
            row.names = F)
 
 
-# TRS and TRP with legacy ####
+# TRS and TRP with legacy ----
 trs_trp_legacy <- get_trp_for_vti_httr()
 
 writexl::write_xlsx(trs_trp_legacy, path = "trafikkregistreringspunkt_og_msnr.xlsx")
@@ -337,10 +357,7 @@ writexl::write_xlsx(trs_trp_legacy, path = "trafikkregistreringspunkt_og_msnr.xl
 writexl::write_xlsx(trs_with_trp, path = "trafikkregistreringspunkt_og_nye_msnr.xlsx")
 
 
-
-
-
-# TRS with more than one trp ####
+# TRS with more than one trp ----
 trs_plural <- trs_with_trp %>%
   dplyr::group_by(trs_id, trs_name, traffic_type, station_type) %>%
   dplyr::summarise(no_trps = n()) %>%
@@ -350,15 +367,14 @@ write.csv2(trs_plural, file = "stasjoner_med_flere_punkt.csv",
            row.names = F)
 
 
-
-# TRS with TRP and lanes ####
+# TRS with TRP and lanes ----
 trs_trp_lanes <- get_trs_trp_lanes_httr()
 
 write.csv2(trs_trp_lanes, file = "trs_trp_lanes.csv",
            row.names = F)
 
 
-# TRS and commissions ####
+# TRS and commissions ----
 
 trs_commissions <- get_trs_trp_commissions_httr()
 
@@ -389,7 +405,7 @@ writexl::write_xlsx(trs_all_commissions,
                     path = "stasjoners_igangsettinger.xlsx")
 
 
-# TRP with direction names ####
+# TRP with direction names ----
 trp_with_direction <- get_points_with_direction() %>%
   split_road_system_reference() %>%
   dplyr::arrange(county_no) %>%
@@ -399,7 +415,7 @@ trp_with_direction <- get_points_with_direction() %>%
 writexl::write_xlsx(trp_with_direction, path = "punkter_med_retningsnavn.xlsx")
 
 
-# TRS' first commission ####
+# TRS' first commission ----
 
 trs_commissions <- get_trs_trp_commissions_httr()
 
@@ -410,8 +426,7 @@ first_commission <- trs_commissions %>%
 writexl::write_xlsx(first_commission, path = "stasjoners_forste_igangsetting.xlsx")
 
 
-
-# All stations and their trps ####
+# All TRSs and their TRPs ----
 trs_and_trp_id <- get_trs_and_trp_id()
 
 trs_info <- get_trs_info() %>%
@@ -439,8 +454,12 @@ all_trs <- trs_and_trp_id %>%
 writexl::write_xlsx(all_trs, path = "all_stations.xlsx")
 
 
-# TRS history ####
+# TRS history ----
+# History of commission, device and firmware:
 trs_history <- get_trs_history()
+
+# But not all at once...
+
 
 # TRS and sensorconfig errors ----
 sensorconfig_errors <- get_all_trs_with_trp_via_sensorconfig() %>%
@@ -483,6 +502,7 @@ sensorconfig_errors_filtered <- sensorconfig_errors %>%
                                           "NON-OPERATIONAL")) %>%
   dplyr::arrange(as.numeric(trs_id))
 
+
 ## Missing lanes ----
 trs_with_missing_lanes <- sensorconfig_errors %>%
   dplyr::filter(str_detect(errors, "mangler"))
@@ -490,7 +510,8 @@ trs_with_missing_lanes <- sensorconfig_errors %>%
 points <- get_points_from_trp_api() %>%
   dplyr::select(trp_id, road_reference, county_name, municipality_name)
 
-## Trs with trp per direction ----
+
+## TRS with TRP per direction ----
 trs_with_trp_per_direction <- trs_with_missing_lanes %>%
   dplyr::left_join(points) %>%
   dplyr::filter(trs_id %in% c("3000094",

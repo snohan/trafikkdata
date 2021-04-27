@@ -141,7 +141,7 @@ vbv_skullerud <-
 
 # Regler for kvalitetskontroll av enkeltkjøretøyregistreringer
 
-Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i rådatabasen uten videre presessering. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for kontrollerte data.
+Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i rådatabasen uten videre prosessering. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for kontrollerte data.
 
 ## Dagens regler
 
@@ -590,6 +590,18 @@ Vurdering:
 -   
 
 # Sjekk av EMU3
+
+For EMU3 må vi ta hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for speed_quality:
+
+\- Før januar 2017: qspeed-grense på 25 %, men vi brukte den ikke.
+
+\- Januar 2017: grensen ble endret fra 25 % til 3 % i Secondary 2.11.10, som kom et drøyt år før 1.0-versjonen for samlet firmwarepakke. Men denne inneholdt en feil som gjorde at grensen var 3 % på felt 5-8 og 25 % på felt 1-4.
+
+\- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %.
+
+Dagens regler inneholder ingen firmwarespesfikke regler.
+
+Den første stasjonen med en EMU3 var 1500018 Flote som ble igangsatt 23. juli 2015. Her ble det byttet til LM i desember 2015. Den første stasjonen som fortsatt har EMU3 er 1500028 Valldal.
 
 ## Punkter med mange underkjente
 
