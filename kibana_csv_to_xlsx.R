@@ -1,8 +1,11 @@
 # Prepare c-vbv data for sharing
+
+# Setup ----
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 library(writexl)
 
+# Points ----
 points_metadata <- get_points() %>%
   #dplyr::select(trp_id, name, road_reference, county_name, municipality_name) %>%
   dplyr::distinct(trp_id, .keep_all = T) %>%
@@ -11,12 +14,27 @@ points_metadata <- get_points() %>%
 points_direction <- get_trps_with_direction() %>%
   dplyr::select(trp_id, metering_direction_changed, lane_parity_kibana, direction)
 
+add_correct_direction_names <- function(data_from_kibana) {
+  data_from_kibana %>%
+    dplyr::mutate(is_lane_odd = purrr::map(lane, ~ length(is_odd(.)) > 0),
+                  lane_parity_kibana = dplyr::case_when(is_lane_odd == TRUE ~ "odd",
+                                                        is_lane_odd == FALSE ~ "even")) %>%
+    dplyr::left_join(points_direction) %>%
+    dplyr::mutate(lane_number = dplyr::case_when(
+      metering_direction_changed == TRUE & lane_parity_kibana == "odd" ~ lane + 1,
+      metering_direction_changed == TRUE & lane_parity_kibana == "even" ~ lane - 1,
+      metering_direction_changed == FALSE & lane_parity_kibana == "odd" ~ lane,
+      metering_direction_changed == FALSE & lane_parity_kibana == "even" ~ lane,
+    ))
+}
+
 # TODO: join direction_names per lane
 # Does Kibana give us changed lane numbers when metering has changed? NO!
 # So we need to swap lane numbers here if metering has changed.
 # No need to swap lanes when using data from the API, but always use lanes according to numbering.
 # Always use direction names according to metering.
 
+# Kibana vbv data ----
 # Read kibana exported csv file
 data_from_csv <- read.csv2("spesialbestillinger/agderpd2.csv") %>%
   dplyr::filter(valid_event == "true") %>%
@@ -27,18 +45,43 @@ data_from_csv <- read.csv2("spesialbestillinger/agderpd2.csv") %>%
                 valid_length, valid_speed, valid_class = valid_classification,
                 wrong_direction, datalogger_type) %>%
   dplyr::arrange(trp_id, timestamp) %>%
-  dplyr::mutate(is_lane_odd = purrr::map(lane, ~ length(is_odd(.)) > 0),
-                lane_parity_kibana = dplyr::case_when(is_lane_odd == TRUE ~ "odd",
-                                               is_lane_odd == FALSE ~ "even")) %>%
-  dplyr::left_join(points_direction) %>%
-  dplyr::mutate(lane_number = dplyr::case_when(
-    metering_direction_changed == TRUE & lane_parity_kibana == "odd" ~ lane + 1,
-    metering_direction_changed == TRUE & lane_parity_kibana == "even" ~ lane - 1,
-    metering_direction_changed == FALSE & lane_parity_kibana == "odd" ~ lane,
-    metering_direction_changed == FALSE & lane_parity_kibana == "even" ~ lane,
-  )) %>%
+  add_correct_direction_names() %>%
+  # dplyr::mutate(is_lane_odd = purrr::map(lane, ~ length(is_odd(.)) > 0),
+  #               lane_parity_kibana = dplyr::case_when(is_lane_odd == TRUE ~ "odd",
+  #                                              is_lane_odd == FALSE ~ "even")) %>%
+  # dplyr::left_join(points_direction) %>%
+  # dplyr::mutate(lane_number = dplyr::case_when(
+  #   metering_direction_changed == TRUE & lane_parity_kibana == "odd" ~ lane + 1,
+  #   metering_direction_changed == TRUE & lane_parity_kibana == "even" ~ lane - 1,
+  #   metering_direction_changed == FALSE & lane_parity_kibana == "odd" ~ lane,
+  #   metering_direction_changed == FALSE & lane_parity_kibana == "even" ~ lane,
+  # )) %>%
   dplyr::select(-is_lane_odd, -lane_parity_kibana, -metering_direction_changed, -lane) %>%
   dplyr::relocate(direction:lane_number, .before = timestamp)
 
 writexl::write_xlsx(data_from_csv, path = "spesialbestillinger/agderpd2.xlsx")
 
+# Kibana aggregated data ----
+# Read all files in folder
+folder_in_focus <- "spesialbestillinger/cowi"
+
+data_from_csv_agg <-
+  list.files(path = folder_in_focus, pattern = "*.csv",
+                                full.names = TRUE) %>%
+  map_df(~read_csv2(.))
+
+data_from_csv_agg_meta <- data_from_csv_agg %>%
+  dplyr::left_join(points_metadata) %>%
+  dplyr::rename(lane = felt) %>%
+  add_correct_direction_names() %>%
+  dplyr::select(point_name = name,
+                municipality_name,
+                road_reference,
+                lane_number,
+                direction,
+                date = dag,
+                time_period_start = periode_start,
+                traffic_volume = trafikkmengde) %>%
+  dplyr::arrange(road_reference, date, time_period_start, lane_number)
+
+writexl::write_xlsx(data_from_csv_agg_meta, path = paste0(folder_in_focus, "/cowi_15_min.xlsx"))
