@@ -145,9 +145,13 @@ Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikk
 
 ## Dagens regler
 
-Reglene ble utarbeidet i samråd med dataloggerleverandørene, samt basert på egen testing.
+Reglene ble utarbeidet i samråd med dataloggerleverandørene, samt basert på egen testing der fasiten er laget på grunnlag av manuell gjennomgang av videoopptak kombinert med kjøretøyopplysninger fra Kjøretøyregisteret.
 
-Reglene for kvalitetskontroll er inndelt i to hovedkategorier: ett sett som gjelder alle data, og ett sett som gjelder spesifikt per dataloggertype.
+Reglene for kvalitetskontroll er inndelt i to hovedkategorier:
+
+-   ett sett som gjelder alle data, og
+
+-   ett sett som gjelder spesifikt per dataloggertype.
 
 For **alle utstyrstyper** for motorkjøretøy må følgende ved hver enkelt registrering merkes ugyldig dersom:
 
@@ -192,6 +196,10 @@ For **EMU3** skal følgende merkes ugyldig hvis:
     -   ::: {style="color:red"}
         Speed_quality ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).
         :::
+
+    -   Grenseverdien for å sette speed_quality ≠ 0 er har variert med firmwareversjoner:
+
+        -   
 
 # Formålet med vurderingen av reglene
 
@@ -595,13 +603,19 @@ For EMU3 må vi ta hensyn til at ulike firmwareversjoner har hatt ulik grensever
 
 \- Før januar 2017: qspeed-grense på 25 %, men vi brukte den ikke.
 
+Problem: regelen setter alle lengder ugyldig siden qspeed er "nøll", og den er jo nettopp det for tidligere fw-versjoner. HMmm. Er den delen av regelen utilsiktet? Vi har jo ikke full fw-historikk, så spørsmålet er om vi bare skal være strenge med data fra nyeste versjonene?
+
 \- Januar 2017: grensen ble endret fra 25 % til 3 % i Secondary 2.11.10, som kom et drøyt år før 1.0-versjonen for samlet firmwarepakke. Men denne inneholdt en feil som gjorde at grensen var 3 % på felt 5-8 og 25 % på felt 1-4.
 
-\- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %.
+\- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %. Den første samlede fw-pakken var 1.01, og den hadde 2.17.4. Noen tidligere varianter av usamlet fw hadde 2.17.4, men ingen andre med secondary på 2.17.x.
 
-Dagens regler inneholder ingen firmwarespesfikke regler.
+Det betyr at kun firmware med "\\\*Secondary=2.17.4\\\*" eller "1.0x\*" har hatt grensen på 3 % på alle felt.
+
+Dagens regler inneholder ingen firmwarespesfikke regler, men de reviderte må ta hensyn til dette.
 
 Den første stasjonen med en EMU3 var 1500018 Flote som ble igangsatt 23. juli 2015. Her ble det byttet til LM i desember 2015. Den første stasjonen som fortsatt har EMU3 er 1500028 Valldal.
+
+Må finne ut om lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
 
 ## Punkter med mange underkjente
 
@@ -626,6 +640,16 @@ Skal vi fjerne qspeed-regelen fra EMU3?
 Øysand
 
 ## Feilsituasjoner
+
+Forhold som forårsaker dårlig lengdemåling:
+
+-   akselerasjon (ramper)
+
+-   sidestilt passering av sløyfe (flerfeltsveg, sving, kryss)
+
+-   dårlig sløyfe (unøyaktig geometri, dårlig kobling)
+
+Typisk at ett av disse forholdene forekommer systematisk over tid for en TRP. Akselerasjon og sidestilt passering kan forekomme veldig sjelden der det ellers ikke er et problem.
 
 # Test på Øysand
 
@@ -689,6 +713,12 @@ Nytt regelsett (kladd):
 -   **Qspeed over X** gir underkjent fart og lengde (**ny regel**, dvs. ny grenseverdi). Utfra fordeling av qspeed-verdier kan 20? (minst, om det i det hele tatt skal være en regel?) være en grei verdi.
 
 ## EMU3
+
+Foreløpig forslag til revisjon:
+
+-   qspeed = null skrotes (var aldri ment å skulle gjelde?). Vil føre til at "alle" lengder fra fw tidligere enn de nevnt nedenfor blir godkjent. Må verifiseres at dette er rimelig.
+
+-   qspeed-regel gjelder kun for fw med konsistent verdi for qspeed (s2.17.4 og 1.0x)
 
 # Konklusjon
 

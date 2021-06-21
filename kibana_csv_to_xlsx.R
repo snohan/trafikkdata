@@ -67,7 +67,7 @@ writexl::write_xlsx(data_from_csv, path = "spesialbestillinger/agderpd2.xlsx")
 
 # Kibana aggregated data ----
 # Read all files in folder
-folder_in_focus <- "spesialbestillinger/hunndalen"
+folder_in_focus <- "spesialbestillinger/salopek"
 
 data_from_csv_agg <-
   list.files(path = folder_in_focus, pattern = "*.csv",
@@ -110,4 +110,4 @@ data_from_csv_agg_meta <- data_from_csv_agg %>%
                  #time_period_start,
                  lane_number)
 
-writexl::write_xlsx(data_from_csv_agg_meta, path = paste0(folder_in_focus, "/hunndalen.xlsx"))
+writexl::write_xlsx(data_from_csv_agg_meta, path = paste0(folder_in_focus, "/varemessa.xlsx"))

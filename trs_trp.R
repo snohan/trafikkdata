@@ -455,10 +455,17 @@ writexl::write_xlsx(all_trs, path = "all_stations.xlsx")
 
 
 # TRS history ----
-# History of commission, device and firmware:
+# History of commission, device:
 trs_history <- get_trs_history()
 
 # But not all at once...
+
+# Firmware-history must be fetched from its own endpoint in Datamottak:
+firmware_history <- get_firmware_history()
+
+types_of_fw_used <- firmware_history %>%
+  dplyr::select(firmware_version, device_name) %>%
+  dplyr::distinct()
 
 
 # TRS and sensorconfig errors ----
