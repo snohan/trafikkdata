@@ -1,5 +1,5 @@
 ---
-title: "Vurdering av regler for kontroll av datakvalitet"
+title: "Vurdering av regler for kontroll av trafikkdata"
 output: 
   html_notebook:
     theme: cerulean
@@ -8,7 +8,7 @@ output:
     toc_float: 
       collapsed: false
       smooth_scroll: false
-    toc_depth: 4
+    toc_depth: 3
 ---
 
 ```{r setup, message=F, include=FALSE}
@@ -16,6 +16,7 @@ library(tidyverse)
 library(knitr)
 library(cowplot)
 library(lubridate)
+library(rmarkdown)
 
 knitr::opts_chunk$set(echo = FALSE,
                       warning = FALSE,
@@ -139,11 +140,11 @@ vbv_skullerud <-
   read_kibana_vbv("vbv_data/skullerud.csv")
 ```
 
-# Regler for kvalitetskontroll av enkeltkjøretøyregistreringer
+# Kvalitetskontroll av enkeltkjøretøyregistreringer
 
-Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i rådatabasen uten videre prosessering. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for kontrollerte data.
+Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i *rådatabasen* uten videre prosessering. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for *kontrollerte data*.
 
-## Dagens regler
+## Reglene
 
 Reglene ble utarbeidet i samråd med dataloggerleverandørene, samt basert på egen testing der fasiten er laget på grunnlag av manuell gjennomgang av videoopptak kombinert med kjøretøyopplysninger fra Kjøretøyregisteret.
 
@@ -153,13 +154,15 @@ Reglene for kvalitetskontroll er inndelt i to hovedkategorier:
 
 -   ett sett som gjelder spesifikt per dataloggertype.
 
-For **alle utstyrstyper** for motorkjøretøy må følgende ved hver enkelt registrering merkes ugyldig dersom:
+### Regler for alle utstyrstyper
+
+For alle utstyrstyper for motorkjøretøy må følgende ved hver enkelt registrering merkes ugyldig dersom:
 
 -   Selve registreringen:
 
     -   Kjørefeltverdien er fraværende.
     -   Kjørefeltverdien er utenfor de kjørefeltene som eksisterer på trafikkregistreringspunktet.
-    -   Eventnummer er "null".
+    -   Eventnummer mangler (er "null").
 
 -   Lengde og klassifisering:
 
@@ -168,6 +171,8 @@ For **alle utstyrstyper** for motorkjøretøy må følgende ved hver enkelt regi
 -   Fart:
 
     -   Absoluttverdi av fart \> 300 km/h.
+
+### Utstyrsspesifikke regler
 
 For **Loop Monitor** skal følgende merkes som ugyldig hvis:
 
@@ -199,17 +204,17 @@ For **EMU3** skal følgende merkes ugyldig hvis:
 
     -   Grenseverdien for å sette speed_quality ≠ 0 er har variert med firmwareversjoner:
 
-        -   
+        -   (UNDER VURDERING)
 
 # Formålet med vurderingen av reglene
 
 Noen trafikkregistreringspunkter er høy andel underkjente lengdemålinger. Er dette reellt eller er reglene for strenge?
 
-Det antas at kvaliteten på fartsmålingene henger nøye sammen med kvaliteten på lengdemålingene. Det er kjøretøylengden vi kan finne fasit på i kjøretøyregisteret, så derfor er dette fokus for vurderingen. Det samme gjelder også kjøretøyklassifiseringen.
+Det antas at kvaliteten på fartsmålingene henger nøye sammen med kvaliteten på lengdemålingene. Det er kjøretøylengden vi kan finne fasit på i kjøretøyregisteret, så derfor er lengden i fokus for vurderingen. Det samme gjelder også kjøretøyklassifiseringen.
 
-Spørsmålet er om reglene passer med den reelle datakvaliteten. Hva er grunnene til at lengdemålingene blir underkjente?
+Hva er grunnene til at lengdemålingene blir underkjente?
 
-Målet er å vurdere dagens regelsett og eventuelt justere reglene. Om reglene justeres, skal alle data i Trafikkdatasystemet reberegnes tilbake til 2014.
+Målet er å vurdere dagens regler og eventuelt justere dem. Om reglene justeres, skal alle data i Trafikkdatasystemet reberegnes tilbake til 2014.
 
 ## Hvilke regler fører til underkjente lengder?
 
@@ -601,7 +606,7 @@ Vurdering:
 
 For EMU3 må vi ta hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for speed_quality:
 
-\- Før januar 2017: qspeed-grense på 25 %, men vi brukte den ikke.
+\- Før 25. januar 2017: qspeed-grense på 25 %, men vi brukte den ikke. Alle qspeed-verdier fra EMU3 før dette er manglende ("null"). Fra denne datoen begynte noen å få verdi.
 
 Problem: regelen setter alle lengder ugyldig siden qspeed er "nøll", og den er jo nettopp det for tidligere fw-versjoner. HMmm. Er den delen av regelen utilsiktet? Vi har jo ikke full fw-historikk, så spørsmålet er om vi bare skal være strenge med data fra nyeste versjonene?
 
@@ -613,9 +618,70 @@ Det betyr at kun firmware med "\\\*Secondary=2.17.4\\\*" eller "1.0x\*" har hatt
 
 Dagens regler inneholder ingen firmwarespesfikke regler, men de reviderte må ta hensyn til dette.
 
-Den første stasjonen med en EMU3 var 1500018 Flote som ble igangsatt 23. juli 2015. Her ble det byttet til LM i desember 2015. Den første stasjonen som fortsatt har EMU3 er 1500028 Valldal.
+Den første stasjonen med en EMU3 var 1500018 Flote som ble igangsatt 23. juli 2015. Her ble det byttet til LM i desember 2015. Den første stasjonen som fortsatt har EMU3 er 1500028 Valldal (like ved Trollstigen, så trafikken kan variere en god del).
 
 Må finne ut om lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
+
+## Samme punkt, ulik firmware
+
+Valldal
+
+## Samme punkt, ulik datalogger
+
+## Ulike punkt, samme firmware
+
+Punkter som antas å ha samme trafikk
+
+## Øysand, LM vs. EMU3
+
+Uke 23, 2021: to LM og en EMU3 - har de samme lengder?
+
+```{r, oysand_ecdf}
+oysand_2021w23 %>%
+  dplyr::slice(1:1000) %>%
+  ggplot(aes(length, color = name_and_datalogger)) +
+  stat_ecdf(pad = FALSE) +
+  theme_minimal()
+
+# old:
+# f09 <- oysand_2021w23 %>%
+#   dplyr::filter(traffic_registration_point_id == "23827V72241") %>%
+#   dplyr::select(length)
+#
+# f07 <- oysand_2021w23 %>%
+#   dplyr::filter(traffic_registration_point_id == "23679V72241") %>%
+#   dplyr::select(length)
+#
+# f05_1 <- oysand_2021w23 %>%
+#   dplyr::filter(traffic_registration_point_id == "23531V72241",
+#                 lane == 2) %>%
+#   dplyr::select(length)
+#
+# f09_1 <- oysand_2021w23 %>%
+#   dplyr::filter(traffic_registration_point_id == "23827V72241",
+#                 lane == 2) %>%
+#   dplyr::select(length)
+
+
+#ks.test(f09$length, f07$length)
+#ks.test(f05_1$length, f09_1$length)
+
+
+
+# TODO: ggplot ecdf and qq
+# TODO: bin in lengthclasses? (good enough for us)
+# TODO: class
+```
+
+```{r oysand_qq}
+
+oysand_2021w23 %>%
+  dplyr::slice(1:1000) %>%
+  ggplot(aes(sample = length, color = name_and_datalogger)) +
+  stat_qq() +
+  theme_minimal()
+
+```
 
 ## Punkter med mange underkjente
 
@@ -652,6 +718,8 @@ Forhold som forårsaker dårlig lengdemåling:
 Typisk at ett av disse forholdene forekommer systematisk over tid for en TRP. Akselerasjon og sidestilt passering kan forekomme veldig sjelden der det ellers ikke er et problem.
 
 # Test på Øysand
+
+Sammenligner kjøretøy for kjøretøy med fasit på lengde fra kjøretøyregisteret.
 
 På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omkring 65 og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger. Er disse likevel gode nok når vi har fasit på lengdemålinger fra Kjøretøyregisteret?
 

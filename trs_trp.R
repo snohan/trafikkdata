@@ -463,6 +463,8 @@ trs_history <- get_trs_history()
 # Firmware-history must be fetched from its own endpoint in Datamottak:
 firmware_history <- get_firmware_history()
 
+saveRDS(firmware_history, file = "trs_trp/firmware_history.rds")
+
 types_of_fw_used <- firmware_history %>%
   dplyr::select(firmware_version, device_name) %>%
   dplyr::distinct()
