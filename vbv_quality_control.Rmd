@@ -634,15 +634,10 @@ Punkter som antas å ha samme trafikk
 
 ## Øysand, LM vs. EMU3
 
-Uke 23, 2021: to LM og en EMU3 - har de samme lengder?
+Uke 23, 2021, mandag 7. juni - onsdag 9. juni: to LM og en EMU3 - har de samme lengder?
+I felt 2 på F05 har en av sløyfene lavere frekvens enn normalt, og dette gir utslag i større qspeed og noe lengre lengder enn de samme målingene i felt 2 på F09.
 
-```{r, oysand_ecdf}
-oysand_2021w23 %>%
-  dplyr::slice(1:1000) %>%
-  ggplot(aes(length, color = name_and_datalogger)) +
-  stat_ecdf(pad = FALSE) +
-  theme_minimal()
-
+```{r gof}
 # old:
 # f09 <- oysand_2021w23 %>%
 #   dplyr::filter(traffic_registration_point_id == "23827V72241") %>%
@@ -668,20 +663,219 @@ oysand_2021w23 %>%
 
 
 
-# TODO: ggplot ecdf and qq
-# TODO: bin in lengthclasses? (good enough for us)
-# TODO: class
+# TODO: anderson-darling test?
+# TODO: class plots
+```
+
+
+```{r oysand_ecdf, fig.height=7, fig.width=6}
+oysand_2021w23 %>%
+  dplyr::filter(weekday == "mandag") %>% 
+  ggplot(aes(length, color = name_and_datalogger)) +
+  stat_ecdf(pad = FALSE) +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  theme(strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom") +
+  labs(x = "\nLengde (m)", y = "Kumulativ tetthet\n") +
+  ggtitle("Kumulativ fordeling av lengdemålinger",
+          subtitle = "Øysand, 7. juni 2021")
+```
+
+```{r oysand_ecdf_2, fig.height=7, fig.width=6}
+oysand_2021w23 %>%
+  dplyr::filter(weekday == "tirsdag") %>% 
+  ggplot(aes(length, color = name_and_datalogger)) +
+  stat_ecdf(pad = FALSE) +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  theme(strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom") +
+  labs(x = "\nLengde (m)", y = "Kumulativ tetthet\n") +
+  ggtitle("Kumulativ fordeling av lengdemålinger",
+          subtitle = "Øysand, 8. juni 2021")
+```
+
+
+```{r oysand_ecdf_3, fig.height=7, fig.width=6}
+oysand_2021w23 %>%
+  dplyr::filter(weekday == "onsdag") %>% 
+  ggplot(aes(length, color = name_and_datalogger)) +
+  stat_ecdf(pad = FALSE) +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  theme(strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom") +
+  labs(x = "\nLengde (m)", y = "Kumulativ tetthet\n") +
+  ggtitle("Kumulativ fordeling av lengdemålinger",
+          subtitle = "Øysand, 9. juni 2021")
 ```
 
 ```{r oysand_qq}
 
 oysand_2021w23 %>%
-  dplyr::slice(1:1000) %>%
+  #dplyr::slice(1:1000) %>%
+  dplyr::filter(weekday == "mandag") %>% 
   ggplot(aes(sample = length, color = name_and_datalogger)) +
+  facet_grid(rows = vars(lane)) +
   stat_qq() +
-  theme_minimal()
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
 
 ```
+
+Sammenligner i samme plott hvordan lengdeklassifiseringen er.
+
+```{r oysand_compare}
+oysand_2021w23 %>%
+  dplyr::filter(weekday == "mandag") %>% 
+  ggplot(aes(qspeed, length, color = name_and_datalogger)) +
+  geom_point() +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal()
+```
+
+```{r oysand_bars_2021_06_07}
+oysand_2021w23_agg_length_class_full %>% 
+  dplyr::filter(weekday == "mandag") %>% 
+  ggplot(aes(length_class_full, volume, fill = name_and_datalogger)) +
+  ggplot2::geom_col(position = "dodge") +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  scale_fill_viridis_d(name = "Datalogger",
+                       option = "cividis") +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom",
+        legend.key = element_blank()) +
+  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
+  ggtitle("Trafikkmengde per lengdeklasse",
+          subtitle = "Øysand, 7. juni 2021")
+```
+
+```{r oysand_bars_2021_06_08}
+oysand_2021w23_agg_length_class_full %>% 
+  dplyr::filter(weekday == "tirsdag") %>% 
+  ggplot(aes(length_class_full, volume, fill = name_and_datalogger)) +
+  ggplot2::geom_col(position = "dodge") +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  scale_fill_viridis_d(name = "Datalogger",
+                       option = "cividis") +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom",
+        legend.key = element_blank()) +
+  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
+  ggtitle("Trafikkmengde per lengdeklasse",
+            subtitle = "Øysand, 8. juni 2021")
+```
+
+```{r oysand_bars_2021_06_09}
+oysand_2021w23_agg_length_class_full %>% 
+  dplyr::filter(weekday == "onsdag") %>% 
+  ggplot(aes(length_class_full, volume, fill = name_and_datalogger)) +
+  ggplot2::geom_col(position = "dodge") +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  scale_fill_viridis_d(name = "Datalogger",
+                       option = "cividis") +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom",
+        legend.key = element_blank()) +
+  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
+  ggtitle("Trafikkmengde per lengdeklasse",
+            subtitle = "Øysand, 9. juni 2021")
+```
+
+```{r oysand_bars_2_2021_06_07}
+oysand_2021w23_agg_length_class_2 %>% 
+  dplyr::filter(weekday == "mandag") %>% 
+  ggplot(aes(length_class_2, volume, fill = name_and_datalogger)) +
+  ggplot2::geom_col(position = "dodge") +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  scale_fill_viridis_d(name = "Datalogger",
+                       option = "cividis") +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom",
+        legend.key = element_blank()) +
+  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
+  ggtitle("Trafikkmengde per lengdeklasse",
+          subtitle = "Øysand, 7. juni 2021")
+```
+
+```{r oysand_bars_2_2021_06_08}
+oysand_2021w23_agg_length_class_2 %>% 
+  dplyr::filter(weekday == "tirsdag") %>% 
+  ggplot(aes(length_class_2, volume, fill = name_and_datalogger)) +
+  ggplot2::geom_col(position = "dodge") +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  scale_fill_viridis_d(name = "Datalogger",
+                       option = "cividis") +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom",
+        legend.key = element_blank()) +
+  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
+  ggtitle("Trafikkmengde per lengdeklasse",
+          subtitle = "Øysand, 8. juni 2021")
+```
+
+```{r oysand_bars_2_2021_06_09}
+oysand_2021w23_agg_length_class_2 %>% 
+  dplyr::filter(weekday == "onsdag") %>% 
+  ggplot(aes(length_class_2, volume, fill = name_and_datalogger)) +
+  ggplot2::geom_col(position = "dodge") +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  scale_fill_viridis_d(name = "Datalogger",
+                       option = "cividis") +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom",
+        legend.key = element_blank()) +
+  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
+  ggtitle("Trafikkmengde per lengdeklasse",
+          subtitle = "Øysand, 9. juni 2021")
+```
+
+
+
+
+```{r oysand_all_emu, fig.height=12, fig.width=8}
+oysand_2021w23 %>%
+  dplyr::filter(weekday == "mandag",
+                name_and_datalogger == "EMU_f07") %>% 
+  plot_all_in_one()
+```
+
+```{r oysand_all_lm_f09, fig.height=12, fig.width=8}
+oysand_2021w23 %>%
+  dplyr::filter(weekday == "mandag",
+                name_and_datalogger == "LOOP_MONITOR_f09") %>% 
+  plot_all_in_one()
+```
+
 
 ## Punkter med mange underkjente
 
