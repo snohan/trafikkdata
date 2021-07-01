@@ -453,6 +453,9 @@ all_trs <- trs_and_trp_id %>%
 
 writexl::write_xlsx(all_trs, path = "all_stations.xlsx")
 
+# All TRS info ----
+trs_info_all <- get_trs_info()
+writexl::write_xlsx(trs_info_all, path = "trs_trp/all_stations.xlsx")
 
 # TRS history ----
 # History of commission, device:

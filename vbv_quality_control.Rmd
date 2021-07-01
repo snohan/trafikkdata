@@ -17,6 +17,7 @@ library(knitr)
 library(cowplot)
 library(lubridate)
 library(rmarkdown)
+library(RColorBrewer)
 
 knitr::opts_chunk$set(echo = FALSE,
                       warning = FALSE,
@@ -42,7 +43,7 @@ plot_scatterplot_length <- function(vbv_data) {
   geom_hline(aes(yintercept = 5.6), color = "grey") +
   geom_hline(aes(yintercept = 27)) +
   scale_color_discrete() +
-    theme_minimal()
+  theme_minimal()
 }
 
 plot_speed_qspeed <- function(vbv_data) {
@@ -110,10 +111,71 @@ plot_all_in_one <- function(vbv_data) {
                    ncol = 1)
 }
 
+plot_ecdf <- function(df, subtitle_text) {
+  
+  df %>% 
+  ggplot(aes(length, color = name_and_datalogger)) +
+  stat_ecdf(pad = FALSE,
+            size = 1, alpha = 0.7) +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  scale_color_brewer(
+      palette = "Dark2",
+      name = "Datalogger og punkt") +
+  theme(strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom") +
+  labs(x = "\nLengde (m)", y = "Kumulativ tetthet\n") +
+  ggtitle("Kumulativ fordeling av lengdemålinger",
+          subtitle = subtitle_text)
+}
+
+plot_qq <- function(df, subtitle_text) {
+ 
+  df %>%  
+  ggplot(aes(sample = length, color = name_and_datalogger)) +
+  facet_grid(rows = vars(lane)) +
+  stat_qq(size = 1, alpha = 0.7) +
+  theme_minimal() +
+  scale_color_brewer(
+      palette = "Dark2",
+      name = "Datalogger og punkt") +
+  theme(strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom")+
+  ggtitle("Kvantilplott av lengdemålinger",
+          subtitle = subtitle_text)
+}
+
+plot_length_class_bars <- function(df, length_class_type, subtitle_text) {
+  
+  # length_class_type must be either 
+  # length_class_full
+  # or
+  #length_class_2
+  
+  df %>% 
+  ggplot(aes(x = {{ length_class_type }}, y = volume, fill = name_and_datalogger)) +
+  ggplot2::geom_col(position = "dodge") +
+  facet_grid(rows = vars(lane)) +
+  theme_minimal() +
+  scale_fill_viridis_d(name = "Datalogger",
+                       option = "cividis") +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        strip.text.y = element_text(angle = 90),
+        strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom",
+        legend.key = element_blank()) +
+  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
+  ggtitle("Trafikkmengde per lengdeklasse",
+          subtitle = subtitle_text)
+}
 ```
 
 ```{r get_data, message=F, warning=F, error=F, include=F}
-# Vbv data exported from Kibana
+# LM ----
+## Vbv data exported from Kibana
 vbv_data_asker <- 
   read_kibana_vbv("vbv_data/asker.csv")
 vbv_data_soyland <- 
@@ -129,7 +191,7 @@ vbv_postterminalen <-
 vbv_elgeseter <- 
   read_kibana_vbv("vbv_data/elgeseter_bru.csv")
 
-# Ser på Elgeseter bru 24.02.2020 da det var mye snø og neppe noen faktiske mc eller skuter
+## Elgeseter bru 24.02.2020: mye snø og neppe noen faktiske mc eller skuter
 vbv_elgeseter_2 <- 
   read_kibana_vbv("vbv_data/elgeseter_bru_20200224.csv")
 vbv_moholtlia <- 
@@ -138,24 +200,24 @@ vbv_f05 <-
   read_kibana_vbv("vbv_data/oysand_f05.csv")
 vbv_skullerud <- 
   read_kibana_vbv("vbv_data/skullerud.csv")
+
 ```
 
-# Kvalitetskontroll av enkeltkjøretøyregistreringer
 
+# Kvalitetskontroll av enkeltkjøretøyregistreringer
 Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i *rådatabasen* uten videre prosessering. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for *kontrollerte data*.
 
-## Reglene
 
+## Reglene
 Reglene ble utarbeidet i samråd med dataloggerleverandørene, samt basert på egen testing der fasiten er laget på grunnlag av manuell gjennomgang av videoopptak kombinert med kjøretøyopplysninger fra Kjøretøyregisteret.
 
 Reglene for kvalitetskontroll er inndelt i to hovedkategorier:
 
 -   ett sett som gjelder alle data, og
-
 -   ett sett som gjelder spesifikt per dataloggertype.
 
-### Regler for alle utstyrstyper
 
+### Regler for alle utstyrstyper
 For alle utstyrstyper for motorkjøretøy må følgende ved hver enkelt registrering merkes ugyldig dersom:
 
 -   Selve registreringen:
@@ -172,8 +234,8 @@ For alle utstyrstyper for motorkjøretøy må følgende ved hver enkelt registre
 
     -   Absoluttverdi av fart \> 300 km/h.
 
-### Utstyrsspesifikke regler
 
+### Utstyrsspesifikke regler
 For **Loop Monitor** skal følgende merkes som ugyldig hvis:
 
 -   Fart, lengde og klassifisering:
@@ -206,8 +268,8 @@ For **EMU3** skal følgende merkes ugyldig hvis:
 
         -   (UNDER VURDERING)
 
-# Formålet med vurderingen av reglene
 
+# Formålet med vurderingen av reglene
 Noen trafikkregistreringspunkter er høy andel underkjente lengdemålinger. Er dette reellt eller er reglene for strenge?
 
 Det antas at kvaliteten på fartsmålingene henger nøye sammen med kvaliteten på lengdemålingene. Det er kjøretøylengden vi kan finne fasit på i kjøretøyregisteret, så derfor er lengden i fokus for vurderingen. Det samme gjelder også kjøretøyklassifiseringen.
@@ -216,8 +278,8 @@ Hva er grunnene til at lengdemålingene blir underkjente?
 
 Målet er å vurdere dagens regler og eventuelt justere dem. Om reglene justeres, skal alle data i Trafikkdatasystemet reberegnes tilbake til 2014.
 
-## Hvilke regler fører til underkjente lengder?
 
+## Hvilke regler fører til underkjente lengder?
 Etter å ha sett på mye data i Kibana (visualisering "Ukjent lengde histogram"), viser det seg at reglene som underkjenner lengdemålingene fordeler seg som følger.
 
 Loop Monitor:
@@ -268,8 +330,8 @@ Andre spørsmål spørsmål som må besvares:
 
 -   LM: forskjell i frekvens på 20 kHz - lengde ok?
 
-# Sjekk av Loop Monitor
 
+# Sjekk av Loop Monitor
 Gjennomført februar 2020.
 
 Topp fem på antall tilfeller med underkjente data:
@@ -317,21 +379,13 @@ Topp fem på antall tilfeller med underkjente data:
 Punkter med kø, ugunstig sensorplassering eller dårlige sløyfer
 
 -   54688V625212 Skullerud hovedkjørefelt (feltskifte?)
-
 -   14354V2486023 Hålogalandsbrua (sløyfefeil, støy?)
-
 -   68557V444232 Blommenholm (feltskifte?)
-
 -   06970V72811 Kroppan bru (dårlige sløyfer i motretning)
-
 -   94949V444217 Smihagen enveg med (feltskifte?)
-
 -   68234V443152 Taraldrud (feltskifte felt 4?)
-
 -   48379V625405 St. Ringvei Nydalsbrua (feltskifte?)
-
 -   68351V319882 Kannik (sløyfefeil)
-
 -   00000V1993681 Ytrebygdveien (feltskifte?)
 
 Høy andel:
@@ -339,12 +393,12 @@ Høy andel:
 -   Årøytunnelen, Søyland, Klinga, Sønsterud, Eggetunnelen, Reinsvoll, Asker og sikkert flere, ingen godkjente i ene feltet pga qspeed, som nok skyldes 20 kHz forskjell på sløyfene der.
 -   Vassbotn brua, veldig ulik frekvens på flere sløyfer, mye qspeed 10-15
 
-## Normalsituasjon
 
+## Normalsituasjon
 Ved god flyt i trafikken, god kvalitet på sløyfene og ingen delvise passeringer blir datakvaliteten veldig god, også for lengdemålingene.
 
-## Feilsituasjoner
 
+## Feilsituasjoner
 Årsaker til lav datakvalitet kan grovt deles inn i tre kategorier:
 
 -   Feil på sløyfer:
@@ -359,16 +413,17 @@ Ved god flyt i trafikken, god kvalitet på sløyfene og ingen delvise passeringe
 
 I det følgende er det sett på data fra 20. februar 2020, om ikke annet er oppgitt.
 
+
 ### Feil på sløyfer
 
-#### Sløyfer med ulik frekvens
 
+#### Sløyfer med ulik frekvens
 Dagens regelsett gir ukjent lengde for de fleste passeringer i felt der det er stor forskjell i frekvensen på de to sløyfene. Typisk eksempel er der hvor en sløyfe har omkring 65 kHz og den andre ligger rundt 85 kHz. Sistnevnte er normalt frekvensnivå.
 
 Hva som er grunnen til at en sløyfe har omtrent 20 kHz lavere frekvens enn normalt, er ukjent.
 
-##### Ev 18 Asker (LM)
 
+##### Ev 18 Asker
 Egenskaper:
 
 -   Fire felt.
@@ -383,8 +438,8 @@ Vurdering:
 
 -   Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
 
-##### Fv 44 Søyland (LM)
 
+##### Fv 44 Søyland
 Egenskaper:
 
 -   To felt.
@@ -399,7 +454,9 @@ Vurdering:
 
 -   Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
 
+
 ##### Ev 39 Øysand F05
+På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omkring 65 og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger. Er disse likevel gode nok når vi har fasit på lengdemålinger fra Kjøretøyregisteret?
 
 Egenskaper:
 
@@ -415,10 +472,11 @@ Vurdering:
 
 -   Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
 
+
 #### Lav frekvens på alle sløyfer
 
-##### Fv 5004 Hollundsvegen (LM)
 
+##### Fv 5004 Hollundsvegen
 Egenskaper:
 
 -   To felt.
@@ -429,8 +487,8 @@ Egenskaper:
 plot_all_in_one(vbv_data_hollundsvegen)
 ```
 
-##### Fv 542 Svortland vest
 
+##### Fv 542 Svortland vest
 Egenskaper:
 
 -   To felt.
@@ -441,10 +499,11 @@ Egenskaper:
 plot_all_in_one(vbv_data_svortland_vest)
 ```
 
+
 #### Brudd eller dårlig koblet sløyfe
 
-##### Ev 6 Moholtlia
 
+##### Ev 6 Moholtlia
 Egenskaper:
 
 -   Fire felt.
@@ -460,10 +519,11 @@ Vurdering:
 -   Når vi ser på fartsmålingene i felt 4, ser vi at de fleste kjøretøy får omtrent maksimal qspeed, dvs. at den ene fartsmålingen er nær null uansett.
 -   Mange av lengdemålingene får en bestemt maksimal- eller minimumsverdi av LM, som i begge tilfeller er utenfor vårt godkjenningsintervall.
 
+
 ### Saktegående trafikk
 
-#### Fv 542 Svortland øst
 
+#### Fv 542 Svortland øst
 Egenskaper:
 
 -   To felt.
@@ -478,8 +538,8 @@ Vurdering:
 
 -   Noen lave hastigheter gir bestemte feilverdier for lengde, satt av LM. Disse er utenfor vårt toleranseområde for lengde, men har ikke særlig høy qspeed.
 
-#### Fv 862 Postterminalen (LM)
 
+#### Fv 862 Postterminalen
 ![Postterminalen](vbv_data/postterminalen.PNG)
 
 Egenskaper:
@@ -521,18 +581,14 @@ Vurdering:
 
 -   
 
-#### Fv 6690 Elgeseter bru
 
+#### Fv 6690 Elgeseter bru
 Egenskaper:
 
 -   Fire felt.
-
 -   Tidvis saktgående trafikk.
-
 -   Mange metrobusser på 24,5 m.
-
 -   Sløyfefrekvenser:
-
     -   Felt 1 og 3: ca. 70 kHz
     -   Felt 2: 65 og 85
     -   felt 4: 85
@@ -545,8 +601,8 @@ Vurdering:
 
 -   En del tilfeller at at qspeed er større enn fartsmålingen. Det må komme av at de to fartsmålingene har ulikt fortegn. Kan dette være en indikasjon på delvis sløyfepassering og/eller saktegående trafikk?
 
-##### Data fra 24. februar 2020
 
+##### Data fra 24. februar 2020
 Mye snøfall, ingen forventede mc, skuter o.l.
 
 ```{r elgeseter2, fig.height=12, fig.width=8}
@@ -582,12 +638,12 @@ Vurdering:
 
 -   
 
-### Feltskifte
 
+### Feltskifte
 Ved felskifte akkurat over sensorene blir det delvis passering av sløyfene.
 
-#### Ev 6 Skullerud (LM)
 
+#### Ev 6 Skullerud
 Egenskaper:
 
 -   God flyt i trafikken, noe saktegående i felt 2.
@@ -602,19 +658,19 @@ Vurdering:
 
 -   
 
-# Sjekk av EMU3
 
+# Sjekk av EMU3
 For EMU3 må vi ta hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for speed_quality:
 
-\- Før 25. januar 2017: qspeed-grense på 25 %, men vi brukte den ikke. Alle qspeed-verdier fra EMU3 før dette er manglende ("null"). Fra denne datoen begynte noen å få verdi.
+- Før 25. januar 2017: qspeed-grense på 25 %, men vi brukte den ikke. Alle qspeed-verdier fra EMU3 før dette er manglende ("null"). Fra denne datoen begynte noen å få verdi.
 
 Problem: regelen setter alle lengder ugyldig siden qspeed er "nøll", og den er jo nettopp det for tidligere fw-versjoner. HMmm. Er den delen av regelen utilsiktet? Vi har jo ikke full fw-historikk, så spørsmålet er om vi bare skal være strenge med data fra nyeste versjonene?
 
-\- Januar 2017: grensen ble endret fra 25 % til 3 % i Secondary 2.11.10, som kom et drøyt år før 1.0-versjonen for samlet firmwarepakke. Men denne inneholdt en feil som gjorde at grensen var 3 % på felt 5-8 og 25 % på felt 1-4.
+- Januar 2017: grensen ble endret fra 25 % til 3 % i Secondary 2.11.10, som kom et drøyt år før 1.0-versjonen for samlet firmwarepakke. Men denne inneholdt en feil som gjorde at grensen var 3 % på felt 5-8 og 25 % på felt 1-4.
 
-\- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %. Den første samlede fw-pakken var 1.01, og den hadde 2.17.4. Noen tidligere varianter av usamlet fw hadde 2.17.4, men ingen andre med secondary på 2.17.x.
+- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %. Den første samlede fw-pakken var 1.01, og den hadde 2.17.4. Noen tidligere varianter av usamlet fw hadde 2.17.4, men ingen andre med secondary på 2.17.x.
 
-Det betyr at kun firmware med "\\\*Secondary=2.17.4\\\*" eller "1.0x\*" har hatt grensen på 3 % på alle felt.
+Det betyr at kun firmware med "*Secondary=2.17.4*" eller "*1.0x*" har hatt grensen på 3 % på alle felt.
 
 Dagens regler inneholder ingen firmwarespesfikke regler, men de reviderte må ta hensyn til dette.
 
@@ -622,111 +678,74 @@ Den første stasjonen med en EMU3 var 1500018 Flote som ble igangsatt 23. juli 2
 
 Må finne ut om lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
 
-## Samme punkt, ulik firmware
 
-Valldal
+## Normalsituasjon
 
-## Samme punkt, ulik datalogger
 
-## Ulike punkt, samme firmware
+### Ev 39 Øysand
+Teststrekningen har tre sløyfesett (F05, F07, F09) plassert rett etter hverandre. Dermed kan den samme trafikken sammenlignes på ulike dataloggere og firmwareversjoner.
 
-Punkter som antas å ha samme trafikk
+I felt 2 på F05 har en av sløyfene lavere frekvens enn normalt, og for LM gir dette typisk noe lengre lengder enn de samme målingene i felt 2 på F07 og F09.
 
-## Øysand, LM vs. EMU3
 
-Uke 23, 2021, mandag 7. juni - onsdag 9. juni: to LM og en EMU3 - har de samme lengder?
-I felt 2 på F05 har en av sløyfene lavere frekvens enn normalt, og dette gir utslag i større qspeed og noe lengre lengder enn de samme målingene i felt 2 på F09.
+#### Generell fordeling av lengdemålinger
+Data fra uke 23, 2021, mandag 7. juni - onsdag 9. juni:
+
+- F05: LM 1.14.419
+- F07: EMU3 1.04
+- F09: LM 1.14.419
+
+Ser på den empiriske kumulative fordelingen av lengdemålinger.
 
 ```{r gof}
-# old:
-# f09 <- oysand_2021w23 %>%
-#   dplyr::filter(traffic_registration_point_id == "23827V72241") %>%
-#   dplyr::select(length)
-#
-# f07 <- oysand_2021w23 %>%
-#   dplyr::filter(traffic_registration_point_id == "23679V72241") %>%
-#   dplyr::select(length)
-#
-# f05_1 <- oysand_2021w23 %>%
-#   dplyr::filter(traffic_registration_point_id == "23531V72241",
-#                 lane == 2) %>%
-#   dplyr::select(length)
-#
-# f09_1 <- oysand_2021w23 %>%
-#   dplyr::filter(traffic_registration_point_id == "23827V72241",
-#                 lane == 2) %>%
-#   dplyr::select(length)
-
-
 #ks.test(f09$length, f07$length)
 #ks.test(f05_1$length, f09_1$length)
 
-
-
 # TODO: anderson-darling test?
-# TODO: class plots
 ```
 
 
 ```{r oysand_ecdf, fig.height=7, fig.width=6}
 oysand_2021w23 %>%
   dplyr::filter(weekday == "mandag") %>% 
-  ggplot(aes(length, color = name_and_datalogger)) +
-  stat_ecdf(pad = FALSE) +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  theme(strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom") +
-  labs(x = "\nLengde (m)", y = "Kumulativ tetthet\n") +
-  ggtitle("Kumulativ fordeling av lengdemålinger",
-          subtitle = "Øysand, 7. juni 2021")
+  plot_ecdf("Øysand, 7. juni 2021")
 ```
 
 ```{r oysand_ecdf_2, fig.height=7, fig.width=6}
 oysand_2021w23 %>%
   dplyr::filter(weekday == "tirsdag") %>% 
-  ggplot(aes(length, color = name_and_datalogger)) +
-  stat_ecdf(pad = FALSE) +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  theme(strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom") +
-  labs(x = "\nLengde (m)", y = "Kumulativ tetthet\n") +
-  ggtitle("Kumulativ fordeling av lengdemålinger",
-          subtitle = "Øysand, 8. juni 2021")
+  plot_ecdf("Øysand, 8. juni 2021")
 ```
 
 
 ```{r oysand_ecdf_3, fig.height=7, fig.width=6}
 oysand_2021w23 %>%
   dplyr::filter(weekday == "onsdag") %>% 
-  ggplot(aes(length, color = name_and_datalogger)) +
-  stat_ecdf(pad = FALSE) +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  theme(strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom") +
-  labs(x = "\nLengde (m)", y = "Kumulativ tetthet\n") +
-  ggtitle("Kumulativ fordeling av lengdemålinger",
-          subtitle = "Øysand, 9. juni 2021")
+  plot_ecdf("Øysand, 9. juni 2021")
 ```
 
-```{r oysand_qq}
+Resultatene er konsistente over disse tre dagene, og viser at EMU3 måler noe lengre lengder enn LM.
 
+Tilsvarende kvantilplott.
+
+```{r oysand_qq_1}
 oysand_2021w23 %>%
-  #dplyr::slice(1:1000) %>%
   dplyr::filter(weekday == "mandag") %>% 
-  ggplot(aes(sample = length, color = name_and_datalogger)) +
-  facet_grid(rows = vars(lane)) +
-  stat_qq() +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-
-
+  plot_qq("Øysand, 7. juni 2021")
 ```
+
+```{r oysand_qq_2}
+oysand_2021w23 %>%
+  dplyr::filter(weekday == "tirsdag") %>% 
+  plot_qq("Øysand, 8. juni 2021")
+```
+
+```{r oysand_qq_3}
+oysand_2021w23 %>%
+  dplyr::filter(weekday == "onsdag") %>% 
+  plot_qq("Øysand, 9. juni 2021")
+```
+
 
 Sammenligner i samme plott hvordan lengdeklassifiseringen er.
 
@@ -742,121 +761,37 @@ oysand_2021w23 %>%
 ```{r oysand_bars_2021_06_07}
 oysand_2021w23_agg_length_class_full %>% 
   dplyr::filter(weekday == "mandag") %>% 
-  ggplot(aes(length_class_full, volume, fill = name_and_datalogger)) +
-  ggplot2::geom_col(position = "dodge") +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  scale_fill_viridis_d(name = "Datalogger",
-                       option = "cividis") +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom",
-        legend.key = element_blank()) +
-  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
-  ggtitle("Trafikkmengde per lengdeklasse",
-          subtitle = "Øysand, 7. juni 2021")
+  plot_length_class_bars(length_class_full, "Øysand, 7. juni 2021")
 ```
 
 ```{r oysand_bars_2021_06_08}
 oysand_2021w23_agg_length_class_full %>% 
   dplyr::filter(weekday == "tirsdag") %>% 
-  ggplot(aes(length_class_full, volume, fill = name_and_datalogger)) +
-  ggplot2::geom_col(position = "dodge") +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  scale_fill_viridis_d(name = "Datalogger",
-                       option = "cividis") +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom",
-        legend.key = element_blank()) +
-  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
-  ggtitle("Trafikkmengde per lengdeklasse",
-            subtitle = "Øysand, 8. juni 2021")
+  plot_length_class_bars(length_class_full, "Øysand, 8. juni 2021")
 ```
 
 ```{r oysand_bars_2021_06_09}
 oysand_2021w23_agg_length_class_full %>% 
   dplyr::filter(weekday == "onsdag") %>% 
-  ggplot(aes(length_class_full, volume, fill = name_and_datalogger)) +
-  ggplot2::geom_col(position = "dodge") +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  scale_fill_viridis_d(name = "Datalogger",
-                       option = "cividis") +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom",
-        legend.key = element_blank()) +
-  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
-  ggtitle("Trafikkmengde per lengdeklasse",
-            subtitle = "Øysand, 9. juni 2021")
+  plot_length_class_bars(length_class_full, "Øysand, 9. juni 2021")
 ```
 
 ```{r oysand_bars_2_2021_06_07}
 oysand_2021w23_agg_length_class_2 %>% 
   dplyr::filter(weekday == "mandag") %>% 
-  ggplot(aes(length_class_2, volume, fill = name_and_datalogger)) +
-  ggplot2::geom_col(position = "dodge") +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  scale_fill_viridis_d(name = "Datalogger",
-                       option = "cividis") +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom",
-        legend.key = element_blank()) +
-  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
-  ggtitle("Trafikkmengde per lengdeklasse",
-          subtitle = "Øysand, 7. juni 2021")
+  plot_length_class_bars(length_class_2, "Øysand, 7. juni 2021")
 ```
 
 ```{r oysand_bars_2_2021_06_08}
 oysand_2021w23_agg_length_class_2 %>% 
   dplyr::filter(weekday == "tirsdag") %>% 
-  ggplot(aes(length_class_2, volume, fill = name_and_datalogger)) +
-  ggplot2::geom_col(position = "dodge") +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  scale_fill_viridis_d(name = "Datalogger",
-                       option = "cividis") +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom",
-        legend.key = element_blank()) +
-  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
-  ggtitle("Trafikkmengde per lengdeklasse",
-          subtitle = "Øysand, 8. juni 2021")
+  plot_length_class_bars(length_class_2, "Øysand, 8. juni 2021")
 ```
 
 ```{r oysand_bars_2_2021_06_09}
 oysand_2021w23_agg_length_class_2 %>% 
   dplyr::filter(weekday == "onsdag") %>% 
-  ggplot(aes(length_class_2, volume, fill = name_and_datalogger)) +
-  ggplot2::geom_col(position = "dodge") +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  scale_fill_viridis_d(name = "Datalogger",
-                       option = "cividis") +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom",
-        legend.key = element_blank()) +
-  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
-  ggtitle("Trafikkmengde per lengdeklasse",
-          subtitle = "Øysand, 9. juni 2021")
+  plot_length_class_bars(length_class_2, "Øysand, 9. juni 2021")
 ```
 
 
@@ -877,8 +812,39 @@ oysand_2021w23 %>%
 ```
 
 
-## Punkter med mange underkjente
+### Sammenligning av kjøretøy mot kjøretøy
+Med data fra 12. april 2021 er lengdemålingene sammenlignet mellom EMU3 på F05 (1.04) og LM på F09 (1.14.419).
 
+```{r vbv_1}
+plot_vbv_data(EMU3_F05, 1, "Forskjell i registrert lengde mellom EMU3 (F05) og LM (F09)")
+```
+
+```{r vbv_2}
+plot_vbv_data(EMU3_F05, 2, "Forskjell i registrert lengde mellom EMU3 (F05) og LM (F09)")
+```
+
+Med data fra 27. mars 2020 er lengdemålingene sammenlignet mellom EMU3 på F07 (1.04) og LM på F09 (1.14.414).
+
+
+```{r vbv_3}
+plot_vbv_data(EMU3_F07, 1, "Forskjell i registrert lengde mellom EMU3 (F07) og LM (F09)")
+```
+
+```{r vbv_4}
+plot_vbv_data(EMU3_F07, 2, "Forskjell i registrert lengde mellom EMU3 (F07) og LM (F09)")
+```
+
+## Samme punkt, ulik firmware
+
+
+## Samme punkt, ulik datalogger
+
+
+## Ulike punkt, samme firmware
+Punkter som antas å ha samme trafikk
+
+
+## Punkter med mange underkjente
 Firefeltsveg:
 
 -   Ev 39 Somaveien
@@ -895,12 +861,8 @@ Finn alle punkter med EMU3 i dataloggerhistorikk.
 
 Skal vi fjerne qspeed-regelen fra EMU3?
 
-## Normalsituasjon
-
-Øysand
 
 ## Feilsituasjoner
-
 Forhold som forårsaker dårlig lengdemåling:
 
 -   akselerasjon (ramper)
@@ -911,28 +873,25 @@ Forhold som forårsaker dårlig lengdemåling:
 
 Typisk at ett av disse forholdene forekommer systematisk over tid for en TRP. Akselerasjon og sidestilt passering kan forekomme veldig sjelden der det ellers ikke er et problem.
 
-# Test på Øysand
-
-Sammenligner kjøretøy for kjøretøy med fasit på lengde fra kjøretøyregisteret.
-
-På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omkring 65 og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger. Er disse likevel gode nok når vi har fasit på lengdemålinger fra Kjøretøyregisteret?
 
 # Vurdering av resultater
 
+
 ## Loop Monitor
 
-### Ulik frekvens på sløyfer
 
+### Ulik frekvens på sløyfer
 Selv om ulik frekvens på sløyfer gir høyere verdier på qspeed, ser både lengde- og fartsmålinger helt greie ut. Bruk av qspeed som indikator på lav datakvalitet er derfor ikke hensiktsmessig.
 
 ### Klassifisering
-
 Klare vi skille ut fakiske motorsykler? Er alle lengder under 2 m faktiske lette kjøretøy?
+
 
 ### Typiske lengder som blir underkjent
 
 -   Lengder mellom 1 og 2 m forekommer relativt hyppig blant de underkjente, og fanges opp av qspeed-regelen. **Kan vi tro alle disse er LETTE?**
 -   Øvrig lengdefordeling fra 2,5 m og oppover ligner veldig på den for godkjente lengder.
+
 
 ### Typiske steder med høy andel ukjente
 
@@ -941,28 +900,28 @@ Klare vi skille ut fakiske motorsykler? Er alle lengder under 2 m faktiske lette
 -   Svinger, dvs. nære kryss.
 -   Ramper, stor endring i fart.
 
-#### Kø
 
+#### Kø
 Gir både en del lengder 1,2 - 2 m, og 20-29 m. Mange feilklassifiseres som MC.
 
-#### Delvis passering av sløyfer
 
+#### Delvis passering av sløyfer
 Gir stor andel 1,2 - 2 m selv med fart godt over 15 km/h.
 
-#### Feil på sløyfe
 
+#### Feil på sløyfe
 Dersom en av to sløyfer er ødelagt (frakoblet e.l.) blir det mange 29 m.
 
-### Sammenheng med klassifisering og fart
 
+### Sammenheng med klassifisering og fart
 Foreløpige funn:
 
 -   Det er en del lengder mellom 1 og 2 m som har underkjent klasse, men fart over 7 km/h - disse er slått ut av signalkoderegelen.
 -   Lengde 29 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy qspeed.
 -   Alle med lengde under 1 m har fart under 7 km/h, så de får også underkjent fart av den regelen. De aller fleste her har klasse 10 eller 11.
 
-### Nytt regelsett Loop Monitor (forslag)
 
+### Revidert regelsett for Loop Monitor
 Se på klasse og lengde. Hvilke verdier hører sammen? (Fasiten på det ligger kanskje i kjøretøyregisteret?) Dersom klasse og lengde er samhørende, burde vi stole på lengden selv om qspeed sier det motsatte? Hvilken er mest til å stole på - klasse eller lengde?
 
 Nytt regelsett (kladd):
@@ -974,20 +933,23 @@ Nytt regelsett (kladd):
 -   **Klassekode 10, 11 eller tom** gir underkjent klasse (sjekk om dette er implementert slik)
 -   **Qspeed over X** gir underkjent fart og lengde (**ny regel**, dvs. ny grenseverdi). Utfra fordeling av qspeed-verdier kan 20? (minst, om det i det hele tatt skal være en regel?) være en grei verdi.
 
-## EMU3
 
+## EMU3
 Foreløpig forslag til revisjon:
 
--   qspeed = null skrotes (var aldri ment å skulle gjelde?). Vil føre til at "alle" lengder fra fw tidligere enn de nevnt nedenfor blir godkjent. Må verifiseres at dette er rimelig.
+-   qspeed = *null* skrotes (var aldri ment å skulle gjelde?). Vil føre til at "alle" lengder fra fw tidligere enn de nevnt nedenfor blir godkjent. Må verifiseres at dette er rimelig.
 
 -   qspeed-regel gjelder kun for fw med konsistent verdi for qspeed (s2.17.4 og 1.0x)
 
+
 # Konklusjon
 
-## Loop Monitor
 
+## Loop Monitor
 Resultatene av denne undersøkelsen viser at vi må justere enkelte regler. Det er reglene som benytter qspeed vi må endre, dvs. øke grenseverdien får når qspeed fører til underkjent lengde og klassifisering. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengde- og kjøretøyklassifisering enn det vi gjør i dag.
 
 Enkelte situasjoner fører til for lav kvalitet på lengdemålingene og disse bør i størst mulig grad fanges opp av kvalitetsreglene. Dette gjelder i hovedsak der hvor det er kø, delvis passeringer eller feil på sløyfer.
 
+
 ## EMU3
+[Analyse pågår.]
