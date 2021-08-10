@@ -30,85 +30,116 @@ knitr::opts_chunk$set(echo = FALSE,
 ```{r functions, include=FALSE}
 read_kibana_vbv <- function(vbv_file) {
   read_csv2(vbv_file) %>%
-  dplyr::mutate(lane = as.character(lane),
+  dplyr::mutate(#lane = as.character(lane),
+                lane = paste0("felt ", lane),
                 vehicle_type = as.character(vehicle_type))
 }
 
-plot_scatterplot_length <- function(vbv_data) {
+plot_qspeed_length <- function(vbv_data) {
   vbv_data %>%
   ggplot() + 
-  geom_point(aes(qspeed, length, color = lane)) +
-  geom_vline(aes(xintercept = 3)) +
-  geom_hline(aes(yintercept = 2)) +
+  geom_point(aes(qspeed, length, color = vehicle_type),
+             alpha = 0.5) +
+  geom_vline(aes(xintercept = 25)) +
+  geom_hline(aes(yintercept = 1)) +
   geom_hline(aes(yintercept = 5.6), color = "grey") +
   geom_hline(aes(yintercept = 27)) +
   scale_color_discrete() +
-  theme_minimal()
+  facet_grid(cols = vars(lane)) +
+  theme_minimal() + 
+  theme(strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "none") +
+  xlab("\nfartskvalitet") + 
+  ylab("lengde (m)\n")
 }
 
-plot_speed_qspeed <- function(vbv_data) {
+plot_qspeed_speed <- function(vbv_data) {
   vbv_data %>%
   ggplot() + 
-  geom_point(aes(qspeed, speed, color = lane)) +
-  geom_vline(aes(xintercept = 3)) +
+  geom_point(aes(qspeed, speed, color = vehicle_type),
+             alpha = 0.5) +
+  geom_vline(aes(xintercept = 25)) +
   scale_color_discrete() +
-    theme_minimal()
+  facet_grid(cols = vars(lane)) +
+  theme_minimal() + 
+  theme(strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "none") +
+  xlab("\nfartskvalitet") + 
+  ylab("fart (km/h)\n")
 }
 
-plot_speed_relqspeed <- function(vbv_data) {
-  vbv_data %>%
-    mutate(relative_qspeed = qspeed / speed) %>% 
-  ggplot() + 
-  geom_point(aes(relative_qspeed, speed, color = lane)) +
-  scale_color_discrete() +
-    theme_minimal()
-}
-
-plot_length_class <- function(vbv_data) {
+plot_length_speed <- function(vbv_data) {
   vbv_data %>%
   ggplot() + 
-  geom_point(aes(qspeed, length, color = vehicle_type)) +
-  geom_vline(aes(xintercept = 3)) +
-  geom_hline(aes(yintercept = 2)) +
+  geom_point(aes(length, speed, color = vehicle_type),
+             alpha = 0.5) +
+  geom_hline(aes(yintercept = 1)) +
   geom_hline(aes(yintercept = 5.6), color = "grey") +
   geom_hline(aes(yintercept = 27)) +
   scale_color_discrete() +
-    theme_minimal()
+  facet_grid(cols = vars(lane)) +
+  theme_minimal() + 
+  theme(strip.background = element_rect(fill = "#F5F5F5"),
+        legend.position = "bottom") +
+  xlab("\nlengde (m)") + 
+  ylab("fart (km/h)\n")
 }
 
-plot_length_class_per_lane <- function(vbv_data) {
-  vbv_data %>%
-    group_by(lane) %>% 
-    ggplot() + 
-    geom_point(aes(qspeed, length, color = vehicle_type)) +
-    facet_wrap(. ~ lane, labeller = label_both) +
-    geom_vline(aes(xintercept = 3)) +
-    geom_hline(aes(yintercept = 2)) +
-    geom_hline(aes(yintercept = 5.6), color = "grey") +
-    geom_hline(aes(yintercept = 27)) +
-    scale_color_discrete() +
-    theme_minimal()
-}
+# plot_speed_relqspeed <- function(vbv_data) {
+#   vbv_data %>%
+#     mutate(relative_qspeed = qspeed / speed) %>% 
+#   ggplot() + 
+#   geom_point(aes(relative_qspeed, speed, color = lane)) +
+#   scale_color_discrete() +
+#     theme_minimal()
+# }
 
-plot_length_class_per_lane_relqspeed <- function(vbv_data) {
-  vbv_data %>%
-    mutate(relative_qspeed = qspeed / speed) %>%
-    group_by(lane) %>% 
-    ggplot() + 
-    geom_point(aes(relative_qspeed, length, color = vehicle_type)) +
-    facet_wrap(. ~ lane, labeller = label_both) +
-    geom_hline(aes(yintercept = 2)) +
-    geom_hline(aes(yintercept = 5.6), color = "grey") +
-    geom_hline(aes(yintercept = 27)) +
-    scale_color_discrete() +
-    theme_minimal()
-}
+# plot_length_class <- function(vbv_data) {
+#   vbv_data %>%
+#   ggplot() + 
+#   geom_point(aes(qspeed, length, color = vehicle_type)) +
+#   geom_vline(aes(xintercept = 3)) +
+#   geom_hline(aes(yintercept = 2)) +
+#   geom_hline(aes(yintercept = 5.6), color = "grey") +
+#   geom_hline(aes(yintercept = 27)) +
+#   scale_color_discrete() +
+#     theme_minimal()
+# }
+
+# plot_length_class_per_lane <- function(vbv_data) {
+#   vbv_data %>%
+#     group_by(lane) %>% 
+#     ggplot() + 
+#     geom_point(aes(qspeed, length, color = vehicle_type)) +
+#     facet_wrap(. ~ lane, labeller = label_both) +
+#     geom_vline(aes(xintercept = 3)) +
+#     geom_hline(aes(yintercept = 2)) +
+#     geom_hline(aes(yintercept = 5.6), color = "grey") +
+#     geom_hline(aes(yintercept = 27)) +
+#     scale_color_discrete() +
+#     theme_minimal()
+# }
+
+# plot_length_class_per_lane_relqspeed <- function(vbv_data) {
+#   vbv_data %>%
+#     mutate(relative_qspeed = qspeed / speed) %>%
+#     group_by(lane) %>% 
+#     ggplot() + 
+#     geom_point(aes(relative_qspeed, length, color = vehicle_type)) +
+#     facet_wrap(. ~ lane, labeller = label_both) +
+#     geom_hline(aes(yintercept = 2)) +
+#     geom_hline(aes(yintercept = 5.6), color = "grey") +
+#     geom_hline(aes(yintercept = 27)) +
+#     scale_color_discrete() +
+#     theme_minimal()
+# }
 
 plot_all_in_one <- function(vbv_data) {
-  cowplot::plot_grid(plot_scatterplot_length(vbv_data),
-                   plot_speed_qspeed(vbv_data),
-                   plot_length_class_per_lane(vbv_data),
-                   ncol = 1)
+  cowplot::plot_grid(
+    plot_qspeed_length(vbv_data),
+    plot_qspeed_speed(vbv_data),
+    plot_length_speed(vbv_data),
+    ncol = 1)
 }
 
 plot_ecdf <- function(df, subtitle_text) {
@@ -207,14 +238,14 @@ vbv_skullerud <-
 # Bakgrunn
 Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i *rådatabasen* uten videre prosessering. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for *kontrollerte data*.
 
-Kvalitetskontrollene gjøres fordi data som kommer inn ikke nødvendigvis er helt korrekte. Kontrollene ble først utarbeidet i samråd med dataloggerleverandørene, samt basert på egen testing der fasiten ble laget på grunnlag av manuell gjennomgang av videoopptak kombinert med kjøretøyopplysninger fra Kjøretøyregisteret.
+Kvalitetskontrollene gjøres fordi data som kommer inn ikke alltid er gode nok til sitt formål. Kontrollene ble først utarbeidet i samråd med dataloggerleverandørene, samt basert på Statens vegvesens testing der fasiten ble laget på grunnlag av manuell gjennomgang av videoopptak kombinert med kjøretøyopplysninger fra Kjøretøyregisteret.
 
-Kvalitetskontrollene deles inn i to sett, etter hva de gjelder for:
+Kvalitetskontrollene deles inn i to sett, og gjelder for enten
 
   - alle dataloggertyper, eller
   - hver spesifikk dataloggertype (og firmwareversjon).
   
-Hensikten med kontrollene er å merke data som har for lav kvalitet. Utgangspunktet er at alle data er av god nok kvalitet dersom de ikke faller utenfor krav som inngår i kontrollene. 
+Hensikten med kontrollene er å merke data som har for lav kvalitet. Utgangspunktet er at alle data er av god nok kvalitet dersom de ikke faller utenfor krav som stilles i kontrollene. 
   
 I dette dokumentet er det kun data fra registreringer av motorkjøretøy som er omtalt. Det omfatter kun to dataloggertyper: Loop Monitor (LM) og EMU3.
 
@@ -242,13 +273,13 @@ For **LM** gjelder følgende:
 
   - Fart og lengde er ugyldig dersom:
     - ::: {style="color:green"}
-      Speed_quality* \>= 3 % for fart \>= 100 km/h, eller \>= 3 km/h for fart \< 100 km/h. OBS! Endret mars 2020 til 25 % / 25 km/h.
+      Fartskvalitet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. OBS! Endret mars 2020 fra 3 % / 3 km/h.
       :::
 
  - Klassifisering er ugyldig dersom:
     - Signalkoden inneholder oddetall eller 0, unntatt 0202.
     
-\*Speed_quality er for LM absolutt avvik (i km/h) mellom loop 1 og 2.
+\*Fartskvalitet fra LM er det absolutte avviket (i km/h) mellom sløyfe 1 og 2.
 
 For **EMU3** gjelder følgende:
 
@@ -257,38 +288,36 @@ For **EMU3** gjelder følgende:
 
   - Fart, lengde og klassifisering er ugyldig dersom:
     - ::: {style="color:red"}
-      Speed_quality ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).
+      Fartskvalitet ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).
       :::
-    - Grenseverdien for å sette speed_quality ≠ 0 er har variert med firmwareversjoner:
-        -   (UNDER VURDERING)
 
 
-# Formål
+## Analysens formål
 Noen trafikkregistreringspunkter har høy andel underkjente lengdemålinger. Er dette reellt eller er kontrollene for strenge? Hva er grunnen til at lengdemålingene blir underkjente? Målet med analysen er å finne ut hvor godt kontrollene treffer og eventuelt justere dem. Om kontrollene justeres, skal alle data i Trafikkdatasystemet reberegnes tilbake til 2014.
+
+Denne analysen tar ikke for seg deteksjonsgraden av antall kjøretøy, men er konsentrert om måleverdiene for lengde og klassifisering som tilhører de faktisk registrerte kjøretøyene.
 
 
 # Metode
-Det antas at kvaliteten på fartsmålingene henger nøye sammen med kvaliteten på lengdemålingene. Det er kjøretøylengden vi kan finne fasit på i kjøretøyregisteret, så derfor er lengden i fokus for denne analysen. Det samme gjelder også kjøretøyklassifiseringen.
+Det antas at kvaliteten på fartsmålingene henger nøye sammen med kvaliteten på lengdemålingene. Det er kjøretøylengden vi kan finne fasit på i Kjøretøyregisteret, så derfor er lengden i fokus for denne analysen. Kjøretøyregisteret er også fasit for kjøretøyklassifiseringen.
 
 
 ## Feilsituasjoner
-Ved god flyt i trafikken, god kvalitet på sløyfene og ingen delvise passeringer blir datakvaliteten veldig god, også for lengdemålingene. Likevel kan det forekomme tilfeldig målefeil, men det antas at dette forekommer sjeldent.
+Ved god flyt i trafikken, god kvalitet på sløyfene og ingen delvise sløyfepasseringer blir datakvaliteten veldig god, også for lengdemålingene. Dette er blant annet dokumentert i Statens vegvesens tester på Øysand testtrekning. Likevel kan det forekomme tilfeldig målefeil, men det antas at dette forekommer sjeldent.
 
-Denne analysen tar ikke for seg deteksjonsgraden av antall kjøretøy, men er konsentrert om måleverdiene som tilhører de faktisk registrerte kjøretøyene.
-
-Lavere datakvalitet oppstår av ulik årsaker som grovt kan deles inn i tre kategorier:
+Lavere datakvalitet oppstår av ulike årsaker som grovt kan deles inn i tre kategorier:
 
   - Feil på sløyfer:
     - betydelig ulik frekvens på sløyfer i samme felt
     - frekvens utenfor toleranseområde
-    - ingen frekvens (sløyfebrudd, ikke tilkoblet sløyfe eller dårlig koblet sløyfe, kortslutning)
     - elektronisk støy (kan være årsak til de to førstnevnte)
+    - ingen frekvens (sløyfebrudd, ikke tilkoblet sløyfe eller dårlig koblet sløyfe, kortslutning)
     - sløyfene lagt med feil dimensjon (systematisk feilkilde)
   - Delvis passering av sløyfer
   - Saktegående eller stillestående trafikk (lav fart)
-  - Høy akselerasjon, typisk på ramper (Speed quality)
+  - Høy akselerasjon, typisk på ramper (fartskvalitet)
   
-De ulike feilsituasjonene gir opphav til måleverdier med for lav datakvalitet:
+De ulike feilsituasjonene kan gi opphav til ekstreme måleverdier som avslører lav datakvalitet:
 
   - Lengde utenfor (1, 27) m
   - Fart under 7 km/h
@@ -296,7 +325,8 @@ De ulike feilsituasjonene gir opphav til måleverdier med for lav datakvalitet:
     - over 3 for LM
     - ulik 0 for EMU3
     
-Analysen går derfor ut på å sjekke om lengde og klasse virkelig er tilstrekkelig feil utenfor disse grenseverdiene, eller om grensene bør justeres.
+Måleverdier som er innenfor grenseverdiene kan også være feil, men det er vanskeligere å avsløre. Denne analysen fokuserer på å finne de grenseneverdiene som passer best til våre krav om datakvalitet.
+
 
 ## Framgangsmåte
 For å gjennomføre analysen, gjøres følgende:
@@ -308,27 +338,26 @@ For å gjennomføre analysen, gjøres følgende:
     - sløyfestatus
     - trafikale forhold
   4. Sannsynliggjør årsak til feil
-  5. Se på et utvalg av data og finn eventuelle sammenhenger mellom lengde, klasse, fart og speed quality. (Skill på felt)
+  5. Se på et utvalg av data for ett kjørefelt og finn eventuelle sammenhenger mellom lengde, klasse, fart og fartskvalitet
   6. Vurder om grenseverdiene er fornuftige
   
   
 ## Delanalyser
 
-  1. Er lengde og klasse ok om alle måleverdier er innenfor grenseverdiene? REFERER TIL TIDLIGERE TESTING
-  2. Hvilke kontroller underkjenner lengder?
-  3. Hvilke lengder blir underkjent?
-  4. Er det sammenheng i kvaliteten på kjøretøyklasse og lengde?
-  5. Lengde utenfor (1, 27) m: lengde ok?
+  1. Hvilke kontroller underkjenner lengder?
+  2. Hvilke lengder blir underkjent?
+  3. Er det sammenheng i kvaliteten på kjøretøyklasse og lengde?
+  4. Lengde utenfor (1, 27) m: lengde ok?
   6. Lengde utenfor (1, 27) m: klasse ok?
   7. Fart under 7 km/h: lengde ok?
   8. Fart under 7 km/h: klasse ok?
-  9. Speed quality over 3 eller ulik 0: lengde ok?
-  10. Speed quality over 3 eller ulik 0: klasse ok?
-  11. LM: forskjell i frekvens på 20 kHz - lengde ok?
+  9. Fartskvalitet over 3 eller ulik 0: lengde ok?
+  10. Fartskvalitet over 3 eller ulik 0: klasse ok?
+  11. LM: forskjell i frekvens på \> 20 kHz - lengde ok?
 
 
 # Eksempler på data fra LM
-Denne delen ble gjennomført i februar 2020. Endret kontrollsett for LM ble implementert da og alle tidligere data ble reberegnet innen april 2020.
+Denne analysedelen ble gjennomført i februar 2020. Endret kontrollsett for LM ble implementert da og alle tidligere data ble reberegnet innen april 2020.
 
 
 ## Punkter med mange underkjente lengder
@@ -362,7 +391,7 @@ Liste over trafikkregistreringspunkter som har flest tilfeller innenfor de angit
     -  Hansjordnestunnelen: kryss, kø, felt 2 og 4.
     -  Høvik, fire felt: felt 1 (liten andel).
 
-  - **qspeed over 3**
+  - **fartskvalitet over 3**
     - Skullerud hovedkjørefelt, firefelt.
     - Taraldrud, firefelt.
     - Smihagen enveg med, firefelt.
@@ -388,7 +417,7 @@ Andre punkter med høy andel underkjente lengder:
 
 
 ## Eksempel på normalsituasjon
-For sammenligning.
+For sammenligning. Øysand.
 
 TODO
 
@@ -437,7 +466,7 @@ Vurdering:
   
   
 #### Ev 39 Øysand F05
-På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omkring 65 og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger. Er disse likevel gode nok når vi har fasit på lengdemålinger fra Kjøretøyregisteret?
+På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omkring 65 og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger.
 
 Egenskaper:
 
@@ -501,9 +530,10 @@ Vurdering:
 #### Ev 6 Moholtlia
 Egenskaper:
 
--   Fire felt.
--   Stort sett god flyt i trafikken.
--   Feil på en av sløyfene i felt 4, ellers frekvenser rundt 70 kHz.
+  - Fire felt
+  - 10 - 75 km/h
+  - Stort sett god flyt i trafikken
+  - Feil på en av sløyfene i felt 4, ellers frekvenser rundt 70 kHz
 
 ```{r moholtlia, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_moholtlia)
@@ -511,8 +541,9 @@ plot_all_in_one(vbv_moholtlia)
 
 Vurdering:
 
--   Når vi ser på fartsmålingene i felt 4, ser vi at de fleste kjøretøy får omtrent maksimal qspeed, dvs. at den ene fartsmålingen er nær null uansett.
--   Mange av lengdemålingene får en bestemt maksimal- eller minimumsverdi av LM, som i begge tilfeller er utenfor vårt godkjenningsintervall.
+  - I felt 4 får de fleste kjøretøy omtrent maksimal fartskvalitet, dvs. at den ene fartsmålingen er nær null uansett.
+  - Mange av lengdemålingene får en bestemt maksimal- eller minimumsverdi av LM, som i begge tilfeller er utenfor vårt godkjenningsintervall.
+  - Fartskvalitet ser her ut til å være en god indiaktor på lav datakvalitet for lengde og klassifisering.
 
 
 ### Saktegående trafikk
@@ -521,9 +552,10 @@ Vurdering:
 #### Fv 542 Svortland øst
 Egenskaper:
 
--   To felt.
--   Tidvis saktegående trafikk
--   Alle fire sløyfer har normal frekvens på ca. 85 kHz.
+  - To felt
+  - 0 - 75 km/h
+  - Tidvis saktegående trafikk
+  - Alle fire sløyfer har normal frekvens på ca. 85 kHz
 
 ```{r svortlando, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_data_svortland_ost)
@@ -531,7 +563,7 @@ plot_all_in_one(vbv_data_svortland_ost)
 
 Vurdering:
 
--   Noen lave hastigheter gir bestemte feilverdier for lengde, satt av LM. Disse er utenfor vårt toleranseområde for lengde, men har ikke særlig høy qspeed.
+  - Noen lave hastigheter gir bestemte feilverdier for lengde, satt av LM. Disse er utenfor vårt toleranseområde for lengde, men har ikke særlig høy fartskvalitet.
 
 
 #### Fv 862 Postterminalen
@@ -654,7 +686,7 @@ Vurdering:
 -   
 
 
-# Kontroll av data fra EMU3
+# Eksempler på data fra EMU3
 For EMU3 må vi ta hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for speed_quality:
 
 - Før 25. januar 2017: qspeed-grense på 25 %, men vi brukte den ikke. Alle qspeed-verdier fra EMU3 før dette er manglende ("null"). Fra denne datoen begynte noen å få verdi.
