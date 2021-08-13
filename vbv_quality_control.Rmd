@@ -8,13 +8,14 @@ output:
     toc_float: 
       collapsed: false
       smooth_scroll: false
-    toc_depth: 3
+    toc_depth: 2
 ---
 
 ```{r setup, message=F, include=FALSE}
 library(tidyverse)
 library(knitr)
-library(cowplot)
+library(cowplot) # may be replaced på patchwork here?
+library(patchwork)
 library(lubridate)
 library(rmarkdown)
 library(RColorBrewer)
@@ -25,213 +26,6 @@ knitr::opts_chunk$set(echo = FALSE,
                       error = FALSE,
                       cache = TRUE,
                       dev = "ragg_png")
-```
-
-```{r functions, include=FALSE}
-read_kibana_vbv <- function(vbv_file) {
-  read_csv2(vbv_file) %>%
-  dplyr::mutate(#lane = as.character(lane),
-                lane = paste0("felt ", lane),
-                vehicle_type = as.character(vehicle_type))
-}
-
-plot_qspeed_length <- function(vbv_data) {
-  vbv_data %>%
-  ggplot() + 
-  geom_point(aes(qspeed, length, color = vehicle_type),
-             alpha = 0.5) +
-  geom_vline(aes(xintercept = 25)) +
-  geom_hline(aes(yintercept = 1)) +
-  geom_hline(aes(yintercept = 5.6), color = "grey") +
-  geom_hline(aes(yintercept = 27)) +
-  scale_color_discrete() +
-  facet_grid(cols = vars(lane)) +
-  theme_minimal() + 
-  theme(strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "none") +
-  xlab("\nfartskvalitet") + 
-  ylab("lengde (m)\n")
-}
-
-plot_qspeed_speed <- function(vbv_data) {
-  vbv_data %>%
-  ggplot() + 
-  geom_point(aes(qspeed, speed, color = vehicle_type),
-             alpha = 0.5) +
-  geom_vline(aes(xintercept = 25)) +
-  scale_color_discrete() +
-  facet_grid(cols = vars(lane)) +
-  theme_minimal() + 
-  theme(strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "none") +
-  xlab("\nfartskvalitet") + 
-  ylab("fart (km/h)\n")
-}
-
-plot_length_speed <- function(vbv_data) {
-  vbv_data %>%
-  ggplot() + 
-  geom_point(aes(length, speed, color = vehicle_type),
-             alpha = 0.5) +
-  geom_hline(aes(yintercept = 1)) +
-  geom_hline(aes(yintercept = 5.6), color = "grey") +
-  geom_hline(aes(yintercept = 27)) +
-  scale_color_discrete() +
-  facet_grid(cols = vars(lane)) +
-  theme_minimal() + 
-  theme(strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom") +
-  xlab("\nlengde (m)") + 
-  ylab("fart (km/h)\n")
-}
-
-# plot_speed_relqspeed <- function(vbv_data) {
-#   vbv_data %>%
-#     mutate(relative_qspeed = qspeed / speed) %>% 
-#   ggplot() + 
-#   geom_point(aes(relative_qspeed, speed, color = lane)) +
-#   scale_color_discrete() +
-#     theme_minimal()
-# }
-
-# plot_length_class <- function(vbv_data) {
-#   vbv_data %>%
-#   ggplot() + 
-#   geom_point(aes(qspeed, length, color = vehicle_type)) +
-#   geom_vline(aes(xintercept = 3)) +
-#   geom_hline(aes(yintercept = 2)) +
-#   geom_hline(aes(yintercept = 5.6), color = "grey") +
-#   geom_hline(aes(yintercept = 27)) +
-#   scale_color_discrete() +
-#     theme_minimal()
-# }
-
-# plot_length_class_per_lane <- function(vbv_data) {
-#   vbv_data %>%
-#     group_by(lane) %>% 
-#     ggplot() + 
-#     geom_point(aes(qspeed, length, color = vehicle_type)) +
-#     facet_wrap(. ~ lane, labeller = label_both) +
-#     geom_vline(aes(xintercept = 3)) +
-#     geom_hline(aes(yintercept = 2)) +
-#     geom_hline(aes(yintercept = 5.6), color = "grey") +
-#     geom_hline(aes(yintercept = 27)) +
-#     scale_color_discrete() +
-#     theme_minimal()
-# }
-
-# plot_length_class_per_lane_relqspeed <- function(vbv_data) {
-#   vbv_data %>%
-#     mutate(relative_qspeed = qspeed / speed) %>%
-#     group_by(lane) %>% 
-#     ggplot() + 
-#     geom_point(aes(relative_qspeed, length, color = vehicle_type)) +
-#     facet_wrap(. ~ lane, labeller = label_both) +
-#     geom_hline(aes(yintercept = 2)) +
-#     geom_hline(aes(yintercept = 5.6), color = "grey") +
-#     geom_hline(aes(yintercept = 27)) +
-#     scale_color_discrete() +
-#     theme_minimal()
-# }
-
-plot_all_in_one <- function(vbv_data) {
-  cowplot::plot_grid(
-    plot_qspeed_length(vbv_data),
-    plot_qspeed_speed(vbv_data),
-    plot_length_speed(vbv_data),
-    ncol = 1)
-}
-
-plot_ecdf <- function(df, subtitle_text) {
-  
-  df %>% 
-  ggplot(aes(length, color = name_and_datalogger)) +
-  stat_ecdf(pad = FALSE,
-            size = 1, alpha = 0.7) +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  scale_color_brewer(
-      palette = "Dark2",
-      name = "Datalogger og punkt") +
-  theme(strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom") +
-  labs(x = "\nLengde (m)", y = "Kumulativ tetthet\n") +
-  ggtitle("Kumulativ fordeling av lengdemålinger",
-          subtitle = subtitle_text)
-}
-
-plot_qq <- function(df, subtitle_text) {
- 
-  df %>%  
-  ggplot(aes(sample = length, color = name_and_datalogger)) +
-  facet_grid(rows = vars(lane)) +
-  stat_qq(size = 1, alpha = 0.7) +
-  theme_minimal() +
-  scale_color_brewer(
-      palette = "Dark2",
-      name = "Datalogger og punkt") +
-  theme(strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom")+
-  ggtitle("Kvantilplott av lengdemålinger",
-          subtitle = subtitle_text)
-}
-
-plot_length_class_bars <- function(df, length_class_type, subtitle_text) {
-  
-  # length_class_type must be either 
-  # length_class_full
-  # or
-  #length_class_2
-  
-  df %>% 
-  ggplot(aes(x = {{ length_class_type }}, y = volume, fill = name_and_datalogger)) +
-  ggplot2::geom_col(position = "dodge") +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal() +
-  scale_fill_viridis_d(name = "Datalogger",
-                       option = "cividis") +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        strip.text.y = element_text(angle = 90),
-        strip.background = element_rect(fill = "#F5F5F5"),
-        legend.position = "bottom",
-        legend.key = element_blank()) +
-  labs(x = "\nLengdeklasse", y = "Trafikkmengde\n") +
-  ggtitle("Trafikkmengde per lengdeklasse",
-          subtitle = subtitle_text)
-}
-```
-
-```{r get_data, message=F, warning=F, error=F, include=F}
-# LM ----
-## Vbv data exported from Kibana
-vbv_data_asker <- 
-  read_kibana_vbv("vbv_data/asker.csv")
-vbv_data_soyland <- 
-  read_kibana_vbv("vbv_data/soyland.csv")
-vbv_data_hollundsvegen <- 
-  read_kibana_vbv("vbv_data/hollundsvegen.csv")
-vbv_data_svortland_vest <-
-  read_kibana_vbv("vbv_data/svortland_vest.csv")
-vbv_data_svortland_ost <-
-  read_kibana_vbv("vbv_data/svortland_ost.csv")
-vbv_postterminalen <- 
-  read_kibana_vbv("vbv_data/postterminalen.csv")
-vbv_elgeseter <- 
-  read_kibana_vbv("vbv_data/elgeseter_bru.csv")
-
-## Elgeseter bru 24.02.2020: mye snø og neppe noen faktiske mc eller skuter
-vbv_elgeseter_2 <- 
-  read_kibana_vbv("vbv_data/elgeseter_bru_20200224.csv")
-vbv_moholtlia <- 
-  read_kibana_vbv("vbv_data/moholtlia.csv")
-vbv_f05 <- 
-  read_kibana_vbv("vbv_data/oysand_f05.csv")
-vbv_skullerud <- 
-  read_kibana_vbv("vbv_data/skullerud.csv")
-
 ```
 
 
@@ -256,10 +50,12 @@ Uansett hvilken dataloggertype data kommer fra, så gjelder følgende:
   - Selve registreringen er ugyldig dersom:
     - Kjørefeltverdien er fraværende.
     - Kjørefeltverdien er utenfor de kjørefeltene som eksisterer på trafikkregistreringspunktet.
-    - Eventnummer mangler (er "null").
+    - Eventnummer mangler.
+    - Lengdeverdien mangler.
 
   - Lengde og klassifisering er ugyldig dersom:
     - Lengde er \< 1 m eller \> 27 m.
+    - Lengdeverdien mangler.
 
   - Fart er ugyldig dersom:
     - Absoluttverdi av fart \> 300 km/h.
@@ -273,23 +69,28 @@ For **LM** gjelder følgende:
 
   - Fart og lengde er ugyldig dersom:
     - ::: {style="color:green"}
-      Fartskvalitet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. OBS! Endret mars 2020 fra 3 % / 3 km/h.
+      Fartsulikhet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. (Endret i mars 2020 fra 3 % / 3 km/h.)
       :::
+    - Fartsulikhetsverdien mangler.
+    - Fartsverdien mangler.
 
  - Klassifisering er ugyldig dersom:
     - Signalkoden inneholder oddetall eller 0, unntatt 0202.
+    - Signalkoden mangler.
     
-\*Fartskvalitet fra LM er det absolutte avviket (i km/h) mellom sløyfe 1 og 2.
+\*Fartsulikhet fra LM er det absolutte avviket (i km/h) mellom sløyfe 1 og 2.
 
 For **EMU3** gjelder følgende:
 
   - Fart og lengde er ugyldig dersom:
     - Absoluttverdi av fart \< 7 km/h.
+    - Fartsverdien mangler.
 
   - Fart, lengde og klassifisering er ugyldig dersom:
     - ::: {style="color:red"}
-      Fartskvalitet ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).
+      Fartsulikhet ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).
       :::
+    - Fartsulikhetsverdien mangler.
 
 
 ## Analysens formål
@@ -315,7 +116,7 @@ Lavere datakvalitet oppstår av ulike årsaker som grovt kan deles inn i tre kat
     - sløyfene lagt med feil dimensjon (systematisk feilkilde)
   - Delvis passering av sløyfer
   - Saktegående eller stillestående trafikk (lav fart)
-  - Høy akselerasjon, typisk på ramper (fartskvalitet)
+  - Høy akselerasjon, typisk på ramper (fartsulikhet)
   
 De ulike feilsituasjonene kan gi opphav til ekstreme måleverdier som avslører lav datakvalitet:
 
@@ -338,7 +139,7 @@ For å gjennomføre analysen, gjøres følgende:
     - sløyfestatus
     - trafikale forhold
   4. Sannsynliggjør årsak til feil
-  5. Se på et utvalg av data for ett kjørefelt og finn eventuelle sammenhenger mellom lengde, klasse, fart og fartskvalitet
+  5. Se på et utvalg av data for ett kjørefelt og finn eventuelle sammenhenger mellom lengde, klasse, fart og fartsulikhet
   6. Vurder om grenseverdiene er fornuftige
   
   
@@ -351,16 +152,18 @@ For å gjennomføre analysen, gjøres følgende:
   6. Lengde utenfor (1, 27) m: klasse ok?
   7. Fart under 7 km/h: lengde ok?
   8. Fart under 7 km/h: klasse ok?
-  9. Fartskvalitet over 3 eller ulik 0: lengde ok?
-  10. Fartskvalitet over 3 eller ulik 0: klasse ok?
+  9. Fartsulikhet over 3 eller ulik 0: lengde ok?
+  10. Fartsulikhet over 3 eller ulik 0: klasse ok?
   11. LM: forskjell i frekvens på \> 20 kHz - lengde ok?
 
 
-# Eksempler på data fra LM
+# Analyse av data fra LM
 Denne analysedelen ble gjennomført i februar 2020. Endret kontrollsett for LM ble implementert da og alle tidligere data ble reberegnet innen april 2020.
 
+I det følgende er det sett på data fra 20. februar 2020, om ikke annet er oppgitt.
 
-## Punkter med mange underkjente lengder
+
+## Punkter med lav datakvalitet
 Liste over trafikkregistreringspunkter som har flest tilfeller innenfor de angitte, spesielle måleverdiene:
 
   - **lengde under 1 m**
@@ -391,7 +194,7 @@ Liste over trafikkregistreringspunkter som har flest tilfeller innenfor de angit
     -  Hansjordnestunnelen: kryss, kø, felt 2 og 4.
     -  Høvik, fire felt: felt 1 (liten andel).
 
-  - **fartskvalitet over 3**
+  - **fartsulikhet over 3**
     - Skullerud hovedkjørefelt, firefelt.
     - Taraldrud, firefelt.
     - Smihagen enveg med, firefelt.
@@ -412,26 +215,17 @@ Punkter med kø, ugunstig sensorplassering eller dårlige sløyfer
 
 Andre punkter med høy andel underkjente lengder:
 
--   Årøytunnelen, Søyland, Klinga, Sønsterud, Eggetunnelen, Reinsvoll, Asker og sikkert flere, ingen godkjente i ene feltet pga qspeed, som nok skyldes 20 kHz forskjell på sløyfene der.
--   Vassbotn brua, veldig ulik frekvens på flere sløyfer, mye qspeed 10-15
+-   Årøytunnelen, Søyland, Klinga, Sønsterud, Eggetunnelen, Reinsvoll, Asker og sikkert flere, ingen godkjente i ene feltet pga fartsulikhet, som nok skyldes 20 kHz forskjell på sløyfene der.
+-   Vassbotn brua, veldig ulik frekvens på flere sløyfer, mye fartsulikhet 10-15
 
 
-## Eksempel på normalsituasjon
-For sammenligning. Øysand.
-
-TODO
-
-## Eksempler med feil
-I det følgende er det sett på data fra 20. februar 2020, om ikke annet er oppgitt.
-
-
-### Sløyfer med ulik frekvens
+## Sløyfer med ulik frekvens
 Dagens kontrollsett gir ukjent lengde for de fleste passeringer i felt der det er stor forskjell i frekvensen på de to sløyfene. Typisk eksempel er der hvor en sløyfe har omkring 65 kHz og den andre ligger rundt 85 kHz. Sistnevnte er normalt frekvensnivå.
 
 Hva som er grunnen til at en sløyfe har omtrent 20 kHz lavere frekvens enn normalt, er ukjent.
 
 
-#### Ev 18 Asker
+### Ev 18 Asker
 Egenskaper:
 
   - Fire felt
@@ -445,10 +239,10 @@ plot_all_in_one(vbv_data_asker)
 
 Vurdering:
 
-  - Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
+  - Ulik frekvens på sløyfene i det ene feltet gir høyere fartsulikhet-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
 
 
-#### Fv 44 Søyland
+### Fv 44 Søyland
 Egenskaper:
 
   - To felt
@@ -462,11 +256,11 @@ plot_all_in_one(vbv_data_soyland)
 
 Vurdering:
 
-  - Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
+  - Ulik frekvens på sløyfene i det ene feltet gir høyere fartsulikhet-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
   
   
-#### Ev 39 Øysand F05
-På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omkring 65 og 85 kHz. Felt 2 har stort sett qspeed over 3 og dermed underkjente lengdemålinger.
+### Ev 39 Øysand F05
+På teststasjon F05 har vi tilfellet med ulik frekvens på sløyfene i felt 2. Frekvensen ligger på omkring 65 og 85 kHz. Felt 2 har stort sett fartsulikhet over 3 og dermed underkjente lengdemålinger.
 
 Egenskaper:
 
@@ -481,14 +275,14 @@ plot_all_in_one(vbv_f05)
 
 Vurdering:
 
-  - Ulik frekvens på sløyfene i det ene feltet gir høyere qspeed-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
+  - Ulik frekvens på sløyfene i det ene feltet gir høyere fartsulikhet-verdier her, men både lengde- og fartsmålinger, samt klassifisering, synes ikke å avvike fra felt med normal frekvens.
 
 
-### Lav frekvens på alle sløyfer
+## Lav frekvens på alle sløyfer
 Noen punkter har jevnt lav frekvens på alle sløyfene, men likevel innenfor oppgitt toleranseområde.
 
 
-#### Fv 5004 Hollundsvegen
+### Fv 5004 Hollundsvegen
 Egenskaper:
 
   - To felt
@@ -502,11 +296,11 @@ plot_all_in_one(vbv_data_hollundsvegen)
 
 Vurdering:
 
-  - Mange kjøretøy får lengde under 2 m og noen får 29 m, men speed quality er ingen god indikator på dette.
-  - Skulle sett nærmere på lengdene mellom 1 og 2 m.
+  - Mange kjøretøy får lengde under 2 m og noen får 29 m, men fartsulikhet er ingen god indikator på dette.
+  - Skulle sett nærmere på lengdene mellom 1 og 2 m. Mange av disse er klassifisert som motorsykkel, men er det riktig?
   
 
-#### Fv 542 Svortland vest
+### Fv 542 Svortland vest
 Egenskaper:
 
   - To felt
@@ -524,10 +318,10 @@ Vurdering:
   - Skulle sett nærmere på lengdene mellom 1 og 2 m.
   
 
-### Brudd eller dårlig koblet sløyfe
+## Brudd eller dårlig koblet sløyfe
 
 
-#### Ev 6 Moholtlia
+### Ev 6 Moholtlia
 Egenskaper:
 
   - Fire felt
@@ -541,15 +335,15 @@ plot_all_in_one(vbv_moholtlia)
 
 Vurdering:
 
-  - I felt 4 får de fleste kjøretøy omtrent maksimal fartskvalitet, dvs. at den ene fartsmålingen er nær null uansett.
-  - Mange av lengdemålingene får en bestemt maksimal- eller minimumsverdi av LM, som i begge tilfeller er utenfor vårt godkjenningsintervall.
-  - Fartskvalitet ser her ut til å være en god indiaktor på lav datakvalitet for lengde og klassifisering.
+  - I felt 4 får de fleste kjøretøy omtrent maksimal fartsulikhet, dvs. at den ene fartsmålingen er nær null.
+  - Mange av lengdemålingene får en bestemt maksimal- eller minimumsverdi av LM, som er utenfor vårt godkjenningsintervall.
+  - Fartsulikhet og ekstrem lengde ser her ut til å være en god indiaktor på lav datakvalitet for lengde og klassifisering.
 
 
-### Saktegående trafikk
+## Saktegående trafikk
 
 
-#### Fv 542 Svortland øst
+### Fv 542 Svortland øst
 Egenskaper:
 
   - To felt
@@ -563,17 +357,17 @@ plot_all_in_one(vbv_data_svortland_ost)
 
 Vurdering:
 
-  - Noen lave hastigheter gir bestemte feilverdier for lengde, satt av LM. Disse er utenfor vårt toleranseområde for lengde, men har ikke særlig høy fartskvalitet.
+  - Noen lave hastigheter gir bestemte feilverdier for lengde, satt av LM. Disse er utenfor vårt toleranseområde for lengde, men har ikke særlig høy fartsulikhet.
 
 
-#### Fv 862 Postterminalen
-![Postterminalen](vbv_data/postterminalen.PNG)
+### Fv 862 Postterminalen
+![Punktet Postterminalen er markert med gult.](vbv_data/postterminalen.png)
 
 Egenskaper:
 
--   Tre felt, men felt 2 er flettefelt, så sikkert en del delvise sløyfepasseringer.
--   Tidvis saktegående trafikk. Forventer en del kø i felt 1.
--   Alle sløyfer viser normal frekvens på rundt 85 kHz.
+  - Tre felt, men felt 2 er flettefelt, med en stor andel delvise sløyfepasseringer.
+  - Tidvis saktegående trafikk. Forventer en del kø i felt 1.
+  - Alle sløyfer viser normal frekvens på rundt 85 kHz.
 
 ```{r postterminalen, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_postterminalen)
@@ -583,42 +377,26 @@ Ser nærmere på korte lengder.
 
 ```{r postterminalen2, fig.height=12, fig.width=8}
 vbv_postterminalen %>% 
-  dplyr::filter(vehicle_type == 1 | length < 2.5) %>% 
+  dplyr::filter(vehicle_type == 1 | length < 2.5) %>%
   plot_all_in_one()
-```
-
-Zoomer inn.
-
-```{r postterminalen2_korte_zoom, fig.height=12, fig.width=8}
-vbv_postterminalen %>% 
-  dplyr::filter(vehicle_type == 1 | length < 2.5) %>% 
-  # removing outliers
-  dplyr::filter(length < 20) %>% 
-  group_by(lane) %>% 
-    ggplot() + 
-    geom_point(aes(qspeed, length, color = vehicle_type)) +
-    facet_wrap(. ~ lane, labeller = label_both) +
-    geom_vline(aes(xintercept = 3)) +
-    geom_hline(aes(yintercept = 2)) +
-    scale_color_discrete() +
-    theme_minimal()
 ```
 
 Vurdering:
 
--   
+  - I felt 2 er det ikke lavt fartsnivå, men høy andel delvise passeringer. Mange kjøretøy blir her klassifisert som motorsykkel, men det er nok stort avvik fra virkeligheten. Det er likevel god overensstemmelse mellom lengde og klassifisering, selv om en del kjøretøy får angitt standarlengde. En del kjøretøy har større fartsulikhet, men det er ikke noe klart skille.
+  - I felt 1 og 3 er det både lav fart og delvise sløyfepasseringer. Spesielt i felt 1 ser det ut som om lengdene er noe lengre enn vanlig. Det går heller ikke her noe klart skille på fartsulikhet.
 
 
-#### Fv 6690 Elgeseter bru
+### Fv 6690 Elgeseter bru
 Egenskaper:
 
--   Fire felt.
--   Tidvis saktgående trafikk.
--   Mange metrobusser på 24,5 m.
--   Sløyfefrekvenser:
-    -   Felt 1 og 3: ca. 70 kHz
-    -   Felt 2: 65 og 85
-    -   felt 4: 85
+  - Fire felt.
+  - Tidvis saktgående trafikk.
+  - Mange metrobusser på 24,5 m.
+  - Sløyfefrekvenser:
+    - felt 1 og 3: ca. 70 kHz
+    - felt 2: 65 og 85
+    - felt 4: 85
 
 ```{r elgeseter, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_elgeseter)
@@ -626,17 +404,17 @@ plot_all_in_one(vbv_elgeseter)
 
 Vurdering:
 
--   En del tilfeller at at qspeed er større enn fartsmålingen. Det må komme av at de to fartsmålingene har ulikt fortegn. Kan dette være en indikasjon på delvis sløyfepassering og/eller saktegående trafikk?
+-   En del tilfeller at at fartsulikhet er større enn fartsmålingen. Det må komme av at de to fartsmålingene har ulikt fortegn. Kan dette være en indikasjon på delvis sløyfepassering og/eller saktegående trafikk?
 
 
-##### Data fra 24. februar 2020
+#### Data fra 24. februar 2020
 Stort snøfall, ingen forventede mc, skuter o.l.
 
 ```{r elgeseter2, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_elgeseter_2)
 ```
 
-Ser nærmere på registreringer som enten er klassifisert som MC eller har lengde under 3,5 m.
+Ser nærmere på registreringer som enten er klassifisert som motorsykkel eller har lengde under 3,5 m.
 
 ```{r elgeseter2_korte, fig.height=12, fig.width=8}
 vbv_elgeseter_2 %>% 
@@ -644,38 +422,22 @@ vbv_elgeseter_2 %>%
   plot_all_in_one()
 ```
 
-Zoomer inn.
-
-```{r elgeseter2_korte_zoom, fig.height=12, fig.width=8}
-vbv_elgeseter_2 %>% 
-  dplyr::filter(vehicle_type == 1 | length < 2.5) %>% 
-  # removing outlier
-  dplyr::filter(qspeed < 20) %>% 
-  group_by(lane) %>% 
-    ggplot() + 
-    geom_point(aes(qspeed, length, color = vehicle_type)) +
-    facet_wrap(. ~ lane, labeller = label_both) +
-    geom_vline(aes(xintercept = 3)) +
-    geom_hline(aes(yintercept = 2)) +
-    scale_color_discrete() +
-    theme_minimal()
-```
-
 Vurdering:
 
--   
+  - Føreforhold tilsier at det ikke skal være noen motorsykler, men likevel er mange klassifisert som nettopp det. Det antas at dette skyldes feltskifte med delvise sløyfepasseringer. De har heller ikke lav fart.
+  - Hverken lengde eller fartsulikhet gir et tydelig skille på korrekt klassifisering.
 
 
-### Feltskifte
+## Feltskifte
 Ved felskifte akkurat over sensorene blir det delvis passering av sløyfene.
 
 
-#### Ev 6 Skullerud
+### Ev 6 Skullerud
 Egenskaper:
 
--   God flyt i trafikken, noe saktegående i felt 2.
--   Normal frekvens på alle sløyfer.
--   Muligens en del feltskifte.
+  - God flyt i trafikken, noe saktegående i felt 2.
+  - Normal frekvens på alle sløyfer.
+  - Muligens en del feltskifte.
 
 ```{r skullerud, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_skullerud)
@@ -683,37 +445,71 @@ plot_all_in_one(vbv_skullerud)
 
 Vurdering:
 
--   
+  - Noen ganske lange kjøretøy har veldig høy fart i felt 4. Dette virker lite troverdig. Det skyldes kanskje delvis passering. Her ser fartsulikhet til å være en god indikator på det. 
 
 
-# Eksempler på data fra EMU3
-For EMU3 må vi ta hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for speed_quality:
+# Analyse av data fra EMU3
+For EMU3 må vi ta hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for fartulikhet:
 
-- Før 25. januar 2017: qspeed-grense på 25 %, men vi brukte den ikke. Alle qspeed-verdier fra EMU3 før dette er manglende ("null"). Fra denne datoen begynte noen å få verdi.
+- Før 25. januar 2017: fartsulikhetsgrensen var programmert til 25 % i firmware, men den ble ikke benyttet til kontroll. Alle fartsulikhetsverdier fra EMU3 før dette er manglende ("null"). Fra denne datoen ble de første EMU3 oppgradert til ny firmwareversjon og de første punktene begynte å få verdi.
 
-Problem: kontrollen setter alle lengder ugyldig siden qspeed er "nøll", og den er jo nettopp det for tidligere fw-versjoner. HMmm. Er den delen av kontrollen utilsiktet? Vi har jo ikke full fw-historikk, så spørsmålet er om vi bare skal være strenge med data fra nyeste versjonene?
+Problemstilling: kontrollen setter alle lengder ugyldig når fartsulikhet er manglende, og den er jo nettopp det for tidligere fw-versjoner. Når alle data for et punkt reberegnes, vil alle lengder fra denne første tiden settes som ugyldig, og det blir jo feil. Dagens kontroller er ikke firmwarespesfikke, men de reviderte må ta hensyn til dette. Spørsmålet er om vi bare skal være strenge med data fra nyeste versjonene?
 
-- Januar 2017: grensen ble endret fra 25 % til 3 % i Secondary 2.11.10, som kom et drøyt år før 1.0-versjonen for samlet firmwarepakke. Men denne inneholdt en feil som gjorde at grensen var 3 % på felt 5-8 og 25 % på felt 1-4.
+- Januar 2017: grensen ble endret fra 25 % til 3 % i Secondary 2.11.10. Denne kom et drøyt år før 1.0-versjonen for samlet firmwarepakke. Men denne inneholdt en feil som gjorde at grensen var 3 % på felt 5-8 og 25 % på felt 1-4.
 
-- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %. Den første samlede fw-pakken var 1.01, og den hadde 2.17.4. Noen tidligere varianter av usamlet fw hadde 2.17.4, men ingen andre med secondary på 2.17.x.
+- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %. Den første samlede fw-pakken var 1.01, og den hadde 2.17.4. Noen tidligere varianter av usamlet fw hadde 2.17.4, men ingen andre med secondary på 2.17.x. Det betyr at kun firmware med "*Secondary=2.17.4*" eller "*1.0x*" har hatt grensen på 3 % på alle felt. Og det er først da vi kan ha en konsistent kontroll.
 
-Det betyr at kun firmware med "*Secondary=2.17.4*" eller "*1.0x*" har hatt grensen på 3 % på alle felt.
 
-Dagens kontroller er ikke firmwarespesfikke, men de reviderte må ta hensyn til dette.
-
+## Punkter med lav datakvalitet
 Den første stasjonen med en EMU3 var 1500018 Flote som ble igangsatt 23. juli 2015. Her ble det byttet til LM i desember 2015. Den første stasjonen som fortsatt har EMU3 er 1500028 Valldal (like ved Trollstigen, så trafikken kan variere en god del).
 
 Må finne ut om lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
 
+Firefeltsveg:
 
-### Ev 39 Øysand
-Teststrekningen har tre sløyfesett (F05, F07, F09) plassert rett etter hverandre. Dermed kan den samme trafikken sammenlignes på ulike dataloggere og firmwareversjoner.
+  - Ev 39 Somaveien
+  - Ev 39 Jåtten
+  - Ev 6 Leirelva bru
+  - Ev 6 Furuset N
+  - Ev6 Klemetsrud
+
+Lav lengdekvalitetsgrad i ÅDT:
+
+  - TODO
+
+
+## Sløyfer med ulik frekvens
+
+
+## Lav frekvens på alle sløyfer
+
+
+## Brudd eller dårlig koblet sløyfe
+
+
+## Saktegående trafikk
+
+
+## Feltskifte
+
+
+## Samme punkt, ulik firmware
+Har måleverdiene endret seg med firmware.
+
+
+## Samme punkt, ulik datalogger
+Har måleverdiene endret seg ved bytte av datalogger (samme sløyfer)
+
+
+
+# Sammenligning av LM og EMU3
+Teststrekningen på Ev 39 ved Øysand har tre sløyfesett (F05, F07, F09) plassert rett etter hverandre. Dermed kan den samme trafikken sammenlignes på ulike dataloggere og firmwareversjoner.
 
 I felt 2 på F05 har en av sløyfene lavere frekvens enn normalt, og for LM gir dette typisk noe lengre lengder enn de samme målingene i felt 2 på F07 og F09.
 
 
-#### Generell fordeling av lengdemålinger
-Data fra uke 23, 2021, mandag 7. juni - onsdag 9. juni:
+## Generell fordeling av lengdemålinger
+Analyse av data fra uke 23, 2021, mandag 7. juni - onsdag 9. juni. Følgende oppsett for sløyfesett, datalogger og firmware:
 
 - F05: LM 1.14.419
 - F07: EMU3 1.04
@@ -748,9 +544,9 @@ oysand_2021w23 %>%
   plot_ecdf("Øysand, 9. juni 2021")
 ```
 
-Resultatene er konsistente over disse tre dagene, og viser at EMU3 måler noe lengre lengder enn LM.
+Resultatene er konsistente over disse tre dagene, og viser at EMU3 måler noe lengre lengder enn LM i felt 1. I felt 2 måler LM noe lengre lengder, men dette skyldes nok at den ene sløyfa der er litt dårlig.
 
-Tilsvarende kvantilplott.
+Ser på tilsvarende kvantilplott.
 
 ```{r oysand_qq_1}
 oysand_2021w23 %>%
@@ -770,17 +566,30 @@ oysand_2021w23 %>%
   plot_qq("Øysand, 9. juni 2021")
 ```
 
+Også her vises klart at LM på F05 har lengre lengder i felt 2. Ellers er det ganske likt.
 
-Sammenligner i samme plott hvordan lengdeklassifiseringen er.
 
-```{r oysand_compare}
+## Sammenligning av flere måleverdier
+Ser på data fra tre dager i juni og sammenligner per felt.
+
+```{r oysand_compare_1, fig.height=12, fig.width=8}
 oysand_2021w23 %>%
-  dplyr::filter(weekday == "mandag") %>% 
-  ggplot(aes(qspeed, length, color = name_and_datalogger)) +
-  geom_point() +
-  facet_grid(rows = vars(lane)) +
-  theme_minimal()
+  dplyr::filter(lane_number == "felt 1") %>%
+  plot_all_in_one()
 ```
+
+
+```{r oysand_compare_2, fig.height=12, fig.width=8}
+oysand_2021w23 %>%
+  dplyr::filter(lane_number == "felt 2") %>%
+  plot_all_in_one()
+```
+
+Grovt sett er det veldig likt. Fartsulikhet virker ikke å være noen god indikator på data med lav kvalitet verken for EMU3 eller LM.
+
+## Lengdeklassifisering
+Hvordan påvirkes lengdeklassifiseringen av at dataloggerne har litt ulike lengder?
+
 
 ```{r oysand_bars_2021_06_07}
 oysand_2021w23_agg_length_class_full %>% 
@@ -821,19 +630,11 @@ oysand_2021w23_agg_length_class_2 %>%
 
 
 
-```{r oysand_all_emu, fig.height=12, fig.width=8}
-oysand_2021w23 %>%
-  dplyr::filter(weekday == "mandag",
-                name_and_datalogger == "EMU_f07") %>% 
-  plot_all_in_one()
+```{r heavy_ratio, fig.height=4, fig.width=8}
+plot_heavy_ratio(oysand_2021w23_agg_length_class_2_heavy_ratio)
 ```
 
-```{r oysand_all_lm_f09, fig.height=12, fig.width=8}
-oysand_2021w23 %>%
-  dplyr::filter(weekday == "mandag",
-                name_and_datalogger == "LOOP_MONITOR_f09") %>% 
-  plot_all_in_one()
-```
+Tendensen er at EMU3 har større andel tunge kjøretøy. Det er også her tydelig hvordan feilen på den ene sløyfa på F05 gir større andel i felt 2.
 
 
 ### Sammenligning av kjøretøy mot kjøretøy
@@ -847,6 +648,8 @@ plot_vbv_data(EMU3_F05, 1, "Forskjell i registrert lengde mellom EMU3 (F05) og L
 plot_vbv_data(EMU3_F05, 2, "Forskjell i registrert lengde mellom EMU3 (F05) og LM (F09)")
 ```
 
+Også for EMU3 blir det lengre lengder i felt 2 på F05. De som har underkjent lengde hos EMU3 her kommer for det meste av at fartsulikhetsverdien er ulik 0.
+
 Med data fra 27. mars 2020 er lengdemålingene sammenlignet mellom EMU3 på F07 (1.04) og LM på F09 (1.14.414).
 
 
@@ -858,100 +661,50 @@ plot_vbv_data(EMU3_F07, 1, "Forskjell i registrert lengde mellom EMU3 (F07) og L
 plot_vbv_data(EMU3_F07, 2, "Forskjell i registrert lengde mellom EMU3 (F07) og LM (F09)")
 ```
 
-## Samme punkt, ulik firmware
+Det er gjennomgående litt avvik på lengdemålingene til de to dataloggerne. Fartsulikhet, som fører til underkjent lengde, gir ikke noe tydelig skille på hvor like (gode) lengdemålingene er.
 
 
-## Samme punkt, ulik datalogger
+# Oppsummering og konklusjon
+Oppsummering av analysene og forslag til endring av kontroller.
 
 
-## Ulike punkt, samme firmware
-Punkter som antas å ha samme trafikk
+## Oppsummering for LM
+
+**Ulik frekvens på sløyfer**
+
+Selv om ulik frekvens på sløyfer gir høyere verdier på fartsulikhet, ser både lengde- og fartsmålinger helt greie ut. På Øysand ser det ut til at lengdene blir noe lengre, men ikke av særlig betydning. 
+
+Bruk av fartsulikhet som indikator på lav datakvalitet er ikke hensiktsmessig i dette tilfellet.
 
 
-## Punkter med mange underkjente
-Firefeltsveg:
+**Lav frekvens på alle sløyfer**
 
--   Ev 39 Somaveien
--   Ev 39 Jåtten
--   Ev 6 Leirelva bru
--   Ev 6 Furuset N
--   Ev6 Klemetsrud
-
-Lav lengdekvalitetsgrad i ÅDT:
-
--   TODO
-
-Finn alle punkter med EMU3 i dataloggerhistorikk.
-
-Skal vi fjerne qspeed-kontrollen fra EMU3?
+Lav frekvens på alle sløyfer gir mange korte lengder. Fartsulikhet skiller ikke på målinger med vanlige lengder og de under 2 m eller over 27 m. En nærmere undersøkelse av de korte kjøretøyene bør gjennomføres for å sjekke om klassifiseringen er god.
 
 
-## Feilsituasjoner
-Forhold som forårsaker dårlig lengdemåling:
+**Kø**
 
--   akselerasjon (ramper)
-
--   sidestilt passering av sløyfe (flerfeltsveg, sving, kryss)
-
--   dårlig sløyfe (unøyaktig geometri, dårlig kobling)
-
-Typisk at ett av disse forholdene forekommer systematisk over tid for en TRP. Akselerasjon og sidestilt passering kan forekomme veldig sjelden der det ellers ikke er et problem.
+Gir både en del lengder 1,2-2 m, og 20-29 m. Mange feilklassifiseres som motorsykkel.
 
 
-# Analyse
+**Delvis passering av sløyfer**
+
+Gir stor andel 1,2-2 m selv med fart godt over 15 km/h. Mange feilklassifiseres som motorsykkel.
 
 
-## Loop Monitor
-Her oppsummeres resultatene.
+**Feil på sløyfe**
 
-### Ulik frekvens på sløyfer
-Selv om ulik frekvens på sløyfer gir høyere verdier på qspeed, ser både lengde- og fartsmålinger helt greie ut. Bruk av qspeed som indikator på lav datakvalitet er derfor ikke hensiktsmessig.
+Dersom en av to sløyfer i samme kjørefelt er ødelagt (frakoblet e.l.) blir det mange lengder på 29 m.
 
 
-### Lav frekvens på alle sløyfer
-Speed quality skiller ikke på målinger med vanlige lengder og de under 2 m eller over 27 m. Her skulle vi sett nærmere på de korte kjøretøyene og funnet ut om disse er feil eller MC.
+### Konklusjon for LM
+Etter å ha sett på mye data i Kibana (visualisering "Ukjent lengde histogram"), viser det seg at kontrollene som underkjenner lengdemålingene fordeler seg som følger:
 
-
-### Klassifisering
-Klare vi skille ut fakiske motorsykler? Er alle lengder under 2 m faktiske lette kjøretøy?
-
-
-### Typiske lengder som blir underkjent
-
--   Lengder mellom 1 og 2 m forekommer relativt hyppig blant de underkjente, og fanges opp av qspeed-kontrollen. **Kan vi tro alle disse er LETTE?**
--   Øvrig lengdefordeling fra 2,5 m og oppover ligner veldig på den for godkjente lengder.
-
-
-### Typiske steder med høy andel ukjente
-
--   Flerfeltsveg, pga. feltskifte?
--   Kø, dvs. nære kryss og trafikklys o.l.
--   Svinger, dvs. nære kryss.
--   Ramper, stor endring i fart.
-
-
-#### Kø
-Gir både en del lengder 1,2 - 2 m, og 20-29 m. Mange feilklassifiseres som MC.
-
-
-#### Delvis passering av sløyfer
-Gir stor andel 1,2 - 2 m selv med fart godt over 15 km/h.
-
-
-#### Feil på sløyfe
-Dersom en av to sløyfer er ødelagt (frakoblet e.l.) blir det mange 29 m.
-
-
-### Sammenheng med klassifisering og fart
-Foreløpige funn:
-
--   Det er en del lengder mellom 1 og 2 m som har underkjent klasse, men fart over 7 km/h - disse er slått ut av signalkodekontrollen.
--   Lengde 29 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy qspeed.
--   Alle med lengde under 1 m har fart under 7 km/h, så de får også underkjent fart av den kontrollen. De aller fleste her har klasse 10 eller 11.
-
-
-### Revidert kontrollsett for LM
-Se på klasse og lengde. Hvilke verdier hører sammen? (Fasiten på det ligger kanskje i kjøretøyregisteret?) Dersom klasse og lengde er samhørende, burde vi stole på lengden selv om qspeed sier det motsatte? Hvilken er mest til å stole på - klasse eller lengde?
+  - Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne kontrollen.
+  - Lengde utenfor (1, 27) m: noen få utslag av denne kontrollen.
+  - **Qspeed større enn 3: de fleste utslagene skyldes denne kontrollen.**
+  - Det er en del lengder mellom 1 og 2 m som har underkjent klasse, men fart over 7 km/h - disse er slått ut av signalkodekontrollen.
+  
 
 Nytt kontrollsett:
 
@@ -962,26 +715,13 @@ Nytt kontrollsett:
 -   **Klassekode 10, 11 eller tom** gir underkjent klasse (sjekk om dette er implementert slik)
 -   **Qspeed over 25** gir underkjent fart og lengde (**ny kontroll**, dvs. ny grenseverdi).
 
+Resultatene av denne undersøkelsen viser at vi må justere enkelte kontroller. Det er kontrollene som benytter fartsulikhet vi må endre, dvs. øke grenseverdien får når fartsulikhet fører til underkjent lengde og klassifisering. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengde- og kjøretøyklassifisering enn det vi gjør i dag.
+
 
 ## EMU3
-Foreløpig forslag til revisjon:
 
--   qspeed = *null* skrotes (var aldri ment å skulle gjelde?). Vil føre til at "alle" lengder fra fw tidligere enn de nevnt nedenfor blir godkjent. Må verifiseres at dette er rimelig.
-
--   qspeed-kontroll gjelder kun for fw med konsistent verdi for qspeed (s2.17.4 og 1.0x)
-
-
-# Konklusjon
-
-Etter å ha sett på mye data i Kibana (visualisering "Ukjent lengde histogram"), viser det seg at kontrollene som underkjenner lengdemålingene fordeler seg som følger.
-
-LM:
-
-  - Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne kontrollen.
-  - Lengde utenfor (1, 27) m: noen få utslag av denne kontrollen.
-  - **Qspeed større enn 3: de fleste utslagene skyldes denne kontrollen.**
-
-EMU3:
+  
+Hvilke kontroller underkjenner lengder:
 
   - Fart under 7 km/h:
     <p style="color:red">TODO</p>
@@ -992,11 +732,38 @@ EMU3:
   - Speed_quality ≠ 0:
     <p style="color:red">TODO</p>
 
-## LM
-Resultatene av denne undersøkelsen viser at vi må justere enkelte kontroller. Det er kontrollene som benytter qspeed vi må endre, dvs. øke grenseverdien får når qspeed fører til underkjent lengde og klassifisering. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengde- og kjøretøyklassifisering enn det vi gjør i dag.
-
-Enkelte situasjoner fører til for lav kvalitet på lengdemålingene og disse bør i størst mulig grad fanges opp av kvalitetskontrollene. Dette gjelder i hovedsak der hvor det er kø, delvis passeringer eller feil på sløyfer.
-
-
-## EMU3
 [Analyse pågår.]
+
+
+### Konklusjon for EMU3
+Foreløpig forslag til revisjon:
+
+  - qspeed = *null* skrotes (var aldri ment å skulle gjelde?). Vil føre til at "alle" lengder fra fw tidligere enn de nevnt nedenfor blir godkjent. Må verifiseres at dette er rimelig.
+  - fartsulikhet-kontroll gjelder kun for fw med konsistent verdi for fartsulikhet (s2.17.4 og 1.0x)
+  
+
+## Øvrige konklusjoner
+Dataloggerne  bruker noen standardverdier for enkelte kjøretøyregistreringer:
+
+LM:
+
+  -	Manglende lengde: settes når farten er under 7 km/h.
+  -	1,2 m: minimumslengde på signal som blir tolket som motorsykkel, men har usikker lengde pga. ikke-perfekt signalforløp.
+  -	1,95 m: minimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp.
+  -	29 m: maksimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp. Denne kan også inntreffe dersom lastebil passerer med en personbil liggende tett bak.
+
+EMU3:
+
+  -	1,25 m: minimumslengde for kjøretøy generelt. Usikre lengdemålinger som blir kortere, får automatisk satt lengden til 1,25 m. De fleste klassifiseres som motorsykkel, men også noen biler får denne lengden. Opptrer typisk i forbindelse med delvis passering.
+  
+**Klassifisering av motorsykler**
+
+Det virker vanskelig å klassifisere motorsykler. Fra før vet vi at mange motorsykler "unnslipper" sløyfene ved å plassere seg for langt ut i kanten av kjørefeltet. I tillegg oppstår det mange falske motorsykler ved feltskifte og lav fart. En vurdering av om klassifisering av motorsykler er god nok må gjøres for hvert punkt.
+
+**Gjenstående analyser**:
+
+  - Hva er korrekt klassifisering av kjøretøy som får målt lengde under 2 m. Er alle disse lette kjøretøy?
+  - Lengde på 29 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy fartsulikhet.
+  - Finn ut om signalkodekontrollen til LM skal slå ut på lengde også.
+  - Er det mulig å avdekke sensorproblemer ut fra lengdeverdier?
+  
