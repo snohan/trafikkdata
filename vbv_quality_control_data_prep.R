@@ -4,7 +4,6 @@ source("trafficdata_functions.R")
 # LM vbv feb 2020 ----
 ## Vbv data exported from Kibana
 
-# TODO: change column name to vehicle_type_raw
 vbv_data_asker <-
   read_kibana_vbv("vbv_data/asker.csv")
 vbv_data_soyland <-
@@ -29,6 +28,18 @@ vbv_f05 <-
   read_kibana_vbv("vbv_data/oysand_f05.csv")
 vbv_skullerud <-
   read_kibana_vbv("vbv_data/skullerud.csv")
+
+# EMU3 vbv aug 2021
+vbv_strandgata <-
+  read_kibana_vbv("vbv_data/strandgata.csv")
+vbv_somaveien <-
+  read_kibana_vbv("vbv_data/e39_somaveien.csv")
+vbv_festningsgata <-
+  read_kibana_vbv("vbv_data/festningsgata.csv")
+vbv_ovre_sund_bru <-
+  read_kibana_vbv("vbv_data/ovre_sund_bru.csv")
+vbv_tastatorget  <-
+  read_kibana_vbv("vbv_data/tastatorget.csv")
 
 # Øysand June 2021 ----
 trp_oysand <- tibble::tibble(trp_id = c("23531V72241",

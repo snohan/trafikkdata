@@ -368,7 +368,7 @@ write.csv2(trs_plural, file = "stasjoner_med_flere_punkt.csv",
 
 
 # TRS with TRP and lanes ----
-trs_trp_lanes <- get_trs_trp_lanes_httr()
+trs_trp_lanes <- get_trs_trp_lanes()
 
 write.csv2(trs_trp_lanes, file = "trs_trp_lanes.csv",
            row.names = F)
@@ -588,3 +588,24 @@ virtual_trps_with_aadt <- trs_with_trp_per_direction %>%
 
 writexl::write_xlsx(virtual_trps_with_aadt,
                     path = "adt_rapporter/virtuelle_punkter_fra_delretning.xlsx")
+
+
+# TRP with lanes and fw ----
+# OBS! lanes from last commission, so not always correct with former fw
+trp_lanes_fw <- firmware_history %>%
+  dplyr::left_join(trs_and_trp_id, by = c("trs_id")) %>%
+  dplyr::left_join(trp_tidy, by = c("trp_id")) %>%
+  dplyr::filter(trs_status == "OPERATIONAL",
+                trs_type == "CONTINUOUS",
+                traffic_type == "VEHICLE") %>%
+  dplyr::select(trs_id, trs_name,
+                trp_id, trp_name = name,
+                road_reference,
+                lanes,
+                county_name, municipality_name,
+                device_name,
+                fw_version = firmware_version,
+                fw_valid_from = valid_from
+                )
+
+writexl::write_xlsx(trp_lanes_fw, path = "trs_trp/trp_lanes_fw.xlsx")

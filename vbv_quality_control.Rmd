@@ -481,6 +481,24 @@ Lav lengdekvalitetsgrad i ÅDT:
 ## Sløyfer med ulik frekvens
 
 
+### Ev 39 Tastatorget
+
+Egenskaper: 
+
+  - To felt, adskilt med dobbel sperrelinje.
+  - Omtrent 20 kHz i forskjell i begge felt.
+  - Tidvis lav fart i felt 2.
+  
+```{r tastatorget, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_tastatorget)
+```
+
+Vurdering:
+
+  - Lav fart i felt 2. Her er også andel tunge høy, 20 % på mandag, og 14 % på søndag.
+  - Felt 1 har grei fart. Andel tunge på 10 % på mandag og 6 % på søndag.
+  
+
 ## Lav frekvens på alle sløyfer
 
 
@@ -489,17 +507,96 @@ Lav lengdekvalitetsgrad i ÅDT:
 
 ## Saktegående trafikk
 
+### Fv 1758 Strandgata
+Egenskaper:
 
+  - To felt
+  - 10 - 60 km/h
+  - Tidvis saktegående trafikk
+  - Alle fire sløyfer har litt høy frekvens på ca. 100 kHz
+
+```{r strandgata, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_strandgata)
+```
+
+Vurdering:
+
+  - Høy andel fartsulikhet forskjellig fra 0, men det er ingen god indikasjon på lav datakvalitet.
+  - En del kjøretøy som blir målt til under 1 m. Fartsulikhet er ingen god indikator på disse.
+  - Noen tilfeller av negativ fartsulikhet.
+  - Andel tunge stabilt rundt 3 %.
+  
+  
+### Fv 484 Festningsgata (Kristiansand)
+
+Egenskaper:
+
+  - Fem felt.
+  - Mye saktegående trafikk, spesielt i felt 1 og 3.
+  
+```{r festningsgata, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_festningsgata)
+```
+
+Vurdering:
+
+  - Ser ut til at lange kjøretøy ikke kan få lav fart!
+  - En del lengder under 2 m.
+  - Stor andel fartsulikhet forskjellig fra null, men det er ingen god indikator på lav datakvalitet.
+  - Andel tunge rundt 15 %.
+  
+
+### Fv 283 Øvre Sund bru
+
+Egenskaper:
+
+  - Fire felt.
+  - Nært kryss, mye lav fart i felt 1 og 3.
+  - Kan være en del feltskifte i felt 2 og 4.
+  - Grei frekvens på alle sløyfer.
+  
+```{r ovre_sund_bru, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_ovre_sund_bru)
+```
+  
+Vurdering:
+
+  - Felt 1 og 3 har andel tunge på 7,7 %, mens felt 2 og 4 har 5,2 %.
+  - Noen korte kjøretøy i alle felt.
+  - Andel tunge er på samme nivå i begge retninger.
+  
+  
+  
+  
 ## Feltskifte
+
+### Ev39 Somaveien
+Egenskaper:
+
+  - Fire felt.
+  - 40 - 140 km/h.
+  - Tidvis noe saktere trafikk, men ikke stillestående.
+  - Antar noe feltskifte.
+  
+  
+```{r soma, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_somaveien)
+```
+
+Vurdering:
+
+  - Greit fartsnivå. En del tilfeller med positiv fartsulikhet forskjellig fra 0, men dette synes ikke å være noen god indikator på lav datakvalitet.
+  
 
 
 ## Samme punkt, ulik firmware
-Har måleverdiene endret seg med firmware.
+Har måleverdiene endret seg med firmware?
 
 
 ## Samme punkt, ulik datalogger
-Har måleverdiene endret seg ved bytte av datalogger (samme sløyfer)
+Har måleverdiene endret seg ved bytte av datalogger (samme sløyfer)?
 
+Elgeseter gate ved Abels gate
 
 
 # Sammenligning av LM og EMU3

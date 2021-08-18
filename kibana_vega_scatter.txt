@@ -1,0 +1,34 @@
+{
+  $schema: "https://vega.github.io/schema/vega-lite/v2.json"
+  title: "Fartsulikhet og lengde"
+  data: {
+    url: {
+      %context%: true
+      %timefield%: event_timestamp
+      index: traffic_event_vehicle_*
+      body: {
+        size: 10000,
+        _source: ["event_timestamp", "qspeed", "length", "vehicle_type_raw"]
+      }
+    }
+    format: {property: "hits.hits"}
+  }
+  mark: point
+  encoding: {
+    x: {
+      field: _source.qspeed
+      type: quantitative
+      axis: {title: "Fartsulikhet"}
+    }
+    y: {
+      field: _source.length
+      type: quantitative
+      axis: {title: "Lengde"}
+    }
+     color: {
+      field: _source.vehicle_type_raw
+      type: nominal
+      legend: {title: "Klasse"}
+    }
+  }
+}
