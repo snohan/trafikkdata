@@ -101,7 +101,9 @@ lane_order <- c("felt 7", "felt 5", "felt 3", "felt 1",
 # vbv read ----
 read_kibana_vbv <- function(vbv_file) {
   read_csv2(vbv_file) %>%
-    dplyr::mutate(#lane = as.character(lane),
+    dplyr::mutate(
+      #lane = as.character(lane),
+      event_timestamp = with_tz(ymd_hms(event_timestamp, tz = "CET")),
       lane = paste0("felt ", lane),
       lane = factor(lane, levels = lane_order),
       vehicle_type_raw = as.character(vehicle_type_raw)) %>%
@@ -129,6 +131,16 @@ read_excelsheet <- function(filnavn, arknr) {
     make_length_classes()
 }
 
+# vbv aggregate ----
+calculate_heavy_ratio_from_vbv <- function(vbv_df) {
+
+  hr_df <- vbv_df %>%
+    dplyr::group_by(name_and_datalogger, weekday, lane, length_class_2) %>%
+    dplyr::summarise(volume = n()) %>%
+    dplyr::mutate(length_class_2 = if_else(length_class_2 == "[..,5.6)", "light", "heavy")) %>%
+    tidyr::pivot_wider(names_from = length_class_2, values_from = volume) %>%
+    dplyr::mutate(heavy_ratio = round(100 * heavy / (light + heavy), digits = 1))
+}
 
 # vbv plots ----
 norsikt_l3_colors <- c("MC_MP" = "#008ec2",

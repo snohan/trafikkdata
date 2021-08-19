@@ -1,5 +1,6 @@
 # Prepare data for the Rmd
 source("trafficdata_functions.R")
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 
 # LM vbv feb 2020 ----
 ## Vbv data exported from Kibana
@@ -40,6 +41,21 @@ vbv_ovre_sund_bru <-
   read_kibana_vbv("vbv_data/ovre_sund_bru.csv")
 vbv_tastatorget  <-
   read_kibana_vbv("vbv_data/tastatorget.csv")
+vbv_berkaak_lm  <-
+  read_kibana_vbv("vbv_data/berkaak_lm.csv") %>%
+  dplyr::mutate(weekday = lubridate::wday(event_timestamp,
+                                          label = TRUE,
+                                          abbr = FALSE),
+                 name_and_datalogger = "LM") %>%
+  make_length_classes()
+vbv_berkaak_emu  <-
+  read_kibana_vbv("vbv_data/berkaak_emu.csv") %>%
+  dplyr::mutate(weekday = lubridate::wday(event_timestamp,
+                                          label = TRUE,
+                                          abbr = FALSE),
+                name_and_datalogger = "EMU") %>%
+  make_length_classes()
+
 
 # Øysand June 2021 ----
 trp_oysand <- tibble::tibble(trp_id = c("23531V72241",
@@ -100,3 +116,6 @@ data_interval <-
 EMU3_F05 <- read_excelsheet("vbv_data/oysand_comparisons/emu3_unknown_length.xlsx", 1)
 EMU3_F07 <- read_excelsheet("vbv_data/oysand_comparisons/emu3_unknown_length.xlsx", 2)
 
+# Heavy ratios ----
+berkaak_hr <- dplyr::bind_rows(vbv_berkaak_lm, vbv_berkaak_emu) %>%
+  calculate_heavy_ratio_from_vbv()

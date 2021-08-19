@@ -591,12 +591,43 @@ Vurdering:
 
 ## Samme punkt, ulik firmware
 Har måleverdiene endret seg med firmware?
-
+Hafstad
+Eidet bru
+Gjemble
+Kyrksæterøra
 
 ## Samme punkt, ulik datalogger
 Har måleverdiene endret seg ved bytte av datalogger (samme sløyfer)?
 
-Elgeseter gate ved Abels gate
+Elgeseter gate ved Abels gate (kø) bare veldig gammel EMU-fw
+Brekktunnelen (tunnel)
+Garli (sentrisk)
+Berkåk januar 2020 (grei flyt?) 8.1 emu 16.1 lm
+Krokstadøra N (?)
+Heimdalsmyra (feltskifte?)
+
+### Ev 6 Berkåk
+
+Egenskaper:
+
+  - To felt.
+  - Fart 20 - 80 km/h. (Nære Stavåbrua som hadde redusert fart)
+  
+Sammenligning av andel tunge kjøretøy før og etter bytte av datalogger på Berkåk. For EMU3 er data hentet fra 6. - 8. januar 2020 og for LM er det 20. - 22. januar 2020.
+
+```{r berkaak_heavy_ratio, fig.height=4, fig.width=8}
+berkaak_hr %>% 
+  dplyr::rename(lane_number = lane) %>% 
+  plot_heavy_ratio()
+```
+
+Siden data er fra ulike uker, kan andel tunge avvike noe. Men her er det rimelig likt nivå disse tre dagene.
+
+
+
+
+Sammenlign andel tunge før og etter 
+Sammenlign lengdefordeling med andre punkter i nærheten
 
 
 # Sammenligning av LM og EMU3
@@ -734,7 +765,7 @@ plot_heavy_ratio(oysand_2021w23_agg_length_class_2_heavy_ratio)
 Tendensen er at EMU3 har større andel tunge kjøretøy. Det er også her tydelig hvordan feilen på den ene sløyfa på F05 gir større andel i felt 2.
 
 
-### Sammenligning av kjøretøy mot kjøretøy
+## Sammenligning av kjøretøy mot kjøretøy
 Med data fra 12. april 2021 er lengdemålingene sammenlignet mellom EMU3 på F05 (1.04) og LM på F09 (1.14.419).
 
 ```{r vbv_1}
