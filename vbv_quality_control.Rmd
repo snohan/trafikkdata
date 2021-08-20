@@ -39,7 +39,7 @@ Kvalitetskontrollene deles inn i to sett, og gjelder for enten
   - alle dataloggertyper, eller
   - hver spesifikk dataloggertype (og firmwareversjon).
   
-Hensikten med kontrollene er å merke data som har for lav kvalitet. Utgangspunktet er at alle data er av god nok kvalitet dersom de ikke faller utenfor krav som stilles i kontrollene. 
+Hensikten med kontrollene er å merke data som har for lav kvalitet til alle normale formål (verdier som er helt feil). Utgangspunktet er at alle data er av god nok kvalitet dersom de ikke faller utenfor krav som stilles i kontrollene. 
   
 I dette dokumentet er det kun data fra registreringer av motorkjøretøy som er omtalt. Det omfatter kun to dataloggertyper: Loop Monitor (LM) og EMU3.
 
@@ -69,7 +69,7 @@ For **LM** gjelder følgende:
 
   - Fart og lengde er ugyldig dersom:
     - ::: {style="color:green"}
-      Fartsulikhet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. (Endret i mars 2020 fra 3 % / 3 km/h.)
+      Fartsulikhet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. (Endret i mars 2020 fra 3 % / 3 km/h.) 
       :::
     - Fartsulikhetsverdien mangler.
     - Fartsverdien mangler.
@@ -88,9 +88,11 @@ For **EMU3** gjelder følgende:
 
   - Fart, lengde og klassifisering er ugyldig dersom:
     - ::: {style="color:red"}
-      Fartsulikhet ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE).
+      Fartsulikhet\*\* ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE). 
       :::
     - Fartsulikhetsverdien mangler.
+
+\*\*Fartsulikhet for EMU3 er basert på absolutt avvik i fart mellom de to sløyfene, men er omgjort til en boolsk parameter ved en angitt grenseverdi som er hardkodet i firmware.
 
 
 ## Analysens formål
@@ -100,7 +102,7 @@ Denne analysen tar ikke for seg deteksjonsgraden av antall kjøretøy, men er ko
 
 
 # Metode
-Det antas at kvaliteten på fartsmålingene henger nøye sammen med kvaliteten på lengdemålingene. Det er kjøretøylengden vi kan finne fasit på i Kjøretøyregisteret, så derfor er lengden i fokus for denne analysen. Kjøretøyregisteret er også fasit for kjøretøyklassifiseringen.
+Analysen gjennomføres ved å se på et representativt utvalg data fra Trafikkdatasystemet. Måleverdier for enkeltkjøretøy analyseres for hvert kjørefelt, og data fra et trafikkregistreringspunkt sammenlignes over tid. Aggregerte data for lengde- og kjøretøyklasse sammenlignes.
 
 
 ## Feilsituasjoner
@@ -115,47 +117,45 @@ Lavere datakvalitet oppstår av ulike årsaker som grovt kan deles inn i tre kat
     - ingen frekvens (sløyfebrudd, ikke tilkoblet sløyfe eller dårlig koblet sløyfe, kortslutning)
     - sløyfene lagt med feil dimensjon (systematisk feilkilde)
   - Delvis passering av sløyfer
-  - Saktegående eller stillestående trafikk (lav fart)
+  - Saktegående eller stillestående trafikk
   - Høy akselerasjon, typisk på ramper (fartsulikhet)
   
 De ulike feilsituasjonene kan gi opphav til ekstreme måleverdier som avslører lav datakvalitet:
 
   - Lengde utenfor (1, 27) m
   - Fart under 7 km/h
-  - Speed quality 
+  - Fartsulikhet
     - over 3 for LM
     - ulik 0 for EMU3
     
-Måleverdier som er innenfor grenseverdiene kan også være feil, men det er vanskeligere å avsløre. Denne analysen fokuserer på å finne de grenseneverdiene som passer best til våre krav om datakvalitet.
+Måleverdier som er innenfor grenseverdiene kan også være feil, men det er vanskeligere å avsløre. Denne analysen fokuserer på å finne de grenseverdiene som best passer våre krav til datakvalitet.
 
 
 ## Framgangsmåte
 For å gjennomføre analysen, gjøres følgende:
 
-  1. Finn et punkt med høy andel underkjente lengder
-  2. Beskriv stedlige forhold:
+  - Finn et punkt med høy andel underkjente lengder.
+  - Beskriv stedlige forhold:
     - antall felt
     - fartsnivå
     - sløyfestatus
     - trafikale forhold
-  4. Sannsynliggjør årsak til feil
-  5. Se på et utvalg av data for ett kjørefelt og finn eventuelle sammenhenger mellom lengde, klasse, fart og fartsulikhet
-  6. Vurder om grenseverdiene er fornuftige
+  - Sannsynliggjør årsak til feil.
+  - Se på et utvalg av data for ett kjørefelt og finn eventuelle sammenhenger mellom lengde, klasse, fart og fartsulikhet.
+  - Vurder om kontrollene er fornuftige.
   
   
 ## Delanalyser
+Relevante problemstillinger:
 
-  1. Hvilke kontroller underkjenner lengder?
-  2. Hvilke lengder blir underkjent?
-  3. Er det sammenheng i kvaliteten på kjøretøyklasse og lengde?
-  4. Lengde utenfor (1, 27) m: lengde ok?
-  6. Lengde utenfor (1, 27) m: klasse ok?
-  7. Fart under 7 km/h: lengde ok?
-  8. Fart under 7 km/h: klasse ok?
-  9. Fartsulikhet over 3 eller ulik 0: lengde ok?
-  10. Fartsulikhet over 3 eller ulik 0: klasse ok?
-  11. LM: forskjell i frekvens på \> 20 kHz - lengde ok?
-
+  - Hvilke kontroller underkjenner lengder?
+  - Hvilke lengder blir underkjent?
+  - Er det sammenheng i kvaliteten på kjøretøyklasse og lengde?
+  - Lengde utenfor (1, 27) m: lengde og klasse ok?
+  - Fart under 7 km/h: lengde og klasse ok?
+  - Fartsulikhet over 3 eller ulik 0: lengde og klasse ok?
+  - Forskjell i frekvens på \> 20 kHz - lengde og klasse ok?
+  
 
 # Analyse av data fra LM
 Denne analysedelen ble gjennomført i februar 2020. Endret kontrollsett for LM ble implementert da og alle tidligere data ble reberegnet innen april 2020.
@@ -588,23 +588,24 @@ Vurdering:
   - Greit fartsnivå. En del tilfeller med positiv fartsulikhet forskjellig fra 0, men dette synes ikke å være noen god indikator på lav datakvalitet.
   
 
-
 ## Samme punkt, ulik firmware
-Har måleverdiene endret seg med firmware?
-Hafstad
-Eidet bru
-Gjemble
-Kyrksæterøra
+Se om måleverdiene har endret seg med firmware:
+
+  - Hafstad
+  - Eidet bru
+  - Gjemble
+  - Kyrksæterøra
+  
+  
+
 
 ## Samme punkt, ulik datalogger
-Har måleverdiene endret seg ved bytte av datalogger (samme sløyfer)?
+Se om måleverdiene har endret seg ved bytte av datalogger (samme sløyfer):
 
-Elgeseter gate ved Abels gate (kø) bare veldig gammel EMU-fw
-Brekktunnelen (tunnel)
-Garli (sentrisk)
-Berkåk januar 2020 (grei flyt?) 8.1 emu 16.1 lm
-Krokstadøra N (?)
-Heimdalsmyra (feltskifte?)
+  - Elgeseter gate ved Abels gate (kø) bare veldig gammel EMU-fw
+  - Garli (sentrisk)
+  - Heimdalsmyra (feltskifte?)
+
 
 ### Ev 6 Berkåk
 
@@ -613,30 +614,89 @@ Egenskaper:
   - To felt.
   - Fart 20 - 80 km/h. (Nære Stavåbrua som hadde redusert fart)
   
-Sammenligning av andel tunge kjøretøy før og etter bytte av datalogger på Berkåk. For EMU3 er data hentet fra 6. - 8. januar 2020 og for LM er det 20. - 22. januar 2020.
+Først data fra 6.-8. januar 2020 med EMU3.
+  
+```{r berkaak_emu, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_berkaak_emu)
+```
 
-```{r berkaak_heavy_ratio, fig.height=4, fig.width=8}
-berkaak_hr %>% 
+```{r berkaak_lm, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_berkaak_lm)
+```
+
+Vurdering: 
+
+  - I januar er det neppe noen relle motorsykler her. De få som er klassifisert som motorsykler eller har fått kort lengde, kan komme av lav fart eller sentrisk kjøring.
+
+Videre sammenlignes andel tunge kjøretøy før og etter bytte av datalogger på Berkåk. For EMU3 er data hentet fra 6. - 8. januar 2020 og for LM er det 20. - 22. januar 2020.
+
+Først med lengde som grunnlag.
+
+```{r berkaak_hr_length, fig.height=4, fig.width=8}
+berkaak_hr_by_length %>% 
   dplyr::rename(lane_number = lane) %>% 
   plot_heavy_ratio()
 ```
 
-Siden data er fra ulike uker, kan andel tunge avvike noe. Men her er det rimelig likt nivå disse tre dagene.
+Så med kjøretøyklasse som grunnlag.
+
+```{r berkaak_hr_class, fig.height=4, fig.width=8}
+berkaak_hr_by_class %>% 
+  dplyr::rename(lane_number = lane) %>% 
+  plot_heavy_ratio()
+```
+
+Siden data er fra ulike uker, kan andel tunge avvike noe. Men her er det rimelig likt nivå disse tre dagene. Andelene basert på klasse ligger jevnt over noe lavere enn de basert på lengde, men forskjellen mellom dataloggerne er omtrent den samme.
 
 
+### Ev 39 Brekktunnelen
 
+Egenskaper:
 
-Sammenlign andel tunge før og etter 
-Sammenlign lengdefordeling med andre punkter i nærheten
+  - To felt.
+  
+EMU3.
 
+```{r brekktunnelen_emu, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_brekktunnelen_emu)
+```
 
-# Sammenligning av LM og EMU3
+LM.
+
+```{r brekktunnelen_lm, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_brekktunnelen_lm)
+```
+
+Videre sammenlignes andel tunge kjøretøy før og etter bytte av datalogger på Berkåk. For EMU3 er data hentet fra 27. - 29. januar 2020 og for LM er det 10. - 12. januar 2020.
+
+Først med lengde som grunnlag.
+
+```{r brekktunnelen_hr_length, fig.height=4, fig.width=8}
+brekktunnelen_hr_by_length %>% 
+  dplyr::rename(lane_number = lane) %>% 
+  plot_heavy_ratio()
+```
+
+Så med klasse som grunnlag.
+
+```{r brekktunnelen_hr_class, fig.height=4, fig.width=8}
+brekktunnelen_hr_by_class %>% 
+  dplyr::rename(lane_number = lane) %>% 
+  plot_heavy_ratio()
+```
+
+Vurdering:
+
+  - Andel tunge er veldig lik mellom EMU3 og LM. 
+  
+  
+## Øysand teststrekning
 Teststrekningen på Ev 39 ved Øysand har tre sløyfesett (F05, F07, F09) plassert rett etter hverandre. Dermed kan den samme trafikken sammenlignes på ulike dataloggere og firmwareversjoner.
 
 I felt 2 på F05 har en av sløyfene lavere frekvens enn normalt, og for LM gir dette typisk noe lengre lengder enn de samme målingene i felt 2 på F07 og F09.
 
 
-## Generell fordeling av lengdemålinger
+### Generell fordeling av lengdemålinger
 Analyse av data fra uke 23, 2021, mandag 7. juni - onsdag 9. juni. Følgende oppsett for sløyfesett, datalogger og firmware:
 
 - F05: LM 1.14.419
@@ -676,19 +736,19 @@ Resultatene er konsistente over disse tre dagene, og viser at EMU3 måler noe le
 
 Ser på tilsvarende kvantilplott.
 
-```{r oysand_qq_1}
+```{r oysand_qq_1, fig.height=7, fig.width=6}
 oysand_2021w23 %>%
   dplyr::filter(weekday == "mandag") %>% 
   plot_qq("Øysand, 7. juni 2021")
 ```
 
-```{r oysand_qq_2}
+```{r oysand_qq_2, fig.height=7, fig.width=6}
 oysand_2021w23 %>%
   dplyr::filter(weekday == "tirsdag") %>% 
   plot_qq("Øysand, 8. juni 2021")
 ```
 
-```{r oysand_qq_3}
+```{r oysand_qq_3, fig.height=7, fig.width=6}
 oysand_2021w23 %>%
   dplyr::filter(weekday == "onsdag") %>% 
   plot_qq("Øysand, 9. juni 2021")
@@ -697,25 +757,7 @@ oysand_2021w23 %>%
 Også her vises klart at LM på F05 har lengre lengder i felt 2. Ellers er det ganske likt.
 
 
-## Sammenligning av flere måleverdier
-Ser på data fra tre dager i juni og sammenligner per felt.
-
-```{r oysand_compare_1, fig.height=12, fig.width=8}
-oysand_2021w23 %>%
-  dplyr::filter(lane_number == "felt 1") %>%
-  plot_all_in_one()
-```
-
-
-```{r oysand_compare_2, fig.height=12, fig.width=8}
-oysand_2021w23 %>%
-  dplyr::filter(lane_number == "felt 2") %>%
-  plot_all_in_one()
-```
-
-Grovt sett er det veldig likt. Fartsulikhet virker ikke å være noen god indikator på data med lav kvalitet verken for EMU3 eller LM.
-
-## Lengdeklassifisering
+### Lengdeklassifisering
 Hvordan påvirkes lengdeklassifiseringen av at dataloggerne har litt ulike lengder?
 
 
@@ -755,8 +797,7 @@ oysand_2021w23_agg_length_class_2 %>%
   plot_length_class_bars(length_class_2, "Øysand, 9. juni 2021")
 ```
 
-
-
+Sammenligner andel tunge.
 
 ```{r heavy_ratio, fig.height=4, fig.width=8}
 plot_heavy_ratio(oysand_2021w23_agg_length_class_2_heavy_ratio)
@@ -765,7 +806,28 @@ plot_heavy_ratio(oysand_2021w23_agg_length_class_2_heavy_ratio)
 Tendensen er at EMU3 har større andel tunge kjøretøy. Det er også her tydelig hvordan feilen på den ene sløyfa på F05 gir større andel i felt 2.
 
 
-## Sammenligning av kjøretøy mot kjøretøy
+
+### Sammenligning av flere måleverdier
+Ser på data fra tre dager i juni og sammenligner per felt.
+
+```{r oysand_compare_1, fig.height=12, fig.width=8}
+oysand_2021w23 %>%
+  dplyr::filter(lane_number == "felt 1") %>%
+  plot_all_in_one()
+```
+
+
+```{r oysand_compare_2, fig.height=12, fig.width=8}
+oysand_2021w23 %>%
+  dplyr::filter(lane_number == "felt 2") %>%
+  plot_all_in_one()
+```
+
+Grovt sett er det veldig likt. Fartsulikhet virker ikke å være noen god indikator på data med lav kvalitet verken for EMU3 eller LM.
+
+
+
+### Sammenligning av kjøretøy mot kjøretøy
 Med data fra 12. april 2021 er lengdemålingene sammenlignet mellom EMU3 på F05 (1.04) og LM på F09 (1.14.419).
 
 ```{r vbv_1}

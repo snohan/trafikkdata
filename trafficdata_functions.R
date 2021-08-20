@@ -132,14 +132,30 @@ read_excelsheet <- function(filnavn, arknr) {
 }
 
 # vbv aggregate ----
-calculate_heavy_ratio_from_vbv <- function(vbv_df) {
+calculate_heavy_ratio_from_vbv_by_length <- function(vbv_df) {
 
   hr_df <- vbv_df %>%
     dplyr::group_by(name_and_datalogger, weekday, lane, length_class_2) %>%
     dplyr::summarise(volume = n()) %>%
-    dplyr::mutate(length_class_2 = if_else(length_class_2 == "[..,5.6)", "light", "heavy")) %>%
+    dplyr::mutate(length_class_2 =
+                    if_else(length_class_2 == "[..,5.6)",
+                            "light",
+                            "heavy")
+                  ) %>%
     tidyr::pivot_wider(names_from = length_class_2, values_from = volume) %>%
     dplyr::mutate(heavy_ratio = round(100 * heavy / (light + heavy), digits = 1))
+}
+
+calculate_heavy_ratio_from_vbv_by_class <- function(vbv_df) {
+
+  hr_df <- vbv_df %>%
+    dplyr::group_by(name_and_datalogger, weekday, lane, norsikt_l2) %>%
+    dplyr::mutate(norsikt_l2 = paste0("class_", norsikt_l2)) %>%
+    dplyr::summarise(volume = n()) %>%
+    tidyr::pivot_wider(names_from = norsikt_l2, values_from = volume) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(total_volume = sum(c_across(starts_with("class")), na.rm = TRUE),
+                  heavy_ratio = round(100 * class_HMV / total_volume, digits = 1))
 }
 
 # vbv plots ----
@@ -287,7 +303,7 @@ plot_ecdf <- function(df, subtitle_text) {
     ggplot(aes(length, color = name_and_datalogger)) +
     stat_ecdf(pad = FALSE,
               size = 1, alpha = 0.7) +
-    facet_grid(rows = vars(lane)) +
+    facet_grid(rows = vars(lane_number)) +
     theme_bw() +
     scale_color_brewer(
       palette = "Dark2",
@@ -304,7 +320,7 @@ plot_qq <- function(df, subtitle_text) {
 
   df %>%
     ggplot(aes(sample = length, color = name_and_datalogger)) +
-    facet_grid(rows = vars(lane)) +
+    facet_grid(rows = vars(lane_number)) +
     stat_qq(size = 1, alpha = 0.7) +
     theme_bw() +
     scale_color_brewer(
@@ -347,6 +363,11 @@ plot_heavy_ratio <- function(df) {
   df %>%
     ggplot(aes(x = weekday, y = heavy_ratio, fill = name_and_datalogger)) +
     ggplot2::geom_col(position = "dodge") +
+    geom_text(aes(label = paste0(heavy_ratio, " %"),
+                   y = 1),
+              color = "grey",
+              position = position_dodge(0.9),
+              vjust = 0) +
     facet_grid(rows = vars(lane_number)) +
     theme_minimal() +
     scale_fill_viridis_d(name = "Datalogger",

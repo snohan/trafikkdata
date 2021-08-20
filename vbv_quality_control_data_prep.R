@@ -48,8 +48,25 @@ vbv_berkaak_lm  <-
                                           abbr = FALSE),
                  name_and_datalogger = "LM") %>%
   make_length_classes()
+
 vbv_berkaak_emu  <-
   read_kibana_vbv("vbv_data/berkaak_emu.csv") %>%
+  dplyr::mutate(weekday = lubridate::wday(event_timestamp,
+                                          label = TRUE,
+                                          abbr = FALSE),
+                name_and_datalogger = "EMU") %>%
+  make_length_classes()
+
+vbv_brekktunnelen_lm  <-
+  read_kibana_vbv("vbv_data/brekktunnelen_lm.csv") %>%
+  dplyr::mutate(weekday = lubridate::wday(event_timestamp,
+                                          label = TRUE,
+                                          abbr = FALSE),
+                name_and_datalogger = "LM") %>%
+  make_length_classes()
+
+vbv_brekktunnelen_emu  <-
+  read_kibana_vbv("vbv_data/brekktunnelen_emu.csv") %>%
   dplyr::mutate(weekday = lubridate::wday(event_timestamp,
                                           label = TRUE,
                                           abbr = FALSE),
@@ -117,5 +134,14 @@ EMU3_F05 <- read_excelsheet("vbv_data/oysand_comparisons/emu3_unknown_length.xls
 EMU3_F07 <- read_excelsheet("vbv_data/oysand_comparisons/emu3_unknown_length.xlsx", 2)
 
 # Heavy ratios ----
-berkaak_hr <- dplyr::bind_rows(vbv_berkaak_lm, vbv_berkaak_emu) %>%
-  calculate_heavy_ratio_from_vbv()
+berkaak_hr_by_length <- dplyr::bind_rows(vbv_berkaak_lm, vbv_berkaak_emu) %>%
+  calculate_heavy_ratio_from_vbv_by_length()
+
+berkaak_hr_by_class <- dplyr::bind_rows(vbv_berkaak_lm, vbv_berkaak_emu) %>%
+  calculate_heavy_ratio_from_vbv_by_class()
+
+brekktunnelen_hr_by_length <- dplyr::bind_rows(vbv_brekktunnelen_lm, vbv_brekktunnelen_emu) %>%
+  calculate_heavy_ratio_from_vbv_by_length()
+
+brekktunnelen_hr_by_class <- dplyr::bind_rows(vbv_brekktunnelen_lm, vbv_brekktunnelen_emu) %>%
+  calculate_heavy_ratio_from_vbv_by_class()
