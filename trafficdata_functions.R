@@ -118,12 +118,13 @@ read_excelsheet <- function(filnavn, arknr) {
            speed_quality_LM,
            length = length_EMU3,
            speed_quality_EMU3,
-           vehicle_type_LM,
-           vehicle_type_EMU3) %>%
+           vehicle_type_raw_LM,
+           vehicle_type_raw_EMU3) %>%
     filter(!is.na(length_LM),
-           !is.na(length),
-           speed_quality_LM <= 25,
-           vehicle_type_EMU3 != "UC LOOP") %>%
+           !is.na(length)#,
+           #speed_quality_LM <= 25,
+           #vehicle_type_raw_EMU3 != "UC LOOP"
+           ) %>%
     rename(lane = lane_number_LM) %>%
     mutate(length_diff = length - length_LM,
            emu3_valid_length = if_else(speed_quality_EMU3 != 0, FALSE, TRUE),
@@ -297,6 +298,30 @@ plot_vbv_data <- function(vbv_data, lane_number, plot_title) {
             subtitle = paste0("Felt ", lane_number))
 }
 
+plot_different_length_classes <- function(diff_class_df, subtitle_text) {
+
+  diff_class_df %>%
+    ggplot(aes(length_LM, length_EMU3,
+               color = norsikt_l2_EMU3,
+               shape = norsikt_l2_LM)) +
+    geom_point(alpha = 0.5) +
+    geom_hline(yintercept = 5.6) +
+    facet_grid(rows = vars(lane),
+               labeller = label_wrap_gen(width = 12)) +
+    xlab("\nLengde LM (m)") +
+    ylab("Lengde EMU3 (m)\n") +
+    theme_bw() +
+    scale_color_brewer(
+      palette = "Dark2",
+      name = "Kjøretøyklasse EMU3") +
+    scale_shape(name = "Kjøretøyklasse LM") +
+    theme(strip.text.y = element_text(angle = 90),
+          strip.background = element_rect(fill = "#F5F5F5"),
+          legend.position = "bottom") +
+    ggtitle("Forskjell i klassifisering",
+            subtitle = subtitle_text)
+}
+
 plot_ecdf <- function(df, subtitle_text) {
 
   df %>%
@@ -368,7 +393,7 @@ plot_heavy_ratio <- function(df) {
               color = "grey",
               position = position_dodge(0.9),
               vjust = 0) +
-    facet_grid(rows = vars(lane_number)) +
+    facet_grid(rows = vars(lane)) +
     theme_minimal() +
     scale_fill_viridis_d(name = "Datalogger",
                          option = "cividis") +
