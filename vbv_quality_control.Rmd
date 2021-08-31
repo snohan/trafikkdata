@@ -8,14 +8,14 @@ output:
     toc_float: 
       collapsed: false
       smooth_scroll: false
-    toc_depth: 2
+    toc_depth: 3
 ---
 
 ```{r setup, message=F, include=FALSE}
 library(tidyverse)
 library(knitr)
 library(cowplot) # may be replaced by patchwork here?
-library(patchwork)
+#library(patchwork)
 library(lubridate)
 library(rmarkdown)
 library(RColorBrewer)
@@ -316,6 +316,7 @@ Vurdering:
 
   - Mange kjøretøy får lengde under 2 m og noen får 29 m, men speed quality er ingen god indikator på dette.
   - Skulle sett nærmere på lengdene mellom 1 og 2 m.
+  - Noen lange kjøretøy har veldig høy fart, noe som skal være umulig.
   
 
 ## Brudd eller dårlig koblet sløyfe
@@ -338,6 +339,7 @@ Vurdering:
   - I felt 4 får de fleste kjøretøy omtrent maksimal fartsulikhet, dvs. at den ene fartsmålingen er nær null.
   - Mange av lengdemålingene får en bestemt maksimal- eller minimumsverdi av LM, som er utenfor vårt godkjenningsintervall.
   - Fartsulikhet og ekstrem lengde ser her ut til å være en god indiaktor på lav datakvalitet for lengde og klassifisering.
+  - En del lange kjøretøy har fart over 100 km/h, som sikkert er feil verdi. Det er lite trolig at felt 4 skal ha så mange med høy fart som ikke er tilfelle i felt 1-3. Det gjør det opplagt at farten er feil, men hvor feil er lengden da?
 
 
 ## Saktegående trafikk
@@ -446,69 +448,66 @@ plot_all_in_one(vbv_skullerud)
 Vurdering:
 
   - Noen ganske lange kjøretøy har veldig høy fart i felt 4. Dette virker lite troverdig. Det skyldes kanskje delvis passering. Her ser fartsulikhet til å være en god indikator på det. 
+  - Noen lange kjøretøy har usannsynlig høy fart.
 
 
 # Analyse av data fra EMU3
-For EMU3 må vi ta hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for fartulikhet:
+For EMU3 må det eventuelt tas hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for fartsulikhet:
 
 - Før 25. januar 2017: fartsulikhetsgrensen var programmert til 25 % i firmware, men den ble ikke benyttet til kontroll. Alle fartsulikhetsverdier fra EMU3 før dette er manglende ("null"). Fra denne datoen ble de første EMU3 oppgradert til ny firmwareversjon og de første punktene begynte å få verdi.
 
-Problemstilling: kontrollen setter alle lengder ugyldig når fartsulikhet er manglende, og den er jo nettopp det for tidligere fw-versjoner. Når alle data for et punkt reberegnes, vil alle lengder fra denne første tiden settes som ugyldig, og det blir jo feil. Dagens kontroller er ikke firmwarespesfikke, men de reviderte må ta hensyn til dette. Spørsmålet er om vi bare skal være strenge med data fra nyeste versjonene?
+Problemstilling: kontrollen setter alle lengder ugyldig når fartsulikhet er manglende, og den er jo nettopp det for tidligere fw-versjoner. Når alle data for et punkt reberegnes, vil alle lengder fra denne første tiden settes som ugyldig, og det blir jo feil. Dagens kontroller er ikke firmwarespesfikke, men de reviderte må eventuelt ta hensyn til dette.
 
 - Januar 2017: grensen ble endret fra 25 % til 3 % i Secondary 2.11.10. Denne kom et drøyt år før 1.0-versjonen for samlet firmwarepakke. Men denne inneholdt en feil som gjorde at grensen var 3 % på felt 5-8 og 25 % på felt 1-4.
 
-- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %. Den første samlede fw-pakken var 1.01, og den hadde 2.17.4. Noen tidligere varianter av usamlet fw hadde 2.17.4, men ingen andre med secondary på 2.17.x. Det betyr at kun firmware med "*Secondary=2.17.4*" eller "*1.0x*" har hatt grensen på 3 % på alle felt. Og det er først da vi kan ha en konsistent kontroll.
+- April 2018: 2.17.1 rettet feilen nevnt over slik at alle felt 1-8 fikk grense på 3 %. Den første samlede fw-pakken var 1.01, og den hadde 2.17.4. Noen tidligere varianter av usamlet fw hadde 2.17.4, men ingen andre med secondary på 2.17.x. Det betyr at kun firmware med "*Secondary=2.17.4*" eller "*1.0x*" har hatt grensen på 3 % på alle felt. Og det er først da kontrollen kan være konsistent.
+
 
 ## Punkter med normale forhold
 
-Finnevatnet
-Saltbotnet
-Hafstad
-Grønnøra
-Eidet bru mot Murumoen
-Vatland
-Bjørndalen
-Kile
-Volsdalen
-
-Noe lav fart
-Moa v.
+Mange punkter har normale trafikkforhold som ikke byr på utfordringer for trafikkregistreringsutstyret og data blir av god kvalitet. 
 
 
-```{temp r}
-# Fordeling av lengder (3, 7,6)
-# geom_density is smoothing, but does it assume normality?
+### Fv 770 Finnevatnet
 
-# To make it easier to compare distributions with very different counts,
-# put density on the y axis instead of the default count
-ggplot(diamonds, aes(price, after_stat(density), colour = cut)) +
-  geom_freqpoly(binwidth = 500) # samme som histogram, bare med punkt i toppen og linje mellom punktene
-# kan dette funke med bin = 0.1 m? blir sikkert veldig hakkete...
+Egenskaper:
+
+  - Landlig tofeltsveg
+  - Fartsnivå 50 - 90 km/h
+  - Normal frekvens på alle sløyfer
+
+```{r finnevatnet, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_finnevatnet)
 ```
 
+Vurdering:
 
-
-## Punkter med lav datakvalitet
-Den første stasjonen med en EMU3 var 1500018 Flote som ble igangsatt 23. juli 2015. Her ble det byttet til LM i desember 2015. Den første stasjonen som fortsatt har EMU3 er 1500028 Valldal (like ved Trollstigen, så trafikken kan variere en god del).
-
-Må finne ut om lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
-
-Firefeltsveg:
-
-  - Ev 39 Somaveien
-  - Ev 39 Jåtten
-  - Ev 6 Leirelva bru
-  - Ev 6 Furuset N
-  - Ev6 Klemetsrud
-
-Lav lengdekvalitetsgrad i ÅDT:
-
-  - TODO
-
-
+  - Ganske like data fra begge felt.
+  - Noen har fartsulikhet forskjellig fra null, men fordeling på langde og klasse ser lik ut uansett.
+  - Er et typisk bilde på data fra punkt med normale trafikkforhold.
+  
+  
 ## Sløyfer med ulik frekvens
+Det er noen tilfeller hvor sløyfene i samme felt har forskjell i frekvens på omkring 20 kHz. Det er ukjent hva dette kan skyldes, men det kan påvirke datakvaliteten.
 
-Kyrksæterøra
+
+### Fv 6432 Kyrksæterøra
+
+Egenskaper: 
+
+  - To felt
+  - Fartsnivå 20 - 50 km/h
+  - Forskjellig frekvens på sløyfene i felt 1 på omkring 20 kHz
+  
+```{r kyrkseterora, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_kyrkseterora)
+```
+  
+Vurdering:
+
+  - Data ser like ut fra begge felt.
+  - Data ser normale ut.
+  
 
 ### Ev 39 Tastatorget
 
@@ -526,17 +525,30 @@ Vurdering:
 
   - Lav fart i felt 2. Her er også andel tunge høy, 20 % på mandag, og 14 % på søndag.
   - Felt 1 har grei fart. Andel tunge på 10 % på mandag og 6 % på søndag.
+  - Lavdatakvalitet skyldes heller lav fart enn forskjellig frekvens.
   
 
 ## Lav frekvens på alle sløyfer
-
-Eidet bru mot Sandvika
-Stranda
-Årø
-
-## Brudd eller dårlig koblet sløyfe
+EMU3 har to ulike sløyfekort, høyfrekvent og lavfrekvent. Det kan likevel hende at alle sløyfer har lavere frekvensnivå enn normalt.
 
 
+### Fv 60 Stranda
+Egenskaper:
+
+  - To felt.
+  - Lav frekvens (70 kHz) på alle sløyfer.
+  - Fart på 20 - 100 km/h
+
+```{r stranda, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_stranda)
+```
+
+Vurdering:
+  
+  - Trafikkdata ser likt ut for begge felt.
+  - Data skiller seg ikke åpenbart fra normale forhold med god datakvalitet.
+  
+  
 ## Saktegående trafikk
 
 ### Fv 1758 Strandgata
@@ -576,6 +588,7 @@ Vurdering:
   - En del lengder under 2 m.
   - Stor andel fartsulikhet forskjellig fra null, men det er ingen god indikator på lav datakvalitet.
   - Andel tunge rundt 15 %.
+  - Noen lange kjøretøy har usannsynlig høy fart.
   
 
 ### Fv 283 Øvre Sund bru
@@ -596,8 +609,7 @@ Vurdering:
   - Felt 1 og 3 har andel tunge på 7,7 %, mens felt 2 og 4 har 5,2 %.
   - Noen korte kjøretøy i alle felt.
   - Andel tunge er på samme nivå i begge retninger.
-  
-  
+  - Noen lange kjøretøy har usannsynlig høy fart.
   
   
 ## Feltskifte
@@ -618,25 +630,59 @@ plot_all_in_one(vbv_somaveien)
 Vurdering:
 
   - Greit fartsnivå. En del tilfeller med positiv fartsulikhet forskjellig fra 0, men dette synes ikke å være noen god indikator på lav datakvalitet.
+  - Noen lange kjøretøy har usannsynlig høy fart.
   
 
 ## Samme punkt, ulik firmware
-Se om måleverdiene har endret seg med firmware:
+Må finne ut om lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
 
-  - Hafstad
-  - Eidet bru
-  - Gjemble
-  - Kyrksæterøra
+### Ev 6 Berkåk
+2. oktober 2018 ble firmware oppgradert fra Primary=5.3.4/Secondary=2.15.0/1.89 til 1.02. Sammenligner her data fra mandag-onsdag i uka før og to uker etter dette.
+
+Egenskaper:
+
+  - To felt.
+  - Fart 20 - 80 km/h.
   
+Først data fra 24.-26. september 2018.
+
+```{r berkaak_emu_gml_fw, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_berkaak_emu_gml_fw)
+```
   
+Siden grensen for å sette fartsulikhet forskjellig fra null var på 25 %, var det ganske få tilfeller av dette her.
+
+Så til 15.-17. oktober 2018 med nyere firmware:
+
+```{r berkaak_emu_ny_fw, fig.height=12, fig.width=8}
+plot_all_in_one(vbv_berkaak_emu_ny_fw)
+```
+
+Siden grensen for å sette fartsulikhet forskjellig fra null var på 3 %, var det ganske mange flere tilfeller av dette her.
+
+Det er ingen åpenbare forkjeller i kvaliteten på dataene før og etter firmwareoppgraderingen.
+
+Videre sammenlignes andel tunge kjøretøy før og etter oppgradering av firmware.
+
+Først med lengde som grunnlag.
+
+```{r berkaak_fw_hr_length, fig.height=4, fig.width=8}
+berkaak_fw_hr_by_length %>% 
+  plot_heavy_ratio()
+```
+
+Så med klasse som grunnlag.
+
+```{r berkaak_fw_hr_class, fig.height=4, fig.width=8}
+berkaak_fw_hr_by_class %>% 
+  plot_heavy_ratio()
+```
+
+Tendensen er klart at den nyere firmwaren hadde så vidt litt høyere andel tunge kjøretøy. Dette kan likevel skyldes at trafikken var annerledes.
 
 
 ## Samme punkt, ulik datalogger
-Se om måleverdiene har endret seg ved bytte av datalogger (samme sløyfer):
-
-  - Elgeseter gate ved Abels gate (kø) bare veldig gammel EMU-fw
-  - Garli (sentrisk)
-  - Heimdalsmyra (feltskifte?)
+Ser om måleverdiene har endret seg ved bytte av datalogger på samme sløyfer.
 
 
 ### Ev 6 Berkåk
@@ -652,6 +698,7 @@ Først data fra 6.-8. januar 2020 med EMU3.
 plot_all_in_one(vbv_berkaak_emu)
 ```
 
+Data fra LM:
 ```{r berkaak_lm, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_berkaak_lm)
 ```
@@ -686,14 +733,15 @@ Siden data er fra ulike uker, kan andel tunge avvike noe. Men her er det rimelig
 Egenskaper:
 
   - To felt.
+  - Fart mellom 50 og 100 km/h.
   
-EMU3.
+Data fra EMU3:
 
 ```{r brekktunnelen_emu, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_brekktunnelen_emu)
 ```
 
-LM.
+Data fra LM:
 
 ```{r brekktunnelen_lm, fig.height=12, fig.width=8}
 plot_all_in_one(vbv_brekktunnelen_lm)
@@ -982,52 +1030,47 @@ plot_different_length_classes(EMU3_F07_under_3,
 Begge dataloggere er enige om klassifiseringen av disse korte kjøretøyene.
 
 
-### EMU3 på F09 og LM på F07.
+#### EMU3 på F09
 Venter på data fra Øysand (må bytte datalogger og punkt først)
 
 
 
+
+
+
+
 # Oppsummering og konklusjon
-Oppsummering av analysene og forslag til endring av kontroller.
+Her kommer en oppsummering av analysene og forslag til endring av dataloggerspesifikke kontroller.
 
 
 ## Oppsummering for LM
+LMbruker følgende standardverdier for enkelte kjøretøyregistreringer:
 
-**Ulik frekvens på sløyfer**
+  -	Manglende lengde: settes når farten er under 7 km/h.
+  -	1,2 m: minimumslengde på signal som blir tolket som motorsykkel, men har usikker lengde pga. ikke-perfekt signalforløp.
+  -	1,95 m: minimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp.
+  -	29 m: maksimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp. Denne kan også inntreffe dersom lastebil passerer med en personbil liggende tett bak.
 
-Selv om ulik frekvens på sløyfer gir høyere verdier på fartsulikhet, ser både lengde- og fartsmålinger helt greie ut. På Øysand ser det ut til at lengdene blir noe lengre, men ikke av særlig betydning. 
+**Ulik frekvens på sløyfer**: Selv om ulik frekvens på sløyfer gir høyere verdier på fartsulikhet, ser både lengde- og fartsmålinger helt greie ut. På Øysand ser det ut til at lengdene blir noe lengre, men ikke av særlig betydning. 
 
 Bruk av fartsulikhet som indikator på lav datakvalitet er ikke hensiktsmessig i dette tilfellet.
 
+**Lav frekvens på alle sløyfer**: Lav frekvens på alle sløyfer gir mange korte lengder. Fartsulikhet skiller ikke på målinger med vanlige lengder og de under 2 m eller over 27 m. En nærmere undersøkelse av de korte kjøretøyene bør gjennomføres for å sjekke om klassifiseringen er god.
 
-**Lav frekvens på alle sløyfer**
+**Kø**: Gir både en del lengder 1,2-2 m, og 20-29 m. Mange feilklassifiseres som motorsykkel.
 
-Lav frekvens på alle sløyfer gir mange korte lengder. Fartsulikhet skiller ikke på målinger med vanlige lengder og de under 2 m eller over 27 m. En nærmere undersøkelse av de korte kjøretøyene bør gjennomføres for å sjekke om klassifiseringen er god.
+**Delvis passering av sløyfer**: Gir stor andel 1,2-2 m selv med fart godt over 15 km/h. Mange feilklassifiseres som motorsykkel.
 
-
-**Kø**
-
-Gir både en del lengder 1,2-2 m, og 20-29 m. Mange feilklassifiseres som motorsykkel.
+**Feil på sløyfe**: Dersom en av to sløyfer i samme kjørefelt er ødelagt (frakoblet e.l.) blir det mange lengder på 29 m.
 
 
-**Delvis passering av sløyfer**
-
-Gir stor andel 1,2-2 m selv med fart godt over 15 km/h. Mange feilklassifiseres som motorsykkel.
-
-
-**Feil på sløyfe**
-
-Dersom en av to sløyfer i samme kjørefelt er ødelagt (frakoblet e.l.) blir det mange lengder på 29 m.
-
-
-### Konklusjon for LM
-Etter å ha sett på mye data i Kibana (visualisering "Ukjent lengde histogram"), viser det seg at kontrollene som underkjenner lengdemålingene fordeler seg som følger:
+## Konklusjon for LM
+Kontrollene som underkjenner lengdemålingene fordeler seg som følger:
 
   - Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne kontrollen.
   - Lengde utenfor (1, 27) m: noen få utslag av denne kontrollen.
   - **Qspeed større enn 3: de fleste utslagene skyldes denne kontrollen.**
   - Det er en del lengder mellom 1 og 2 m som har underkjent klasse, men fart over 7 km/h - disse er slått ut av signalkodekontrollen.
-  
 
 Nytt kontrollsett:
 
@@ -1041,9 +1084,11 @@ Nytt kontrollsett:
 Resultatene av denne undersøkelsen viser at vi må justere enkelte kontroller. Det er kontrollene som benytter fartsulikhet vi må endre, dvs. øke grenseverdien får når fartsulikhet fører til underkjent lengde og klassifisering. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengde- og kjøretøyklassifisering enn det vi gjør i dag.
 
 
-## EMU3
+## Oppsummering for EMU3
+EMU3 bruker noen standardverdier for enkelte kjøretøyregistreringer:
 
-  
+  -	1,25 m: minimumslengde for kjøretøy generelt. Usikre lengdemålinger som blir kortere, får automatisk satt lengden til 1,25 m. De fleste klassifiseres som motorsykkel, men også noen biler får denne lengden. Opptrer typisk i forbindelse med delvis passering.
+
 Hvilke kontroller underkjenner lengder:
 
   - Fart under 7 km/h:
@@ -1052,45 +1097,25 @@ Hvilke kontroller underkjenner lengder:
   - Lengde utenfor (1, 27) m:
     <p style="color:red">TODO</p>
 
-  - Speed_quality ≠ 0:
+  - Fartsulikhet ≠ 0:
     <p style="color:red">TODO</p>
 
 [Analyse pågår.]
 
 
-### Konklusjon for EMU3
+## Konklusjon for EMU3
 Foreløpig forslag til revisjon:
 
-  - qspeed = *null* skrotes (var aldri ment å skulle gjelde?). Vil føre til at "alle" lengder fra fw tidligere enn de nevnt nedenfor blir godkjent. Må verifiseres at dette er rimelig.
+  - fartsulikhet ≠ 0 skrotes (var aldri ment å skulle gjelde?). Vil føre til at "alle" lengder fra fw tidligere enn de nevnt nedenfor blir godkjent. Må verifiseres at dette er rimelig.
   - fartsulikhet-kontroll gjelder kun for fw med konsistent verdi for fartsulikhet (s2.17.4 og 1.0x)
   
 
-## Øvrige konklusjoner
-Dataloggerne  bruker noen standardverdier for enkelte kjøretøyregistreringer:
-
-LM:
-
-  -	Manglende lengde: settes når farten er under 7 km/h.
-  -	1,2 m: minimumslengde på signal som blir tolket som motorsykkel, men har usikker lengde pga. ikke-perfekt signalforløp.
-  -	1,95 m: minimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp.
-  -	29 m: maksimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp. Denne kan også inntreffe dersom lastebil passerer med en personbil liggende tett bak.
-
-EMU3:
-
-  -	1,25 m: minimumslengde for kjøretøy generelt. Usikre lengdemålinger som blir kortere, får automatisk satt lengden til 1,25 m. De fleste klassifiseres som motorsykkel, men også noen biler får denne lengden. Opptrer typisk i forbindelse med delvis passering.
-  
-**Klassifisering av motorsykler**
-
+## Klassifisering av motorsykler
 Det virker vanskelig å klassifisere motorsykler. Fra før vet vi at mange motorsykler "unnslipper" sløyfene ved å plassere seg for langt ut i kanten av kjørefeltet. I tillegg oppstår det mange falske motorsykler ved feltskifte og lav fart. En vurdering av om klassifisering av motorsykler er god nok må gjøres for hvert punkt.
 
-**Gjenstående analyser**:
 
-  - Hva er korrekt klassifisering av kjøretøy som får målt lengde under 2 m. Er alle disse lette kjøretøy?
-  - Lengde på 29 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy fartsulikhet.
-  - Finn ut om signalkodekontrollen til LM skal slå ut på lengde også.
-  - Er det mulig å avdekke sensorproblemer ut fra fordeling av lengdeverdier?
-  
-**Klassifisering basert på lengde eller klasse**:
+## Klassifisering basert på lengde eller klasse
+Oppsummert fra analysen:
 
   - Både LM og EMU3 virker tilsynelatende å ha et skille rundt 6 m mellom lette og tunge klasser.
   - Dermed blir andel tunge lavere basert på klasse enn lengde.
@@ -1099,8 +1124,20 @@ Det virker vanskelig å klassifisere motorsykler. Fra før vet vi at mange motor
   - Dermed blir klassifisering basert på klasse likere enn basert på lengde.
   - Men hva er mest riktig å bruke? Klasse eller lengde?
   - Hva sier kjøretøyregisteret om sammenhengen mellom lengde og klasseskillet mellom lette og tunge?
-  - Gjøre egne tester på dette - benytt testing for ny rammeavtale.
-  
+  - Vi bør gjøre egne tester på dette - benytt testing for ny rammeavtale.
   - Bruke data fra mange punkter til å finne normal fordeling av lengder rundt 5,6 m, f.eks. (3, 7,6). Hvordan ser denne ut dersom alle forhold ellers er ok? (Fart, feltskifte, sløyfer)
 
-  
+
+## Høy fart på tunge kjøretøy
+I Kjøretøyforskriften står det at alle (med visse unntak) tunge kjøretøy skal ha fartssperre på 90 eller 100 km/h. En kontroll som sjekker sammenhengen mellom fart og lengde vil luke vekk en del opplagte feil på fart dersom vi kan anta at lengden er noenlunde korrekt. For å være litt sikker på at ikke gode data underkjennes kan kontrollen være at fart over 110 km/h på kjøretøy lenger enn 7,6 m underkjennes.
+
+Dette blir da en ny kontroll som gjelder alle dataloggertyper for motorkjøretøy.
+
+
+## Gjenstående analyser
+Gjenstående analyser:
+
+  - Hva er korrekt klassifisering av kjøretøy som får målt lengde under 2 m? Er alle disse lette kjøretøy?
+  - Lengde på 29 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy fartsulikhet.
+  - Finn ut om signalkodekontrollen til LM skal slå ut på lengde også.
+  - Er det mulig å avdekke sensorproblemer ut fra fordeling av lengdeverdier?

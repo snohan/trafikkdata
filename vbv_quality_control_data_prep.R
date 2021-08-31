@@ -41,6 +41,29 @@ vbv_ovre_sund_bru <-
   read_kibana_vbv("vbv_data/ovre_sund_bru.csv")
 vbv_tastatorget  <-
   read_kibana_vbv("vbv_data/tastatorget.csv")
+vbv_finnevatnet <-
+  read_kibana_vbv("vbv_data/finnevatnet.csv")
+vbv_kyrkseterora <-
+  read_kibana_vbv("vbv_data/kyrkseterora.csv")
+vbv_stranda <-
+  read_kibana_vbv("vbv_data/stranda.csv")
+
+vbv_berkaak_emu_gml_fw  <-
+  read_kibana_vbv("vbv_data/berkaak_emu_p534s2150.csv") %>%
+  dplyr::mutate(weekday = lubridate::wday(event_timestamp,
+                                          label = TRUE,
+                                          abbr = FALSE),
+                name_and_datalogger = "EMU P5.3.4/S2.15.0") %>%
+  make_length_classes()
+
+vbv_berkaak_emu_ny_fw  <-
+  read_kibana_vbv("vbv_data/berkaak_emu_102.csv") %>%
+  dplyr::mutate(weekday = lubridate::wday(event_timestamp,
+                                          label = TRUE,
+                                          abbr = FALSE),
+                name_and_datalogger = "EMU 1.02") %>%
+  make_length_classes()
+
 vbv_berkaak_lm  <-
   read_kibana_vbv("vbv_data/berkaak_lm.csv") %>%
   dplyr::mutate(weekday = lubridate::wday(event_timestamp,
@@ -255,6 +278,13 @@ EMU3_F07_under_3 <- EMU3_F07_all_classifications %>%
 
 
 # Heavy ratios ----
+berkaak_fw_hr_by_length <- dplyr::bind_rows(vbv_berkaak_emu_gml_fw, vbv_berkaak_emu_ny_fw) %>%
+  calculate_heavy_ratio_from_vbv_by_length()
+
+berkaak_fw_hr_by_class <- dplyr::bind_rows(vbv_berkaak_emu_gml_fw, vbv_berkaak_emu_ny_fw) %>%
+  calculate_heavy_ratio_from_vbv_by_class()
+
+#
 berkaak_hr_by_length <- dplyr::bind_rows(vbv_berkaak_lm, vbv_berkaak_emu) %>%
   calculate_heavy_ratio_from_vbv_by_length()
 
