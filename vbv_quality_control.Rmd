@@ -30,16 +30,16 @@ knitr::opts_chunk$set(echo = FALSE,
 
 
 # Bakgrunn
-Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i *rådatabasen* uten videre prosessering. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for *kontrollerte data*.
+Når trafikkdatasystemet mottar data om en kjøretøyregistrering fra et trafikkregistreringspunkt, lagres dette i først *rådatabasen*. Etter at ryddegutt har sjekket at alle data er overført for en klokketime, sendes alle data gjennom en kvalitetskontroll og lagres i databasen for *kontrollerte data*.
 
-Kvalitetskontrollene gjøres fordi data som kommer inn ikke alltid er gode nok til sitt formål. Kontrollene ble først utarbeidet i samråd med dataloggerleverandørene, samt basert på Statens vegvesens testing der fasiten ble laget på grunnlag av manuell gjennomgang av videoopptak kombinert med kjøretøyopplysninger fra Kjøretøyregisteret.
+Kvalitetskontrollene gjøres fordi data som kommer inn ikke alltid er gode nok til sitt formål. Kontrollene ble først utarbeidet i samråd med dataloggerleverandørene, samt basert på Statens vegvesens testing. Til testingen ble fasiten laget på grunnlag av manuell gjennomgang av videoopptak kombinert med kjøretøyopplysninger fra Kjøretøyregisteret.
 
 Kvalitetskontrollene deles inn i to sett, og gjelder for enten
 
   - alle dataloggertyper, eller
-  - hver spesifikk dataloggertype (og firmwareversjon).
+  - hver spesifikk dataloggertype (og eventuelt firmwareversjon).
   
-Hensikten med kontrollene er å merke data som har for lav kvalitet til alle normale formål (verdier som er helt feil). Utgangspunktet er at alle data er av god nok kvalitet dersom de ikke faller utenfor krav som stilles i kontrollene. 
+Hensikten med kontrollene er å merke data som har for lav kvalitet. Utgangspunktet er at alle data er av god nok kvalitet dersom de ikke faller utenfor krav som stilles i kontrollene. 
   
 I dette dokumentet er det kun data fra registreringer av motorkjøretøy som er omtalt. Det omfatter kun to dataloggertyper: Loop Monitor (LM) og EMU3.
 
@@ -47,34 +47,35 @@ I dette dokumentet er det kun data fra registreringer av motorkjøretøy som er 
 ## Kontroller som gjelder alle dataloggertyper
 Uansett hvilken dataloggertype data kommer fra, så gjelder følgende:
 
-  - Selve registreringen er ugyldig dersom:
+  - **Selve registreringen er ugyldig dersom**:
     - Kjørefeltverdien er fraværende.
     - Kjørefeltverdien er utenfor de kjørefeltene som eksisterer på trafikkregistreringspunktet.
-    - Eventnummer mangler.
+    - Løpenummer mangler.
     - Lengdeverdien mangler.
 
-  - Lengde og klassifisering er ugyldig dersom:
+  - **Lengde og klassifisering er ugyldig dersom**:
     - Lengde er \< 1 m eller \> 27 m.
     - Lengdeverdien mangler.
+    
+  - **Klassifisering er ugyldig dersom**:
+    - Klassifiseringen mangler.
 
-  - Fart er ugyldig dersom:
+  - **Fart er ugyldig dersom**:
     - Absoluttverdi av fart \> 300 km/h.
 
 
 ## Dataloggerspesifikke kontroller
 For **LM** gjelder følgende:
 
-  - Fart, lengde og klassifisering er ugyldig dersom:
+  - **Fart, lengde og klassifisering er ugyldig dersom**:
     - Absoluttverdi av fart \< 7 km/h. (LM angir ingen lengde når farten er så lav.)
 
-  - Fart og lengde er ugyldig dersom:
-    - ::: {style="color:green"}
-      Fartsulikhet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. (Endret i mars 2020 fra 3 % / 3 km/h.) 
-      :::
+  - **Fart og lengde er ugyldig dersom**:
+    - Fartsulikhet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. (Endret i mars 2020 fra 3 % / 3 km/h.)
     - Fartsulikhetsverdien mangler.
     - Fartsverdien mangler.
 
- - Klassifisering er ugyldig dersom:
+ - **Klassifisering er ugyldig dersom**:
     - Signalkoden inneholder oddetall eller 0, unntatt 0202.
     - Signalkoden mangler.
     
@@ -82,14 +83,12 @@ For **LM** gjelder følgende:
 
 For **EMU3** gjelder følgende:
 
-  - Fart og lengde er ugyldig dersom:
+  - **Fart og lengde er ugyldig dersom**:
     - Absoluttverdi av fart \< 7 km/h.
     - Fartsverdien mangler.
 
-  - Fart, lengde og klassifisering er ugyldig dersom:
-    - ::: {style="color:red"}
-      Fartsulikhet\*\* ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE). 
-      :::
+  - **Fart, lengde og klassifisering er ugyldig dersom**:
+    - Fartsulikhet\*\* ≠ 0 (omsatt fra "Change of speed validity bit" satt til TRUE). 
     - Fartsulikhetsverdien mangler.
 
 \*\*Fartsulikhet for EMU3 er basert på absolutt avvik i fart mellom de to sløyfene, men er omgjort til en boolsk parameter ved en angitt grenseverdi som er hardkodet i firmware.
@@ -98,11 +97,11 @@ For **EMU3** gjelder følgende:
 ## Analysens formål
 Noen trafikkregistreringspunkter har høy andel underkjente lengdemålinger. Er dette reellt eller er kontrollene for strenge? Hva er grunnen til at lengdemålingene blir underkjente? Målet med analysen er å finne ut hvor godt kontrollene treffer og eventuelt justere dem. Om kontrollene justeres, skal alle data i Trafikkdatasystemet reberegnes tilbake til 2014.
 
-Denne analysen tar ikke for seg deteksjonsgraden av antall kjøretøy, men er konsentrert om måleverdiene for lengde og klassifisering som tilhører de faktisk registrerte kjøretøyene.
+Denne analysen tar ikke for seg deteksjonsgraden av antall kjøretøy, men er konsentrert om måleverdiene for lengde og klassifisering som tilhører de faktisk registrerte kjøretøyene. Fartsverdien er også til dels med i analysen, men siden den faktiske fartsverdien er ukjent, blir denne størrelsen behandlet med stor grad av skjønn.
 
 
 # Metode
-Analysen gjennomføres ved å se på et representativt utvalg data fra Trafikkdatasystemet. Måleverdier for enkeltkjøretøy analyseres for hvert kjørefelt, og data fra et trafikkregistreringspunkt sammenlignes over tid. Aggregerte data for lengde- og kjøretøyklasse sammenlignes.
+Analysen gjennomføres ved å se på et representativt utvalg data fra Trafikkdatasystemet. Måleverdier for enkeltkjøretøy analyseres for hvert kjørefelt, og data fra et trafikkregistreringspunkt sammenlignes over tid. Det ses på ulike situasjoner som forårsaker feil i data. Aggregerte data for lengde- og kjøretøyklasse sammenlignes.
 
 
 ## Feilsituasjoner
@@ -118,12 +117,13 @@ Lavere datakvalitet oppstår av ulike årsaker som grovt kan deles inn i tre kat
     - sløyfene lagt med feil dimensjon (systematisk feilkilde)
   - Delvis passering av sløyfer
   - Saktegående eller stillestående trafikk
-  - Høy akselerasjon, typisk på ramper (fartsulikhet)
+  - Høy akselerasjon (høy fartsulikhet)
   
 De ulike feilsituasjonene kan gi opphav til ekstreme måleverdier som avslører lav datakvalitet:
 
   - Lengde utenfor (1, 27) m
   - Fart under 7 km/h
+  - Høy fart for lange kjøretøy
   - Fartsulikhet
     - over 3 for LM
     - ulik 0 for EMU3
@@ -134,7 +134,7 @@ Måleverdier som er innenfor grenseverdiene kan også være feil, men det er van
 ## Framgangsmåte
 For å gjennomføre analysen, gjøres følgende:
 
-  - Finn et punkt med høy andel underkjente lengder.
+  - Finn punkt med høy andel underkjente lengder.
   - Beskriv stedlige forhold:
     - antall felt
     - fartsnivå
@@ -149,10 +149,9 @@ For å gjennomføre analysen, gjøres følgende:
 Relevante problemstillinger:
 
   - Hvilke kontroller underkjenner lengder?
-  - Hvilke lengder blir underkjent?
   - Er det sammenheng i kvaliteten på kjøretøyklasse og lengde?
+  - Er det sammenheng i kvaliteten på fart og lengde?
   - Lengde utenfor (1, 27) m: lengde og klasse ok?
-  - Fart under 7 km/h: lengde og klasse ok?
   - Fartsulikhet over 3 eller ulik 0: lengde og klasse ok?
   - Forskjell i frekvens på \> 20 kHz - lengde og klasse ok?
   
@@ -464,12 +463,10 @@ Problemstilling: kontrollen setter alle lengder ugyldig når fartsulikhet er man
 
 
 ## Punkter med normale forhold
-
 Mange punkter har normale trafikkforhold som ikke byr på utfordringer for trafikkregistreringsutstyret og data blir av god kvalitet. 
 
 
 ### Fv 770 Finnevatnet
-
 Egenskaper:
 
   - Landlig tofeltsveg
@@ -483,7 +480,7 @@ plot_all_in_one(vbv_finnevatnet)
 Vurdering:
 
   - Ganske like data fra begge felt.
-  - Noen har fartsulikhet forskjellig fra null, men fordeling på langde og klasse ser lik ut uansett.
+  - Noen har fartsulikhet forskjellig fra null, men fordeling på lengde og klasse ser lik ut uansett.
   - Er et typisk bilde på data fra punkt med normale trafikkforhold.
   
   
@@ -525,7 +522,7 @@ Vurdering:
 
   - Lav fart i felt 2. Her er også andel tunge høy, 20 % på mandag, og 14 % på søndag.
   - Felt 1 har grei fart. Andel tunge på 10 % på mandag og 6 % på søndag.
-  - Lavdatakvalitet skyldes heller lav fart enn forskjellig frekvens.
+  - Lav datakvalitet skyldes heller lav fart enn forskjellig frekvens.
   
 
 ## Lav frekvens på alle sløyfer
@@ -634,10 +631,11 @@ Vurdering:
   
 
 ## Samme punkt, ulik firmware
-Må finne ut om lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
+En hypotese er at lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
+
 
 ### Ev 6 Berkåk
-2. oktober 2018 ble firmware oppgradert fra Primary=5.3.4/Secondary=2.15.0/1.89 til 1.02. Sammenligner her data fra mandag-onsdag i uka før og to uker etter dette.
+2. oktober 2018 ble firmware oppgradert fra Primary=5.3.4/Secondary=2.15.0/1.89 til 1.02. Sammenligner her data fra mandag-onsdag i uka før og to uker etter dette (uungår høstferien).
 
 Egenskaper:
 
@@ -713,7 +711,6 @@ Først med lengde som grunnlag.
 
 ```{r berkaak_hr_length, fig.height=4, fig.width=8}
 berkaak_hr_by_length %>% 
-  #dplyr::rename(lane_number = lane) %>% 
   plot_heavy_ratio()
 ```
 
@@ -721,11 +718,10 @@ Så med kjøretøyklasse som grunnlag.
 
 ```{r berkaak_hr_class, fig.height=4, fig.width=8}
 berkaak_hr_by_class %>% 
-  #dplyr::rename(lane_number = lane) %>% 
   plot_heavy_ratio()
 ```
 
-Siden data er fra ulike uker, kan andel tunge avvike noe. Men her er det rimelig likt nivå disse tre dagene. Andelene basert på klasse ligger jevnt over noe lavere enn de basert på lengde, men forskjellen mellom dataloggerne er omtrent den samme.
+Siden data er fra ulike uker, kan andel tunge avvike noe. Men her er det rimelig likt nivå disse tre dagene. Andlene basert på klasse ligger jevnt over noe lavere enn de basert på lengde, men forskjellen mellom dataloggerne er omtrent den samme.
 
 
 ### Ev 39 Brekktunnelen
@@ -753,7 +749,6 @@ Først med lengde som grunnlag.
 
 ```{r brekktunnelen_hr_length, fig.height=4, fig.width=8}
 brekktunnelen_hr_by_length %>% 
-  #dplyr::rename(lane_number = lane) %>% 
   plot_heavy_ratio()
 ```
 
@@ -761,7 +756,6 @@ Så med klasse som grunnlag.
 
 ```{r brekktunnelen_hr_class, fig.height=4, fig.width=8}
 brekktunnelen_hr_by_class %>% 
-  #dplyr::rename(lane_number = lane) %>% 
   plot_heavy_ratio()
 ```
 
@@ -992,8 +986,6 @@ Sammenligner andel tunge basert på lengdemålinger.
 plot_heavy_ratio(EMU3_F07_length_hr)
 ```
 
-
-
 Sammenligner andel tunge basert på klassifisering.
 
 ```{r EMU3_F07_class_hr, fig.height=4, fig.width=8}
@@ -1022,7 +1014,7 @@ EMU3 har her ingen i klassen tunge.
 
 Ser på målinger under 3 m.
 
-```{r EMU3_F07_under_#, fig.height=4, fig.width=8}
+```{r EMU3_F07_under_3, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F07_under_3,
                               "EMU3 F07 og LM F09")
 ```
@@ -1031,84 +1023,51 @@ Begge dataloggere er enige om klassifiseringen av disse korte kjøretøyene.
 
 
 #### EMU3 på F09
-Venter på data fra Øysand (må bytte datalogger og punkt først)
+Med data fra 30. august 2021 er lengdemålingene sammenlignet mellom EMU3 på F09 (1.04) og LM på F07 (1.14.419).
 
 
+```{r vbv_f09_1}
+plot_vbv_data(EMU3_F09, 1, "Forskjell i registrert lengde mellom EMU3 (F09) og LM (F07)")
+```
+
+```{r vbv_f09_2}
+plot_vbv_data(EMU3_F09, 2, "Forskjell i registrert lengde mellom EMU3 (F09) og LM (F07)")
+```
+
+Sammenligner andel tunge basert på lengdemålinger.
+
+```{r EMU3_F09_length_hr, fig.height=4, fig.width=8}
+plot_heavy_ratio(EMU3_F09_length_hr)
+```
+
+Sammenligner andel tunge basert på klassifisering.
+
+```{r EMU3_F09_class_hr, fig.height=4, fig.width=8}
+plot_heavy_ratio(EMU3_F09_class_hr)
+```
+
+```{r EMU3_F09_diff_length_class_longer, fig.height=4, fig.width=8}
+plot_different_length_classes(EMU3_F09_different_length_class_longer,
+                              "EMU3 F09 og LM F07")
+```
+
+```{r EMU3_F09_diff_length_class_shorter, fig.height=4, fig.width=8}
+plot_different_length_classes(EMU3_F09_different_length_class_shorter,
+                              "EMU3 F09 og LM F07")
+```
+
+```{r EMU3_F09_under_3, fig.height=4, fig.width=8}
+plot_different_length_classes(EMU3_F09_under_3,
+                              "EMU3 F09 og LM F07")
+```
 
 
 
 
 
 # Oppsummering og konklusjon
-Her kommer en oppsummering av analysene og forslag til endring av dataloggerspesifikke kontroller.
+Her kommer en oppsummering av analysene og forslag til endring av kvalitetskontrollene.
 
-
-## Oppsummering for LM
-LMbruker følgende standardverdier for enkelte kjøretøyregistreringer:
-
-  -	Manglende lengde: settes når farten er under 7 km/h.
-  -	1,2 m: minimumslengde på signal som blir tolket som motorsykkel, men har usikker lengde pga. ikke-perfekt signalforløp.
-  -	1,95 m: minimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp.
-  -	29 m: maksimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp. Denne kan også inntreffe dersom lastebil passerer med en personbil liggende tett bak.
-
-**Ulik frekvens på sløyfer**: Selv om ulik frekvens på sløyfer gir høyere verdier på fartsulikhet, ser både lengde- og fartsmålinger helt greie ut. På Øysand ser det ut til at lengdene blir noe lengre, men ikke av særlig betydning. 
-
-Bruk av fartsulikhet som indikator på lav datakvalitet er ikke hensiktsmessig i dette tilfellet.
-
-**Lav frekvens på alle sløyfer**: Lav frekvens på alle sløyfer gir mange korte lengder. Fartsulikhet skiller ikke på målinger med vanlige lengder og de under 2 m eller over 27 m. En nærmere undersøkelse av de korte kjøretøyene bør gjennomføres for å sjekke om klassifiseringen er god.
-
-**Kø**: Gir både en del lengder 1,2-2 m, og 20-29 m. Mange feilklassifiseres som motorsykkel.
-
-**Delvis passering av sløyfer**: Gir stor andel 1,2-2 m selv med fart godt over 15 km/h. Mange feilklassifiseres som motorsykkel.
-
-**Feil på sløyfe**: Dersom en av to sløyfer i samme kjørefelt er ødelagt (frakoblet e.l.) blir det mange lengder på 29 m.
-
-
-## Konklusjon for LM
-Kontrollene som underkjenner lengdemålingene fordeler seg som følger:
-
-  - Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne kontrollen.
-  - Lengde utenfor (1, 27) m: noen få utslag av denne kontrollen.
-  - **Qspeed større enn 3: de fleste utslagene skyldes denne kontrollen.**
-  - Det er en del lengder mellom 1 og 2 m som har underkjent klasse, men fart over 7 km/h - disse er slått ut av signalkodekontrollen.
-
-Nytt kontrollsett:
-
--   **Fart under 7 km/h** gir underkjent fart, lengde og klasse. LM gir ikke lengde på disse, og de fleste får klasse 10 eller 11. **uendret kontroll**
--   **Lengde under 1 m** gir underkjent lengde (**ny kontroll**, de under får godkjent klasse, men de fleste er likevel ukjente).
--   **Lengde over 27 m** gir underkjent lengde (**ny kontroll**, innebærer at de utenfor får godkjent klasse - dette er en hypotese som må testes!)
--   **Signalkoden inneholder oddetall eller 0, unntatt 0202** gir underkjent klasse og lengde(?) (**ny kontroll**, hvis den også skal gjelde lengde - må testes)
--   **Klassekode 10, 11 eller tom** gir underkjent klasse (sjekk om dette er implementert slik)
--   **Qspeed over 25** gir underkjent fart og lengde (**ny kontroll**, dvs. ny grenseverdi).
-
-Resultatene av denne undersøkelsen viser at vi må justere enkelte kontroller. Det er kontrollene som benytter fartsulikhet vi må endre, dvs. øke grenseverdien får når fartsulikhet fører til underkjent lengde og klassifisering. Da vil vi i mye større grad vise fram data som har god nok datakvalitet til lengde- og kjøretøyklassifisering enn det vi gjør i dag.
-
-
-## Oppsummering for EMU3
-EMU3 bruker noen standardverdier for enkelte kjøretøyregistreringer:
-
-  -	1,25 m: minimumslengde for kjøretøy generelt. Usikre lengdemålinger som blir kortere, får automatisk satt lengden til 1,25 m. De fleste klassifiseres som motorsykkel, men også noen biler får denne lengden. Opptrer typisk i forbindelse med delvis passering.
-
-Hvilke kontroller underkjenner lengder:
-
-  - Fart under 7 km/h:
-    <p style="color:red">TODO</p>
-
-  - Lengde utenfor (1, 27) m:
-    <p style="color:red">TODO</p>
-
-  - Fartsulikhet ≠ 0:
-    <p style="color:red">TODO</p>
-
-[Analyse pågår.]
-
-
-## Konklusjon for EMU3
-Foreløpig forslag til revisjon:
-
-  - fartsulikhet ≠ 0 skrotes (var aldri ment å skulle gjelde?). Vil føre til at "alle" lengder fra fw tidligere enn de nevnt nedenfor blir godkjent. Må verifiseres at dette er rimelig.
-  - fartsulikhet-kontroll gjelder kun for fw med konsistent verdi for fartsulikhet (s2.17.4 og 1.0x)
-  
 
 ## Klassifisering av motorsykler
 Det virker vanskelig å klassifisere motorsykler. Fra før vet vi at mange motorsykler "unnslipper" sløyfene ved å plassere seg for langt ut i kanten av kjørefeltet. I tillegg oppstår det mange falske motorsykler ved feltskifte og lav fart. En vurdering av om klassifisering av motorsykler er god nok må gjøres for hvert punkt.
@@ -1122,22 +1081,135 @@ Oppsummert fra analysen:
   - Det fins færre kjøretøy rundt 6 m enn rundt 5,6 m.
   - Selv om tendensen er at EMU3 eller LM på sløyfer med ulik frekvens måler lengre lengder enn reellt, så slår ikke dette like mye ut over 6 m som 5,6 m.
   - Dermed blir klassifisering basert på klasse likere enn basert på lengde.
-  - Men hva er mest riktig å bruke? Klasse eller lengde?
-  - Hva sier kjøretøyregisteret om sammenhengen mellom lengde og klasseskillet mellom lette og tunge?
-  - Vi bør gjøre egne tester på dette - benytt testing for ny rammeavtale.
-  - Bruke data fra mange punkter til å finne normal fordeling av lengder rundt 5,6 m, f.eks. (3, 7,6). Hvordan ser denne ut dersom alle forhold ellers er ok? (Fart, feltskifte, sløyfer)
 
 
 ## Høy fart på tunge kjøretøy
 I Kjøretøyforskriften står det at alle (med visse unntak) tunge kjøretøy skal ha fartssperre på 90 eller 100 km/h. En kontroll som sjekker sammenhengen mellom fart og lengde vil luke vekk en del opplagte feil på fart dersom vi kan anta at lengden er noenlunde korrekt. For å være litt sikker på at ikke gode data underkjennes kan kontrollen være at fart over 110 km/h på kjøretøy lenger enn 7,6 m underkjennes.
 
 Dette blir da en ny kontroll som gjelder alle dataloggertyper for motorkjøretøy.
+  
+
+## Konklusjon for felles kontroller
+Kontrollene som gjelder uansett dataloggertype, bør justeres til følgende (endringer er angitt):
+
+  - **Selve registreringen er ugyldig dersom**:
+    - Kjørefeltverdien er fraværende.
+    - Kjørefeltverdien er utenfor de kjørefeltene som eksisterer på trafikkregistreringspunktet.
+    - Løpenummer mangler.
+    - Lengdeverdien mangler.
+
+  - **Lengde og klassifisering er ugyldig dersom**:
+    - Lengdeverdien mangler.
+    - Lengde er \< 1 m eller \> 27 m.
+    
+  - **Klassifisering er ugyldig dersom**:
+    - Klassifiseringen mangler. *(Klasse 10 flyttes til LM-kontrollene)*
+    
+  - **Fart er ugyldig dersom**:
+    - Absoluttverdi av fart \> 300 km/h.
+    - Absoluttverdi av fart \> 110 km/h og lengden er \> 7,6 m. *(lagt til)*
+    
+
+## Oppsummering for LM
+Kontrollene som underkjenner lengdemålingene fordeler seg som følger:
+
+  - Fart under 7 km/h (får ingen lengde av LM): noen få utslag av denne kontrollen.
+  - Lengde utenfor (1, 27) m: noen få utslag av denne kontrollen.
+  - Fartsulikhet større enn 3: de fleste utslagene skyldes denne kontrollen.
+  - Det er en del lengder mellom 1 og 2 m som har underkjent klasse, men fart over 7 km/h - disse er slått ut av signalkodekontrollen.
+  
+LM benytter følgende standardverdier for enkelte kjøretøyregistreringer:
+
+  -	Manglende lengde: settes når farten er under 7 km/h.
+  -	1,2 m: minimumslengde på signal som blir tolket som motorsykkel, men har usikker lengde pga. ikke-perfekt signalforløp.
+  -	1,95 m: minimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp.
+  -	29 m: maksimumslengde på signal som blir tolket som personbil, men har usikker lengde pga. ikke-perfekt signalforløp. Denne kan også inntreffe dersom lastebil passerer med en personbil liggende tett bak.
+
+**Ulik frekvens på sløyfer**: Selv om ulik frekvens på sløyfer gir høyere verdier på fartsulikhet, ser både lengde- og fartsmålinger helt greie ut. På Øysand ser det ut til at lengdene blir noe lengre, men ikke av særlig betydning. 
+
+Bruk av fartsulikhet som indikator på lav datakvalitet er ikke hensiktsmessig i dette tilfellet.
+
+**Lav frekvens på alle sløyfer**: Lav frekvens på alle sløyfer gir mange korte lengder. Fartsulikhet skiller ikke på målinger med vanlige lengder og de under 2 m eller over 27 m. En nærmere undersøkelse av de korte kjøretøyene bør gjennomføres for å sjekke om klassifiseringen er god.
+
+Bruk av fartsulikhet som indikator på lav datakvalitet er ikke hensiktsmessig i dette tilfellet.
+
+**Feil på sløyfe**: Dersom en av to sløyfer i samme kjørefelt er ødelagt (frakoblet e.l.) blir det mange lengder på 29 m.
+
+Lengder utenfor (1, 27) m, høy fartsulikhet og kombinasjonen høy fart for lange kjøretøy er gode indikatorer på data med lav kvalitet i dette tilfellet.
+
+**Kø**: Gir både en del lengder 1,2-2 m, og 20-29 m. Mange feilklassifiseres som motorsykkel.
+
+Lengder utenfor (1, 27) m er en god indikator på lav datakvalitet i dette tilfellet.
+
+**Delvis passering av sløyfer**: Gir stor andel 1,2-2 m selv med fart godt over 15 km/h. Mange feilklassifiseres som motorsykkel.
+
+Lengder utenfor (1, 27) m, høy fartsulikhet og kombinasjonen høy fart for lange kjøretøy er gode indikatorer på data med lav kvalitet i dette tilfellet.
+
+
+## Konklusjon for LM
+Resultatene av denne undersøkelsen viser at vi må justere enkelte kontroller. I kontrollene som benytter fartsulikhet må grenseverdien økes får når fartsulikhet fører til underkjent lengde og klassifisering.
+
+Observasjoner i denne analysen:
+
+  - **Fart under 7 km/h** gir underkjent fart, lengde og klasse. LM gir ikke lengde på disse, og de fleste får klasse 10 eller 11. Uendret kontroll.
+  - **Lengde under 1 m** gir underkjent lengde, og de fleste får ukjent klasse.
+  - **Lengde over 27 m** gir underkjent lengde, men kan de få godkjent klasse? Dette må testes!
+  - **Klassekode 10, 11 eller tom** gir underkjent klasse. 10 er ikke med i dagens kode!
+  - **Fartsulikhet over 25** gir underkjent fart og lengde. Endret kontroll våren 2020, dvs. ny grenseverdi.
+
+Forslag til nytt kontrollsett:
+
+  - **Fart, lengde og klassifisering er ugyldig dersom**:
+    - Absoluttverdi av fart \< 7 km/h. (LM angir ingen lengde når farten er så lav.)
+
+  - **Fart og lengde er ugyldig dersom**:
+    - Fartsulikhet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. (Endret i mars 2020 fra 3 % / 3 km/h.)
+    - Fartsulikhetsverdien mangler.
+    - Fartsverdien mangler.
+
+ - **Klassifisering er ugyldig dersom**:
+    - Signalkoden inneholder oddetall eller 0, unntatt 0202.
+    - Signalkoden mangler.
+    - Klassen er 10, 11 eller tom. *(lagt til)*
+
+
+## Oppsummering for EMU3
+EMU3 bruker noen standardverdier for enkelte kjøretøyregistreringer:
+
+  -	1,25 m: minimumslengde for kjøretøy generelt. Usikre lengdemålinger som blir kortere, får automatisk satt lengden til 1,25 m. De fleste klassifiseres som motorsykkel, men også noen biler får denne lengden. Opptrer typisk i forbindelse med delvis passering.
+
+**Ulik frekvens på sløyfer**: Bruk av fartsulikhet som indikator på lav datakvalitet er ikke hensiktsmessig i dette tilfellet.
+
+**Lav frekvens på alle sløyfer**: Bruk av fartsulikhet som indikator på lav datakvalitet er ikke hensiktsmessig i dette tilfellet.
+
+**Kø**: Gir en del lengder 1-2 m. Mange feilklassifiseres som motorsykkel. Lengder utenfor (1, 27) m er en god indikator på lav datakvalitet i dette tilfellet.
+
+**Delvis passering av sløyfer**: Gir stor andel 1-2 m selv med fart godt over 15 km/h. Mange feilklassifiseres som motorsykkel. Lengder utenfor (1, 27) m, høy fartsulikhet og kombinasjonen høy fart for lange kjøretøy er gode indikatorer på data med lav kvalitet i dette tilfellet.
+
+**Fartsulikhet mangler**: Det finnes noen tilfeller i rådatabasen der fartsulikhetsverdien mangler. Da er alltid fart og lengde maks verdi på datatypen (2^16-1), og disse fanges opp av andre regler. Men klassifiseringen er en fornuftig verdi.
+
+
+## Konklusjon for EMU3
+Forslag til nytt kontrollsett:
+
+  - **Fart og lengde er ugyldig dersom**:
+    - Absoluttverdi av fart \< 7 km/h.
+    - Fartsverdien mangler.
+    
+  - **Klassifisering er ugyldig dersom**:
+    - Klassen er ulik LMV1, LMV2, HMV, LMV2+WC, HMV+WC. *(lagt til)* 
+
+  - *(Fartsulikhetskontroller er fjernet)*
 
 
 ## Gjenstående analyser
 Gjenstående analyser:
 
   - Hva er korrekt klassifisering av kjøretøy som får målt lengde under 2 m? Er alle disse lette kjøretøy?
-  - Lengde på 29 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy fartsulikhet.
+  - Lengde over 27 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy fartsulikhet.
   - Finn ut om signalkodekontrollen til LM skal slå ut på lengde også.
   - Er det mulig å avdekke sensorproblemer ut fra fordeling av lengdeverdier?
+  - Hvilken tungbilandel er mest korrekt - den basert på lengde eller klassifisering?
+  - Hva sier kjøretøyregisteret om sammenhengen mellom lengde og klasseskillet mellom lette og tunge?
+  - Bruke data fra mange punkter til å finne normal fordeling av lengder rundt 5,6 m, f.eks. (3, 7,6). Hvordan ser denne ut dersom alle forhold ellers er ok? (Fart, feltskifte, sløyfer)
+  

@@ -159,6 +159,11 @@ data_interval <-
 # Malins vbv ----
 EMU3_F05 <- read_excelsheet("vbv_data/oysand_comparisons/emu3_unknown_length.xlsx", 1)
 EMU3_F07 <- read_excelsheet("vbv_data/oysand_comparisons/emu3_unknown_length.xlsx", 2)
+EMU3_F09 <- dplyr::bind_rows(
+  read_excelsheet("vbv_data/oysand_comparisons/emu3_F09.xlsx", 1),
+  read_excelsheet("vbv_data/oysand_comparisons/emu3_F09.xlsx", 2)
+)
+
 
 # F05
 EMU3_F05_LM_data <- EMU3_F05 %>%
@@ -275,6 +280,62 @@ EMU3_F07_under_3 <- EMU3_F07_all_classifications %>%
   dplyr::filter(length_EMU3 < 3 | length_LM < 3)
 
 
+# F09
+EMU3_F09_LM_data <- EMU3_F09 %>%
+  dplyr::select(lane, length = length_LM, vehicle_type_raw = vehicle_type_raw_LM) %>%
+  dplyr::mutate(name_and_datalogger = "LM_F07",
+                vehicle_type_raw = as.character(vehicle_type_raw))
+
+EMU3_F09_EMU3_data <- EMU3_F09 %>%
+  dplyr::select(lane, length, vehicle_type_raw = vehicle_type_raw_EMU3) %>%
+  dplyr::mutate(name_and_datalogger = "EMU3_F09",
+                vehicle_type_raw = as.character(vehicle_type_raw))
+
+EMU3_F09_length_hr <- dplyr::bind_rows(EMU3_F09_LM_data, EMU3_F09_EMU3_data) %>%
+  dplyr::mutate(lane = paste0("felt ", lane),
+                lane = factor(lane, levels = lane_order),
+                weekday = "mandag") %>%
+  make_length_classes() %>%
+  calculate_heavy_ratio_from_vbv_by_length()
+
+EMU3_F09_class_hr <- dplyr::bind_rows(EMU3_F09_LM_data, EMU3_F09_EMU3_data) %>%
+  dplyr::mutate(lane = paste0("felt ", lane),
+                lane = factor(lane, levels = lane_order),
+                weekday = "mandag") %>%
+  make_norsikt_classes() %>%
+  calculate_heavy_ratio_from_vbv_by_class()
+
+EMU3_F09_all_classifications <- EMU3_F09 %>%
+  dplyr::select(lane, length_LM, length_EMU3 = length,
+                vehicle_type_raw_LM, vehicle_type_raw = vehicle_type_raw_EMU3,
+                length_diff,
+                length_class_2_EMU3 = length_class_2,
+                length_class_full_EMU3 = length_class_full) %>%
+  make_norsikt_classes() %>%
+  dplyr::rename(norsikt_l2_EMU3 = norsikt_l2,
+                norsikt_l3_EMU3 = norsikt_l3,
+                vehicle_type_raw_EMU3 = vehicle_type_raw,
+                length = length_LM) %>%
+  make_length_classes() %>%
+  dplyr::rename(length_class_2_LM = length_class_2,
+                length_class_full_LM = length_class_full,
+                length_LM = length,
+                vehicle_type_raw = vehicle_type_raw_LM) %>%
+  make_norsikt_classes() %>%
+  dplyr::rename(norsikt_l2_LM = norsikt_l2,
+                norsikt_l3_LM = norsikt_l3,
+                vehicle_type_raw_LM = vehicle_type_raw)
+
+EMU3_F09_different_length_class_longer <- EMU3_F09_all_classifications %>%
+  dplyr::filter(length_EMU3 < 27,
+                length_class_2_LM == "[..,5.6)" & length_class_2_EMU3 == "[5.6,..)")
+
+EMU3_F09_different_length_class_shorter <- EMU3_F09_all_classifications %>%
+  dplyr::filter(length_EMU3 < 27,
+                length_class_2_EMU3 == "[..,5.6)" & length_class_2_LM == "[5.6,..)")
+
+EMU3_F09_under_3 <- EMU3_F09_all_classifications %>%
+  dplyr::filter(length_EMU3 < 3 | length_LM < 3)
 
 
 # Heavy ratios ----
