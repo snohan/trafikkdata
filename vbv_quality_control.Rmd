@@ -767,7 +767,7 @@ Vurdering:
 ## Øysand teststrekning
 Teststrekningen på Ev 39 ved Øysand har tre sløyfesett (F05, F07, F09) plassert rett etter hverandre. Dermed kan den samme trafikken sammenlignes på ulike dataloggere og firmwareversjoner.
 
-I felt 2 på F05 har en av sløyfene lavere frekvens enn normalt, og for LM gir dette typisk noe lengre lengder enn de samme målingene i felt 2 på F07 og F09.
+I felt 2 på F05 har en av sløyfene lavere frekvens enn normalt, og fra tidligere testing er det kjent at LM typisk gir noe lengre lengder enn de samme målingene i felt 2 på F07 og F09.
 
 
 ### Generell fordeling av lengdemålinger
@@ -807,6 +807,8 @@ oysand_2021w23 %>%
 ```
 
 Resultatene er konsistente over disse tre dagene, og viser at EMU3 måler noe lengre lengder enn LM i felt 1. I felt 2 måler LM noe lengre lengder, men dette skyldes nok at den ene sløyfa der er litt dårlig.
+
+Det er verdt å merke at kurvenes stigningstall øker brått ved omkring 4 m og avtar markant ved omkring 6 m, noe som viser at de fleste kjøretøy er mellom 4 m og 6 m lange.
 
 Ser på tilsvarende kvantilplott.
 
@@ -906,57 +908,60 @@ oysand_2021w23 %>%
 Grovt sett er det veldig likt. Fartsulikhet virker ikke å være noen god indikator på data med lav kvalitet verken for EMU3 eller LM.
 
 
-
 ### Sammenligning av kjøretøy mot kjøretøy
-#### EMU3 på F05
-Med data fra 12. april 2021 er lengdemålingene sammenlignet mellom EMU3 på F05 (1.04) og LM på F09 (1.14.419).
+I tre tilfeller er det gjort matching av kjøretøy mot kjøretøy mellom data fra to punkter på Øysand. Dette er gjort for å sammenligne måleverdier fra det samme kjøretøyet fra ulike dataloggere og sløyfesett.
 
-```{r vbv_1}
+
+#### EMU3 på F05
+Med data fra 12. april 2021 er lengdemålingene sammenlignet mellom EMU3 på F05 (1.04) og LM på F09 (1.14.419). Det er kjent at den ene sløyfa i felt 2 på F05 har omkring 20 kHz lavere frekvens enn normalt.
+
+```{r vbv_f05_1}
 plot_vbv_data(EMU3_F05, 1, "Forskjell i registrert lengde mellom EMU3 (F05) og LM (F09)")
 ```
 
-```{r vbv_2}
+```{r vbv_f05_2}
 plot_vbv_data(EMU3_F05, 2, "Forskjell i registrert lengde mellom EMU3 (F05) og LM (F09)")
 ```
 
-Også for EMU3 blir det lengre lengder i felt 2 på F05. De som har underkjent lengde hos EMU3 her kommer for det meste av at fartsulikhetsverdien er ulik 0.
+Også for EMU3 blir det lengre lengder i felt 2 på F05. De som har underkjent lengde hos EMU3 her kommer for det meste av at fartsulikhetsverdien er ulik 0, men fordelingen av lengder ser ikke ut til å være vesentlig forskjellig likevel.
 
-Sammenligner andel tunge basert på lengdemålinger.
+I figuren under sammenlignes andel tunge basert på lengdemålinger.
 
 ```{r EMU3_F05_length_hr, fig.height=4, fig.width=8}
 plot_heavy_ratio(EMU3_F05_length_hr)
 ```
 
-Sammenligner andel tunge basert på klassifisering.
+Andelen tunge er veldig lik i felt 1, men i felt 2 er den nesten dobbelt så stor og dette skyldes nok feilen på den ene sløyfa her.
+
+I figuren under sammenlignes andel tunge basert på kjøretøyklassifisering.
 
 ```{r EMU3_F05_class_hr, fig.height=4, fig.width=8}
 plot_heavy_ratio(EMU3_F05_class_hr)
 ```
 
-Her framgår det at tungbilandelen er mer lik når klassifisering benyttes som grunnlag.
+Her framgår det at tungbilandelen i felt 2 er mer lik når klassifisering benyttes som grunnlag.
 
-En nærmere titt på kjøretøy som klassifiseres ulikt av de to apparatene. Først de som er målt kortere enn 5,6 m av LM, men lengre enn 5,6 m av EMU3.
+Figurene under viser en nærmere titt på kjøretøy som klassifiseres ulikt av de to dataloggerne. Først de som er målt kortere enn 5,6 m av LM, men lengre enn 5,6 m av EMU3.
 
 ```{r EMU3_F05_diff_length_class_longer, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F05_different_length_class_longer,
                               "EMU3 F05 og LM F09")
 ```
 
-Her kommer det tydelig fram at det er flere tilfeller av ulik lengdeklassifisering i felt 2 enn i felt 1. Det er her omkring 20 kHz forskjellig frekvens på sløyfene i felt 2, mens i felt 1 ligger begge på normalt nivå.
+Her kommer det tydelig fram at det er flere tilfeller av ulik lengdeklassifisering i felt 2 enn i felt 1. Det kommer også ganske tydelig fram at EMU3 ved en høy andel tilfeller skiller mellom lette og tunge kjøretøy ved 6 m. Det er veldig få som er målt kortere enn 5,6 m av LM og samtidig klassifisert som tung av LM.
 
-Det kommer også ganske tydelig fram at EMU3 ved en høy andel tilfeller skiller mellom lette og tunge kjøretøy rundt 6 m. Det er veldig få som er målt kortere enn 5,6 m av LM og samtidig klassifisert som tung av LM.
-
+I figuren under vises kjøretøy målt kortere enn 5,6 m av EMU3, men lenger enn 5,6 m av LM.
 
 ```{r EMU3_F05_diff_length_class_shorter, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F05_different_length_class_shorter,
                               "EMU3 F05 og LM F09")
 ```
 
-Ingen kjøretøy målt kortere enn 5,6 m av EMU3 er klassifisert som tunge av EMU3. En god del av kjøretøyene målt mellom 5,6 m og 6 m er klassifisert som lette av LM. Det ser her ut som om også LM har et skille ved 6 m mellom klassene lette og tunge.
+Ingen kjøretøy målt kortere enn 5,6 m av EMU3 er klassifisert som tunge av EMU3. Ut fra forrige figur ser dette ut til å gjelde opp til 6 m. En god del av kjøretøyene målt mellom 5,6 m og 6 m er klassifisert som lette av LM. Det ser her ut som om også LM har et skille ved 6 m mellom klassene lette og tunge, men skillet er noe mindre skarpt enn hos EMU3.
 
 Det er ingen kjøretøy i dette utvalget som er målt under 4 m av noen av dataloggerne.
 
-Ser på målinger under 3 m.
+Figuren nedenfor viser lengdemålinger under 3 m.
 
 ```{r EMU3_F05_under_#, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F05_under_3,
@@ -969,7 +974,6 @@ Selv om det er en del avvik på lengdemålingene, er begge datalogger enige om a
 #### EMU3 på F07
 Med data fra 27. mars 2020 er lengdemålingene sammenlignet mellom EMU3 på F07 (1.04) og LM på F09 (1.14.414).
 
-
 ```{r vbv_3}
 plot_vbv_data(EMU3_F07, 1, "Forskjell i registrert lengde mellom EMU3 (F07) og LM (F09)")
 ```
@@ -980,28 +984,33 @@ plot_vbv_data(EMU3_F07, 2, "Forskjell i registrert lengde mellom EMU3 (F07) og L
 
 Det er gjennomgående litt avvik på lengdemålingene til de to dataloggerne. Fartsulikhet, som fører til underkjent lengde, gir ikke noe tydelig skille på hvor like (gode) lengdemålingene er.
 
-Sammenligner andel tunge basert på lengdemålinger.
+I figuren under sammenlignes andel tunge basert på lengdemålingene.
 
 ```{r EMU3_F07_length_hr, fig.height=4, fig.width=8}
 plot_heavy_ratio(EMU3_F07_length_hr)
 ```
 
-Sammenligner andel tunge basert på klassifisering.
+EMU3 har klart større tungbilandel i begge felt her.
+
+I figuren under sammenlignes andel tunge basert på klassifisering.
 
 ```{r EMU3_F07_class_hr, fig.height=4, fig.width=8}
 plot_heavy_ratio(EMU3_F07_class_hr)
 ```
 
-Tungbilandelen er mer lik når klassifisering benyttes som grunnlag.
+Tungbilandelen er litt mer lik når klassifisering benyttes som grunnlag, men fortsatt har EMU3 høyere andel i begge felt.
+
+Figurene under viser en nærmere titt på kjøretøy som klassifiseres ulikt av de to dataloggerne. Først de som er målt kortere enn 5,6 m av LM, men lengre enn 5,6 m av EMU3.
 
 ```{r EMU3_F07_diff_length_class_longer, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F07_different_length_class_longer,
                               "EMU3 F07 og LM F09")
 ```
-Her er situasjonen ganske lik i begge felt, og her er alle sløyfenes frekvenser på samme nivå. Det går også her fram at EMU3 har et skille ved 6 m der det skilles på lette og tunge klasser. LM har her ingen i klassen for lette.
+Her er situasjonen ganske lik i begge felt, og her er alle sløyfenes frekvenser på samme nivå. Det går også her fram at EMU3 har et skille ved 6 m der det skilles på lette og tunge klasser. LM har her ingen i klassen for lette. Et par kjøretøy er målt veldig mye lengre av EMU3 enn LM, og i ett av disse tilfellene skyldes dette at EMU3 har slått sammen fire kortere kjøretøy som kjørte nære hverandre. I det andre tilfellet er det et par motorsykler som har kjørt forbi andre kjøretøy og det kan ha lurt EMU3 til å tolke oppdeling av kjøretøy noe feil.
 
 Det er kun ett kjøretøy i dette utvalget som er målt under 4 m av en av dataloggerne.
 
+I figuren under vises kjøretøy målt kortere enn 5,6 m av EMU3, men lenger enn 5,6 m av LM.
 
 ```{r EMU3_F07_diff_length_class_shorter, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F07_different_length_class_shorter,
@@ -1012,7 +1021,7 @@ Situasjonen er veldig lik i begge feltene. Det er et mindre antall kjøretøy so
 
 EMU3 har her ingen i klassen tunge.
 
-Ser på målinger under 3 m.
+Figuren under viser målinger under 3 m.
 
 ```{r EMU3_F07_under_3, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F07_under_3,
@@ -1025,7 +1034,6 @@ Begge dataloggere er enige om klassifiseringen av disse korte kjøretøyene.
 #### EMU3 på F09
 Med data fra 30. august 2021 er lengdemålingene sammenlignet mellom EMU3 på F09 (1.04) og LM på F07 (1.14.419).
 
-
 ```{r vbv_f09_1}
 plot_vbv_data(EMU3_F09, 1, "Forskjell i registrert lengde mellom EMU3 (F09) og LM (F07)")
 ```
@@ -1034,53 +1042,68 @@ plot_vbv_data(EMU3_F09, 1, "Forskjell i registrert lengde mellom EMU3 (F09) og L
 plot_vbv_data(EMU3_F09, 2, "Forskjell i registrert lengde mellom EMU3 (F09) og LM (F07)")
 ```
 
-Sammenligner andel tunge basert på lengdemålinger.
+Det er gjennomgående litt avvik på lengdemålingene til de to dataloggerne. Fartsulikhet, som fører til underkjent lengde, gir ikke noe tydelig skille på hvor like (gode) lengdemålingene er.
+
+I figuren under sammenlignes andel tunge basert på lengdemålingene.
 
 ```{r EMU3_F09_length_hr, fig.height=4, fig.width=8}
 plot_heavy_ratio(EMU3_F09_length_hr)
 ```
 
-Sammenligner andel tunge basert på klassifisering.
+EMU3 har klart større tungbilandel i begge felt her, men mest i felt 2.
+
+I figuren under sammenlignes andel tunge basert på klassifisering.
 
 ```{r EMU3_F09_class_hr, fig.height=4, fig.width=8}
 plot_heavy_ratio(EMU3_F09_class_hr)
 ```
+
+Tungbilandelen er litt mer lik når klassifisering benyttes som grunnlag, men fortsatt har EMU3 høyere andel i begge felt.
+
+Figurene under viser en nærmere titt på kjøretøy som klassifiseres ulikt av de to dataloggerne. Først de som er målt kortere enn 5,6 m av LM, men lengre enn 5,6 m av EMU3.
 
 ```{r EMU3_F09_diff_length_class_longer, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F09_different_length_class_longer,
                               "EMU3 F09 og LM F07")
 ```
 
+Her er situasjonen ganske lik i begge felt. Det er noen tilfeller der EMU3 har målt veldig mye lengre lengder enn LM. I to tilfeller har to eller tre kjøretøy kjørt tett på hverandre, og LM og EMU3 har tolket dette ulikt. I et annet tilfelle har EMU3 slått sammen to kjøretøy til ett.
+
+I figuren under vises kjøretøy målt kortere enn 5,6 m av EMU3, men lenger enn 5,6 m av LM.
+
 ```{r EMU3_F09_diff_length_class_shorter, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F09_different_length_class_shorter,
                               "EMU3 F09 og LM F07")
 ```
+
+Situasjonen er veldig lik i begge feltene. Det er et mindre antall kjøretøy som av LM er målt lengre enn 5,6 m og kortere enn 5,6 m av EMU3. LM sitt skille mellom klassene lette og tunge er her også rundt 6 m, men også noen betydelig lengre kjøretøy er klassifisert som lette av LM.
+
+EMU3 har her ingen i klassen tunge.
+
+Figuren under viser målinger under 3 m.
 
 ```{r EMU3_F09_under_3, fig.height=4, fig.width=8}
 plot_different_length_classes(EMU3_F09_under_3,
                               "EMU3 F09 og LM F07")
 ```
 
-
-
+Begge dataloggere er enige om klassifiseringen av disse korte kjøretøyene, bortsett fra i ett tilfelle.
 
 
 # Oppsummering og konklusjon
-Her kommer en oppsummering av analysene og forslag til endring av kvalitetskontrollene.
+Her er en oppsummering av analysene og forslag til endring av kvalitetskontrollene.
 
 
 ## Klassifisering av motorsykler
-Det virker vanskelig å klassifisere motorsykler. Fra før vet vi at mange motorsykler "unnslipper" sløyfene ved å plassere seg for langt ut i kanten av kjørefeltet. I tillegg oppstår det mange falske motorsykler ved feltskifte og lav fart. En vurdering av om klassifisering av motorsykler er god nok må gjøres for hvert punkt.
+Det virker vanskelig å klassifisere motorsykler korrekt. Fra før vet vi at mange motorsykler unnslipper sløyfene ved å plassere seg for langt ut i kanten av kjørefeltet. I tillegg oppstår det mange falske motorsykler ved feltskifte og lav fart. En vurdering av om klassifisering av motorsykler er god nok må gjøres for hvert trafikkregistreringspunkt.
 
 
 ## Klassifisering basert på lengde eller klasse
 Oppsummert fra analysen:
 
   - Både LM og EMU3 virker tilsynelatende å ha et skille rundt 6 m mellom lette og tunge klasser.
-  - Dermed blir andel tunge lavere basert på klasse enn lengde.
-  - Det fins færre kjøretøy rundt 6 m enn rundt 5,6 m.
-  - Selv om tendensen er at EMU3 eller LM på sløyfer med ulik frekvens måler lengre lengder enn reellt, så slår ikke dette like mye ut over 6 m som 5,6 m.
-  - Dermed blir klassifisering basert på klasse likere enn basert på lengde.
+  - Fordi det finnes færre kjøretøy rundt 6 m enn rundt 5,6 m, blir dermed andel tunge lavere basert på klasse enn lengde.
+  - Selv om tendensen er at EMU3, og LM på sløyfer med ulik frekvens, måler lengre lengder enn reellt, så slår ikke dette like mye ut over 6 m som mellom 5,6-6 m, og dermed blir klassifisering basert på klasse likere enn basert på lengde.
 
 
 ## Høy fart på tunge kjøretøy
@@ -1090,7 +1113,7 @@ Dette blir da en ny kontroll som gjelder alle dataloggertyper for motorkjøretø
   
 
 ## Konklusjon for felles kontroller
-Kontrollene som gjelder uansett dataloggertype, bør justeres til følgende (endringer er angitt):
+Kontrollene som gjelder uansett dataloggertype, bør justeres til følgende (endringer er angitt i parentes):
 
   - **Selve registreringen er ugyldig dersom**:
     - Kjørefeltverdien er fraværende.
@@ -1103,7 +1126,7 @@ Kontrollene som gjelder uansett dataloggertype, bør justeres til følgende (end
     - Lengde er \< 1 m eller \> 27 m.
     
   - **Klassifisering er ugyldig dersom**:
-    - Klassifiseringen mangler. *(Klasse 10 flyttes til LM-kontrollene)*
+    - Klassifiseringen mangler.
     
   - **Fart er ugyldig dersom**:
     - Absoluttverdi av fart \> 300 km/h.
@@ -1157,10 +1180,10 @@ Observasjoner i denne analysen:
   - **Klassekode 10, 11 eller tom** gir underkjent klasse. 10 er ikke med i dagens kode!
   - **Fartsulikhet over 25** gir underkjent fart og lengde. Endret kontroll våren 2020, dvs. ny grenseverdi.
 
-Forslag til nytt kontrollsett:
+Forslag til nytt kontrollsett (endringer angitt i parentes):
 
   - **Fart, lengde og klassifisering er ugyldig dersom**:
-    - Absoluttverdi av fart \< 7 km/h. (LM angir ingen lengde når farten er så lav.)
+    - Absoluttverdi av fart \< 7 km/h.
 
   - **Fart og lengde er ugyldig dersom**:
     - Fartsulikhet* \>= 25 % for fart \>= 100 km/h, eller \>= 25 km/h for fart \< 100 km/h. (Endret i mars 2020 fra 3 % / 3 km/h.)
@@ -1190,14 +1213,14 @@ EMU3 bruker noen standardverdier for enkelte kjøretøyregistreringer:
 
 
 ## Konklusjon for EMU3
-Forslag til nytt kontrollsett:
+Forslag til nytt kontrollsett (endringer angitt i parentes):
 
   - **Fart og lengde er ugyldig dersom**:
     - Absoluttverdi av fart \< 7 km/h.
     - Fartsverdien mangler.
     
   - **Klassifisering er ugyldig dersom**:
-    - Klassen er ulik LMV1, LMV2, HMV, LMV2+WC, HMV+WC. *(lagt til)* 
+    - Klassen er ikke en av LMV1, LMV2, HMV, LMV2+WC, HMV+WC. *(lagt til)* 
 
   - *(Fartsulikhetskontroller er fjernet)*
 
@@ -1209,7 +1232,7 @@ Gjenstående analyser:
   - Lengde over 27 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy fartsulikhet.
   - Finn ut om signalkodekontrollen til LM skal slå ut på lengde også.
   - Er det mulig å avdekke sensorproblemer ut fra fordeling av lengdeverdier?
+  - Bruke data fra mange punkter til å finne normal fordeling av lengder rundt 5,6 m, f.eks. (3, 7,6). Hvordan ser denne ut dersom alle forhold ellers er ok? (Fart, feltskifte, sløyfer)
   - Hvilken tungbilandel er mest korrekt - den basert på lengde eller klassifisering?
   - Hva sier kjøretøyregisteret om sammenhengen mellom lengde og klasseskillet mellom lette og tunge?
-  - Bruke data fra mange punkter til å finne normal fordeling av lengder rundt 5,6 m, f.eks. (3, 7,6). Hvordan ser denne ut dersom alle forhold ellers er ok? (Fart, feltskifte, sløyfer)
-  
+  - Hvor god er klassifiseringen av hengere? Spesielt lette kjøretøy med henger - blir disse tolket som tunge?
