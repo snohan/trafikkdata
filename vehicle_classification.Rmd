@@ -7,10 +7,8 @@ output: html_notebook
 ```{r setup, include = FALSE, echo = FALSE}
 # Packages
 library(tidyverse)
-library(jsonlite)
 library(flextable)
-library(httr)
-library(writexl)
+library(hexbin)
 
 # knitr options
 knitr::opts_chunk$set(echo = FALSE,
@@ -18,66 +16,61 @@ knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       error = FALSE)
 
-source("get_from_data_norge.R")
+# Data is prepared in vehicle_register_data_prep.R
 ```
 
-Here comes something...
+Hva er sammenhengen mellom lengde og tillatt totalvekt?
 ```{r getdata}
-# Must have four data sets
+all_small_vehicles %>% 
+  dplyr::slice(1:200000) %>% 
+  ggplot(aes(tekn_lengde, tekn_totvekt)) +
+  ggplot2::geom_point() +
+  geom_vline(aes(xintercept = 5.6), color = "#ed1c2e", alpha = 0.6) +
+  geom_hline(aes(yintercept = 3.5), color = "#ed1c2e", alpha = 0.6) +
+  facet_wrap(vars(tekn_tknavn)) +
+  theme_bw() +
+  labs(x = "\nKjøretøylengde (m)", y = "Tillatt totalvekt (tonn)\n") +
+  ggtitle("Sammenheng mellom lengde og tillatt totalvekt")
+```
 
-# All (61 rows)
-vehicle_groups <- get_vehicle_groups()
 
-vehicle_technical_codes <- get_technical_codes()
+```{r vegtek}
+# vegtek_columns_to_be_removed <- c("tekn_drivst",
+#                                   "tekn_euronorm_ny",
+#                                   "tekn_hybrid",
+#                                   "tekn_hybrid_kategori",
+#                                   "tekn_merkenavn")
+# 
+# vehicle_info %>% 
+#         dplyr::select(!tidyselect::all_of(vegtek_columns_to_be_removed)) %>% 
+#         writexl::write_xlsx(path = "kjoretoy_O3.xlsx")
+```
 
-vehicle_info_fields <- get_vehicle_info_fields()
+```{r 2d}
+all_small_vehicles %>% 
+  #dplyr::slice(1:200000) %>% 
+  ggplot(aes(tekn_lengde, tekn_totvekt)) +
+  ggplot2::geom_hex() +
+  geom_vline(aes(xintercept = 5.6), color = "#ed1c2e", alpha = 0.6) +
+  geom_hline(aes(yintercept = 3.5), color = "#ed1c2e", alpha = 0.6) +
+  facet_wrap(vars(tekn_tknavn)) +
+  theme_bw() +
+  labs(x = "\nKjøretøylengde (m)", y = "Tillatt totalvekt (tonn)\n") +
+  ggtitle("Sammenheng mellom lengde og tillatt totalvekt")
+```
 
-vehicle_info <- get_vehicle_info("O3")
-
-traffic_data_relevant_columns <- c("tekn_aksler",
-                                   "tekn_aksler_drift", 
-                                   "tekn_avreg_dato", 
-                                   "tekn_drivst",
-                                   "tekn_egenvekt",
-                                   "tekn_euronorm_ny",
-                                   "tekn_hybrid",
-                                   "tekn_hybrid_kategori",
-                                   "tekn_kjtgrp", 
-                                   "tekn_last_1",
-                                   "tekn_last_2",
-                                   "tekn_last_3",
-                                   "tekn_lengde", 
-                                   "tekn_luft_1",
-                                   "tekn_luft_2",
-                                   "tekn_luft_3",
-                                   "tekn_merkenavn",
-                                   "tekn_minavst_ms1",
-                                   "tekn_minavst_ms2",
-                                   "tekn_reg_aar", 
-                                   #"tekn_reg_status", 
-                                   "tekn_thv_m_brems",
-                                   "tekn_thv_u_brems",
-                                   "tekn_tknavn",
-                                   "tekn_totvekt", 
-                                   "tekn_vogntogvekt"
-                                   )
-
-# A subset
-vegtek_columns_to_be_removed <- c("tekn_drivst",
-                                  "tekn_euronorm_ny",
-                                  "tekn_hybrid",
-                                  "tekn_hybrid_kategori",
-                                  "tekn_merkenavn")
-
-vehicle_info %>% 
-        dplyr::select(tidyselect::all_of(traffic_data_relevant_columns)) %>% 
-        write.csv2("kjoretoy_O3.csv",
-                   row.names = FALSE)
-
-vehicle_info %>% 
-        dplyr::select(tidyselect::all_of(traffic_data_relevant_columns)) %>% 
-        dplyr::select(!tidyselect::all_of(vegtek_columns_to_be_removed)) %>% 
-        writexl::write_xlsx(path = "kjoretoy_O3.xlsx")
-
+```{r bin}
+small_vehicles_grouped %>% 
+  ggplot(aes(kategori, antall)) +
+  ggplot2::geom_col() +
+  geom_text(aes(label = antall,
+                   y = 1e5),
+              color = "grey",
+              position = position_dodge(0.9),
+              vjust = 0) +
+  facet_wrap(vars(tekn_tknavn)) +
+  theme_bw() +
+  labs(x = "\nKategori", y = "Antall\n") +
+  ggtitle("Sammenheng mellom lengde og tillatt totalvekt")
 ```
 

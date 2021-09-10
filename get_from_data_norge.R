@@ -35,10 +35,38 @@ get_vehicle_info_fields <- function() {
 
 }
 
+traffic_data_relevant_columns <- c("tekn_aksler",
+                                   #"tekn_aksler_drift",
+                                   "tekn_avreg_dato",
+                                   "tekn_drivst",
+                                   "tekn_egenvekt",
+                                   #"tekn_euronorm_ny",
+                                   #"tekn_hybrid",
+                                   #"tekn_hybrid_kategori",
+                                   #"tekn_kjtgrp",
+                                   #"tekn_last_1",
+                                   #"tekn_last_2",
+                                   #"tekn_last_3",
+                                   "tekn_lengde",
+                                   #"tekn_luft_1",
+                                   #"tekn_luft_2",
+                                   #"tekn_luft_3",
+                                   "tekn_merkenavn",
+                                   #"tekn_minavst_ms1",
+                                   #"tekn_minavst_ms2",
+                                   "tekn_modell",
+                                   "tekn_reg_aar",
+                                   "tekn_reg_status",
+                                   #"tekn_thv_m_brems",
+                                   #"tekn_thv_u_brems",
+                                   "tekn_tknavn",
+                                   "tekn_totvekt",
+                                   "tekn_vogntogvekt"
+                                   )
+
 #technical_code <- "O1"
 get_vehicle_info <- function(technical_code) {
 
-  # TODO: technical code as input
   api_base_url <- paste0("https://hotell.difi.no/api/json/vegvesen/kjoretoy?tekn_reg_status=Registrert&tekn_tknavn=",
                          technical_code,
                          "&page=")
@@ -71,7 +99,8 @@ get_vehicle_info <- function(technical_code) {
       simplifyDataFrame = T,
       flatten = T)
 
-    vehicle_entries_new <- parsed_response$entries
+    vehicle_entries_new <- parsed_response$entries %>%
+      dplyr::select(tidyselect::all_of(traffic_data_relevant_columns))
 
     vehicle_entries <- dplyr::bind_rows(vehicle_entries,
                                         vehicle_entries_new)
