@@ -66,6 +66,9 @@ trp_speed_compliance <- all_data_from_kibana %>%
                 month_as_date
                 )
 
+trp_speed_compliance_json <- jsonlite::toJSON(trp_speed_compliance)
+write(trp_speed_compliance_json, "fart_okv/fartsdata.json")
+
 month_start = lubridate::make_date(year = 2021, month = 1)
 month_end = lubridate::make_date(year = 2021, month = 12)
 
