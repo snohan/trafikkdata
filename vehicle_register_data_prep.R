@@ -10,12 +10,12 @@ library(writexl)
 source("get_from_data_norge.R")
 
 
-# Must have four data sets ----
+# Four data sets from API ----
 
 # Avgiftskoder, antakelig irrelevant
 #vehicle_groups <- get_vehicle_groups()
 
-# Klassene brukt i Kjøreøtyforskriften
+# Klassene brukt i Kjøretøyforskriften
 vehicle_technical_codes <- get_technical_codes()
 # TODO: map to NorSiKT classes
 
@@ -26,36 +26,34 @@ vehicle_info_fields <- get_vehicle_info_fields()
 #vehicle_info_N1 <- get_vehicle_info("N1")
 # Spørringa tar alt for langt tid! Bruk CSV-dump i stedet.
 
+
+# Complete set in CSV dump ----
 # OBS! 2 GB i csv-fila!
-#test_1 <- readr::read_csv2("kjoretoyregisteret/kjoretoy_komplett.csv",
+#komplett_liste <- readr::read_csv2("kjoretoyregisteret/kjoretoy_komplett.csv",
 #                           col_select = traffic_data_relevant_columns)
 
 # Ser kun på korte
-shorter_vehicles <- test_1 %>%
+shorter_vehicles <- komplett_liste %>%
   dplyr::filter(tekn_reg_status == "REGISTRERT",
                 tekn_tknavn %in% c("M1", "M2", "N1", "N2"))
-
-# Må inkludere m1g og n1g da f.eks. Land Cruiser er med her.
-terrain_vehicles <- test_1 %>%
-  dplyr::filter(tekn_reg_status == "REGISTRERT",
-                tekn_tknavn %in% c("M1G", "M2G", "N1G", "N2G"))
-
-
-# TODO: fjerne veteranbiler og andre gamle som sikkert ikke kjører mye nå, dvs. regaar før 2000.
-# TODO: fjern eventuelle uten lengde (hvor mange er det?)
-# TODO: sjekk om noen lengder er upålitelige
-# (har sett en lastebil fra 1978 på 26,5 m...tilfeldigivs samme tall som tillatt totalvekt!)
 
 shorter_vehicles %>%
   write.csv2("kjoretoyregisteret/kjoretoy_M1_M2_N1_N2.csv",
              row.names = FALSE)
 shorter_vehicles <- read_csv2("kjoretoyregisteret/kjoretoy_M1_M2_N1_N2.csv")
 
+# Må inkludere m1g og n1g da f.eks. Land Cruiser er med her.
+terrain_vehicles <- komplett_liste %>%
+  dplyr::filter(tekn_reg_status == "REGISTRERT",
+                tekn_tknavn %in% c("M1G", "M2G", "N1G", "N2G"))
 
 terrain_vehicles %>%
   write.csv2("kjoretoyregisteret/kjoretoy_M1G_M2G_N1G_N2G.csv",
              row.names = FALSE)
 terrain_vehicles <- read_csv2("kjoretoyregisteret/kjoretoy_M1G_M2G_N1G_N2G.csv")
+
+
+# Transformer ----
 
 all_small_vehicles <- dplyr::bind_rows(shorter_vehicles, terrain_vehicles) %>%
   dplyr::select(-tekn_avreg_dato, -tekn_reg_status) %>% # nothing interesting
@@ -80,14 +78,12 @@ small_vehicles_grouped <- all_small_vehicles %>%
 
 table(all_small_vehicles$tekn_tknavn)
 
-extreme_lengths <- all_small_vehicles %>%
-  dplyr::filter(tekn_lengde > 16000)
-
 short_lengths <- all_small_vehicles %>%
-  dplyr::filter(tekn_lengde < 3000)
+  dplyr::filter(tekn_lengde < 3)
 
+# Campingbiler
 extreme_weights <- all_small_vehicles %>%
-  dplyr::filter(tekn_totvekt > 7000,
+  dplyr::filter(tekn_totvekt > 7,
                 tekn_tknavn == "M1")
 
 mitsubishi_outlander <- all_small_vehicles %>%
@@ -97,3 +93,9 @@ mitsubishi_outlander <- all_small_vehicles %>%
 # TODO: finne optimalt lengdeskille
 # Målet er å ha færrest andel i mellomkategoriene
 # Simulere med lengder mellom 5,4 - 6,2
+# TODO: motorsykler
+# TODO: hvilke kjøretøy havner i mellomkategoriene?
+# TODO: hengere...?
+
+
+

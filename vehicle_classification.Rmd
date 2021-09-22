@@ -1,5 +1,5 @@
 ---
-title: "Vehicle Classification in Norway"
+title: "Lengde- og kjøretøyklassifisering i Norge"
 output: html_notebook
 ---
 
@@ -19,7 +19,14 @@ knitr::opts_chunk$set(echo = FALSE,
 # Data is prepared in vehicle_register_data_prep.R
 ```
 
-Hva er sammenhengen mellom lengde og tillatt totalvekt?
+
+Kjøretøyregisteret er et åpent datasett. I denne analysen er det sett på kjøretøylengde og klassifisering. Kjøretøy kan klassifiseres etter ulike parametre. I Kjøretøyforskriften benyttes oftest tillatt totalvekt, der det vanligste skillet er 3,5 tonn (skillet mellom lett og tung).
+
+
+# Sammenhengen mellom lengde og tillatt totalvekt
+
+Spredningsplott for kun 200 000 av de 1,6 mill. kjøretøyene:
+
 ```{r getdata}
 all_small_vehicles %>% 
   dplyr::slice(1:200000) %>% 
@@ -46,6 +53,8 @@ all_small_vehicles %>%
 #         writexl::write_xlsx(path = "kjoretoy_O3.xlsx")
 ```
 
+Forsøk på tredimensjonalt spredningsplott. Lys farge indikerer større antall kjøretøy. Alle 1,6 mill. kjøretøyene.
+
 ```{r 2d}
 all_small_vehicles %>% 
   #dplyr::slice(1:200000) %>% 
@@ -59,6 +68,8 @@ all_small_vehicles %>%
   ggtitle("Sammenheng mellom lengde og tillatt totalvekt")
 ```
 
+Fordeling i kategorier hvor skillene er 5,6 m og 3,5 tonn.
+
 ```{r bin}
 small_vehicles_grouped %>% 
   ggplot(aes(kategori, antall)) +
@@ -70,6 +81,8 @@ small_vehicles_grouped %>%
               vjust = 0) +
   facet_wrap(vars(tekn_tknavn)) +
   theme_bw() +
+  theme(axis.text.x = element_text(angle = 90),
+        panel.grid.minor.x = element_blank()) +
   labs(x = "\nKategori", y = "Antall\n") +
   ggtitle("Sammenheng mellom lengde og tillatt totalvekt")
 ```
