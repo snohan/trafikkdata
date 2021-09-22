@@ -69,11 +69,6 @@ trp_speed_compliance <- all_data_from_kibana %>%
 trp_speed_compliance_json <- jsonlite::toJSON(trp_speed_compliance)
 write(trp_speed_compliance_json, "fart_okv/fartsdata.json")
 
-month_start = lubridate::make_date(year = 2021, month = 1)
-month_end = lubridate::make_date(year = 2021, month = 12)
-
-full_year_x_axis <- c(month_start, month_end)
-
 compliance_plot <- trp_speed_compliance %>%
   ggplot(aes(month_as_date, compliance_percentage, color = place_and_limit)) +
   geom_point() +
@@ -82,20 +77,18 @@ compliance_plot <- trp_speed_compliance %>%
   theme_bw() +
   theme(strip.text.y = element_text(angle = 90),
         strip.background = element_rect(fill = "#ececec"),
-        axis.text.x = element_text(angle = 90),
         panel.grid.minor.x = element_blank(),
         legend.position = "bottom") +
-  scale_x_date(breaks = scales::breaks_width("months"),
-               labels = scales::label_date("%b"),
-               limits = full_year_x_axis) +
+  scale_x_date(breaks = scales::breaks_width("years"),
+               labels = scales::label_date("%Y")) +
   scale_color_brewer(
-    palette = "Dark2",
+    palette = "Spectral",
     name = NULL) +
   #scale_color_manual(values = c(#"alle" = "#008ec2",
   #                              "korte" = "#ed9300",
   #                              "lange" = "#444f55"),
   #                   name = "Kjøretøyklasse") +
-  labs(x = NULL, y = "Andel kjøretøy under fartsgrensen (%)",
+  labs(x = NULL, y = "Andel kjøretøy under fartsgrensen (%) \n",
        title = "Overholdelse av fartsgrensen")
 
 compliance_plot
