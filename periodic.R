@@ -105,3 +105,42 @@ periodic_aadt_estimates <- dplyr::bind_rows(
   dplyr::arrange(county_name)
 
 writexl::write_xlsx(periodic_aadt_estimates, path = "periodic_data/aadt_periodiske_registreringer_2020.xlsx")
+
+# User supplied file ####
+bergheim_vbv <- readr::read_delim("periodisk_RV22_Bergheim.txt") %>%
+  dplyr::mutate(datetime = lubridate::ymd_hms(datetime),
+                vehicle_class = dplyr::if_else(length < 56, "light", "heavy"),
+                point_id = "bergheim")
+
+bergheim_hourly <- bergheim_vbv %>%
+  dplyr::mutate(datetime = lubridate::floor_date(datetime, unit = "hour")) %>%
+  dplyr::group_by(point_id, datetime, vehicle_class) %>%
+  dplyr::summarise(volume = n()) %>%
+  tidyr::pivot_wider(names_from = vehicle_class, values_from = volume, values_fill = 0) %>%
+  dplyr::mutate(total_volume = sum(light, heavy, na.rm = TRUE),
+                heavy_ratio = heavy / total_volume * 100) %>%
+  dplyr::ungroup()
+
+# Noe er rart her. Den første dagen er timetrafikken omtrent det dobbelte av hva den er den senere dagene.
+# I tillegg mangler et helt døgn, og det mangler midnatt-midnatt UTC.
+
+bergheim_daily_total <- bergheim_vbv %>%
+  dplyr::group_by(point_id, weekno, dayno) %>%
+  dplyr::summarise(total_volume = n()) %>%
+  dplyr::mutate(vehicle_class = "total")
+
+bergheim_daily_class <- bergheim_vbv %>%
+  dplyr::group_by(point_id, weekno, dayno, vehicle_class) %>%
+  dplyr::summarise(total_volume = n())
+
+# Estimerer
+bergheim_alle <- bergheim_hourly %>%
+  calculate_aadt_by_hourly_traffic()
+
+bergheim_uten_dag_1 <- bergheim_hourly %>%
+  dplyr::slice(-(1:18)) %>%
+  calculate_aadt_by_hourly_traffic()
+
+
+
+
