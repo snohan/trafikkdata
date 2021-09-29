@@ -106,7 +106,7 @@ calculate_aadt_by_hourly_traffic <- function(hourly_traffic) {
 
   # Complete hourly traffic only.
   # Input file must have:
-  # point_id, datetime (floored to hour), total_volume, heavy_ratio.
+  # point_id, datetime (floored to hour), heavy, total_volume.
 
   hourly_traffic_complete_hours <- hourly_traffic %>%
     dplyr::ungroup() %>%
@@ -148,15 +148,17 @@ calculate_aadt_by_hourly_traffic <- function(hourly_traffic) {
                      squares = sum((estimated_aadt - aadt)^2)) %>%
     dplyr::slice_min(squares)
 
-  ratio_heavy <- hourly_traffic %>%
+  heavy_percentage <- hourly_traffic %>%
     dplyr::group_by(point_id) %>%
-    dplyr::summarise(heavy_ratio = round(mean(heavy_ratio, na.rm = TRUE),
-                                         digits = 0))
+    dplyr::summarise(
+      heavy_percentage = round(
+        sum(heavy, na.rm = TRUE) / sum(total_volume, na.rm = TRUE) * 100,
+        digits = 0))
 
   final_aadt_estimate_with_heavy <- final_aadt_estimate %>%
-    dplyr::left_join(ratio_heavy) %>%
+    dplyr::left_join(heavy_percentage) %>%
     dplyr::select(site_id = point_id, curve, aadt, standard_error,
-                  standard_deviation, heavy_ratio)
+                  standard_deviation, heavy_percentage)
 
   return(final_aadt_estimate_with_heavy)
 }
