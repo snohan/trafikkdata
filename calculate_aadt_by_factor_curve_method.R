@@ -133,8 +133,13 @@ calculate_aadt_by_hourly_traffic <- function(hourly_traffic) {
     dplyr::left_join(factor_curve_daily, by = c("hourno" = "time",
                                                  "curve" = "curve")) %>%
     tibble::as_tibble() %>%
+    dplyr::mutate(datetime_day = lubridate::floor_date(datetime, unit = "day")) %>%
+    dplyr::group_by(point_id, datetime_day, curve, factor_yearly, factor_weekly) %>%
+    dplyr::summarise(total_volume = sum(total_volume, na.rm = TRUE),
+                     heavy = sum(heavy, na.rm = TRUE),
+                     sum_factor_daily = sum(factor_daily)) %>%
     dplyr::mutate(
-      combined_factor = factor_yearly * factor_weekly * factor_daily,
+      combined_factor = factor_yearly * factor_weekly * sum_factor_daily,
       estimated_aadt = total_volume / combined_factor)
 
   final_aadt_estimate <- hourly_traffic_expanded %>%
@@ -142,9 +147,9 @@ calculate_aadt_by_hourly_traffic <- function(hourly_traffic) {
     dplyr::summarise(aadt = round(mean(estimated_aadt, na.rm = TRUE),
                                   digits = -1),
                      standard_deviation = round(sd(estimated_aadt, na.rm = TRUE), digits = 0),
-                     n_hours = n(),
+                     n_days = n(),
                      # TODO: multiply SE by finite population correction factor?
-                     standard_error = round(standard_deviation / sqrt(n_hours), digits = 0),
+                     standard_error = round(standard_deviation / sqrt(n_days), digits = 0),
                      squares = sum((estimated_aadt - aadt)^2)) %>%
     dplyr::slice_min(squares)
 
