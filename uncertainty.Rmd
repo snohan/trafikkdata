@@ -13,6 +13,7 @@ library(kableExtra)
 # Variasjon i døgntrafikk
 
 ```{r get_mdt}
+# TODO: standardfeil
 mdt <- get_trp_mdt_with_coverage("84355V1175837") %>% 
   dplyr::mutate(trp_id = as.character(trp_id),
                 coverage = round(coverage, digits = 1)) %>% 

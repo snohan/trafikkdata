@@ -3,15 +3,41 @@ title: "Usikkerhet i trafikkdata"
 output: html_notebook
 ---
 
-Beskrive grunnleggende usikkerhet.
+```{r setup, include = FALSE, echo = FALSE}
+# Packages
+library(tidyverse)
+#library(flextable)
 
-Fire ulike parametere vi måler:
+source("H:/Programmering/R/byindeks/rmd_setup.R")
+# knitr options
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE,
+                      error = FALSE)
 
-- Antall (binomisk)
-- Lengde (kontinuerlig, fasit)
-- Fart (kontinuerlig, uten fasit)
-- Klasse (diskret, fasit)
+# Data is prepared in vehicle_register_data_prep.R
+```
 
+# Bakgrunn
+
+Alle målinger er heftet med en grad av usikkerhet. Kilder til usikkerhet kan deles inn i to grupper:
+
+- de som kan evalueres med statistiske metoder
+- de som kan evalueres med andre metoder
+
+
+
+
+# Målte størrelser i trafikkdatasammenheng
+De fire viktigste størrelsene er:
+
+- Antall kjøretøy (binomisk fordelt)
+- Kjøretøylengde (kontinuerlig numerisk verdi, fasit i Kjøretøyregisteret)
+- Kjøretøyfart (kontinuerlig numerisk verdi, uten fasit)
+- Kjøretøyklasse (kategorisk fordelt, fasit i Kjøretøyregisteret)
+
+
+## Eksempel på kombinert usikkerhet i trafikkmengdestørrelser
 
 ```{r}
 # Dataloggers empiriske kombinerte usikkerhet
@@ -30,7 +56,7 @@ For årsdøgntrafikk vil gjennomsnittet av alle årets dager naturlig nok beregn
 
 I tillegg ti denne "usikkerheten" kommer det som med rette kan betegnes usikkerhet i målingen, nemlig det faktum at registreringsutstyret ikke er 100 % perfekt.
 
-La oss tenke oss et eksempel med en trafikklenke som har nøyaktig like mange kjøretøy hver eneste dag hele året. Da kan vi beregne hvor stor usikkerheten til ÅDT blir med registreringsutstyr av ulik kvalitet.
+La oss tenke oss et eksempel med en trafikklenke som har nøyaktig like mange kjøretøy hver eneste dag hele året. Da kan vi beregne hvor stor usikkerheten i ÅDT blir med registreringsutstyr av ulik kvalitet.
 
 Vi modellerer utstyrets evne til å registrere hvert kjøretøy som en binomisk prosess, det vil si at utstyret enten registrerer kjøretøyet eller så gjør det det ikke. Et perfekt utstyr ville registrere hvert kjøretøy med en sannsynlighet på 100 %. Dagens utstyr er nesten perfekt under gode forhold (fotnote), og ligger på omtrent 99 %. Utstyr som er blitt forkastet i forbindelse med testing av utstyr for rammeavtale, har hatt ned mot 90 %.
 
@@ -62,11 +88,27 @@ I testresultater bør vi oppgi utvidet usikkerhet både på punktestimater (per 
 
 Hvordan finner vi utvidet usikkerhet, dvs. konfidensintervall på 95 %-nivå for de fire ulike parameterne?
 
-Artikler:
-
-https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7082531/
-
 Hvor skal vi sette kravet om kvalitet?
 
 Må vurdere andre feilkilder enn de som inntreffer under ideelle forhold. Ødelagte sensorer oppstår ofte o.l.
+
+
+# Mål på usikkerhet
+
+Standardavvik for gjennomsnittet er en antagelse om standardavviket for alle beregninger av gjennomsnittet for et utvalg av samme størrelse fra samme populasjon.
+
+Standardavviket i observasjonene er et mål på spredningen i utvalget som er gjort.
+
+Bør alltid være presis i hva som oppgis, og alltid oppgi begge ovenstående, sammen med utvalgsstørrelsen.
+
+
+# Referanser
+
+Generelt om målinger:
+
+- JCGM 100:2008 (Guide to the Expression of Uncertainty in Measurement) (https://www.bipm.org/en/publications/guides)
+- Guidelines for Evaluating and Expressing the Uncertainty of NIST Measurement Results (https://www.nist.gov/pml/nist-technical-note-1297)
+- All tests are imperfect: Accounting for false positives and false negatives using Bayesian statistics (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7082531/)
+
+
 
