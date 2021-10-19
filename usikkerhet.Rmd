@@ -1,6 +1,10 @@
 ---
 title: "Usikkerhet i trafikkdata"
-output: html_notebook
+output: 
+  html_notebook:
+    number_sections: true
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include = FALSE, echo = FALSE}
@@ -18,30 +22,80 @@ knitr::opts_chunk$set(echo = FALSE,
 # Data is prepared in vehicle_register_data_prep.R
 ```
 
+
 # Bakgrunn
+Til alle målinger knytter det seg større eller mindre usikkerhet. Kilder til usikkerhet kan deles inn i to grupper:
 
-Alle målinger er heftet med en grad av usikkerhet. Kilder til usikkerhet kan deles inn i to grupper:
-
-- de som kan evalueres med statistiske metoder
-- de som kan evalueres med andre metoder
+- de som kan evalueres med statistiske metoder basert på en rekke observasjoner (type A)
+- de som kan evalueres med andre metoder basert på tilgjengelig a priori kunnskap (type B)
 
 
+## Mål på usikkerhet
+Ofte er den målte størrelsen vi skal analysere et aritmetisk gjennomsnitt $\bar q$ av flere observasjoner $q_k$.
+
+Det vanligste målet på usikkerhet er det eksperimentelle standardavviket $s(q_k)$, som sier hvor stor spredningen er i de observerte verdiene.
+
+Det eksperimentelle standardavviket *for gjennomsnittet* $s(\bar q)$ er en estimert størrelse for spredningen i flere gjennomsnitt beregnet på utvalg av samme størrelse fra samme populasjon.
+
+Dersom den målte størrelsen vi skal fram til består av flere innparametere, kan hver enkelt parameters usikkerhet settes sammen til en felles *kombinert usikkerhet*. Denne kombinerte standardusikkerheten til en størrelse er kvadratroten av summen av variansen til alle innparameterene. Variansene i summen er her multiplisert med kvadratet av den partiellderiverte størrelsesfunksjonen med hensyn på den aktuelle parameteren.
+
+
+## Hvordan oppgi usikkerhet
+Når en målt størrelse skal presenteres, må følgende oppgis:
+
+  - En fullstendig beskrivelse av hvordan den målte størrelsen er definert.
+  - Den målte størrelsens verdi og kombinerte standardusikkerhet, inkludert enheter.
+  - Den relative usikkerheten.
+  - En vurdering av usikkerheter i innparameterene og av hvilken type (A eller B) de er.
+  - Utvalgsstørrelsen og antall frihetsgrader.
+  - Om usikkerheten er utvidet med en dekningsfaktor eller ikke. Dersom en dekningsfaktor er benyttet, må det oppgis hvilket konfidensnivå den tilsvarer og hvordan det er utledet.
+  - En vurdering om det finnes korrelasjoner mellom parameterene.
 
 
 # Målte størrelser i trafikkdatasammenheng
-De fire viktigste størrelsene er:
+De viktigste størrelsene er:
 
-- Antall kjøretøy (binomisk fordelt)
-- Kjøretøylengde (kontinuerlig numerisk verdi, fasit i Kjøretøyregisteret)
-- Kjøretøyfart (kontinuerlig numerisk verdi, uten fasit)
-- Kjøretøyklasse (kategorisk fordelt, fasit i Kjøretøyregisteret)
+  - Antall kjøretøy (binomisk fordelt)
+  - Kjøretøylengde (kontinuerlig numerisk verdi, fasit i Kjøretøyregisteret)
+  - Kjøretøyfart (kontinuerlig numerisk verdi, uten fasit)
+  - Kjøretøyklasse (kategorisk fordelt, fasit i Kjøretøyregisteret)
+
+
+# Kjøretøylengde
+Alle kjøretøy har en lengde som er oppgitt i Kjøretøyregisteret. Denne lengden er å anse som fasiten, som kan benyttes i forbindelse med testing av lengdemålinger for å avgjøre hvor gode målingene er. Kjøretøyregisterets lengde er også heftet med usikkerhet. I enkelte, sjeldne tilfeller er lengdeverdien helt feil. Det kan skyldes tastefeil på ett eller flere siffer, eller at verdi for en annen størrelse er lagt inn for lengde. Og selv om lengdeverdien er lagt inn riktig, baserer den seg på en måling som vi ikke kjenner usikkerheten til. Er hvert kjøretøy faktisk målt eller, får alle av samme merke og modell angitt en felles lengde? Det er likevel rimelig å anta at langt de fleste lengdeverdiene i Kjøretøyregistert er målt under kontrollerte forhold slik at usikkerheten er neglisjerbar vurdert opp mot praktisk bruk av størrelsen.
+
+Tradisjonelt har den vanligste bruken av kjøretøylengde vært å benytte den til klassifisering av kjøretøy. Lengdeklassene er enten benyttet direkte som nettopp lengdeklasser, eller en tilnærming til kjøretøyklasser, f.eks. lette og tunge. Klassene er sjelden finere oppdelt enn at en feilmargin på flere centimeter ikke utgjør særlig forskjell i resultatet. Det er sånn sett kun kjøretøy som har lengde nære klasseskillene som i praksis må ha liten usikkerhet. Det eksisterer ulike lengdeklasseinndelinger, og de som er i bruk i dag kan tenkes å bli justert. Derfor er det viktig å vite noe om usikkerheten i lengdemålingene uansett lengde.
+
+
+## Usikkerhet i lengdemålinger
+Hva kan være opphavet til feil i lengdemålinger? Eksempler på dette kan være:
+
+  - Tilfeldige målefeil som oppstår i samspillet mellom sensor og kjøretøy.
+  - Systematiske feil som skyldes feil i sensor eller dataloggers tolkning av sensorsignaler.
+  
+Feilens størrelse kan være avhengig av flere faktorer: kjøretøytype, hastighet, sideveis plassering, vegbanens beskaffenhet, vær, føre mm.
+
+
+## Test av lengdemålinger
+Når vi gjennomfører en test av lengdemålinger, sammenligner vi den målte lengden med fasiten i Kjøretøyregisteret. Det absolutte avviket fra fasiten antas å være normalfordelt, med gjenommsnitt lik 0. Standardavviket kan variere noe med kjøretøylengden, slik at lengre kjøretøy kan ha større standardavvik enn korte kjøretøy. Her deler vi inn kjøretøy i to lengdegrupper med et skille ved 7,6 m.
+
+Kjøretøy med henger holdes utenfor denne analysen.
+
+
+TODO: plot the density of absolute difference in measured length from the Autosys length, with vehicle lenght on the x axis. Use data from the 2017 test. Determine $n, \bar q, s(q), s(\bar q)$. The latter is the standard uncertainty of the mean difference. Do this for vehicles divisioned by 7.6 m. How many observations are outside our tolerance limit?
+
+
+# Trafikkmengde
+Registrering av trafikkmengde består av en binomisk prosess for hvert kjøretøy som passerer sensorene.
 
 
 ## Eksempel på kombinert usikkerhet i trafikkmengdestørrelser
 
 ```{r}
 # Dataloggers empiriske kombinerte usikkerhet
+# Eksempel på usikkerhet for noen aggregater
 halvtimetrafikk <- c(12, 13, 20, 30, 50, 100, 200, 300, 200, 200, 100, 100, 75, 25)
+# Kombinert usikkerhet
 usikkerhet_halvtime <- sqrt(sum((0.01 * halvtimetrafikk)^2))
 
 # Ser på deteksjon som binomisk prosess
@@ -69,6 +123,7 @@ aadt_perfekt <- mean(registreringer_perfekt)
 standardavvik_perfekt <- sd(registreringer)
 
 # Vårt krav
+# 99 % av faktiske kjøretøy blir registrert, pluss noen falske positive
 registreringer <- rbinom(365, 1000, 0.99) + rbinom(365, 1000, 0.001)
 aadt <- mean(registreringer)
 standardavvik <- sd(registreringer)
@@ -93,17 +148,19 @@ Hvor skal vi sette kravet om kvalitet?
 Må vurdere andre feilkilder enn de som inntreffer under ideelle forhold. Ødelagte sensorer oppstår ofte o.l.
 
 
-# Mål på usikkerhet
+# Kjøretøyklassifisering
+Klassifisering av kjøretøy er en multinomisk prosess for hvert kjøretøy som passerer sensorene. Registrering av totaltrafikk uten hensyn til klasse, kan ses på som et spesialtilfelle av kjøretøyklassifisering med kun en klasse: motorkjøretøy.
 
-Standardavvik for gjennomsnittet er en antagelse om standardavviket for alle beregninger av gjennomsnittet for et utvalg av samme størrelse fra samme populasjon.
 
-Standardavviket i observasjonene er et mål på spredningen i utvalget som er gjort.
+# Kjøretøyfart
+For måling av fart i et punkt er det krevende å si noe sikkert om usikkerheten. For det første er kjøretøyenes fart sjelden helt konstant, selv på rette strekninger uten annen trafikk i nærheten. Farten som kjøretøyene faktisk har i målepunktet er og blir ukjent - det finnes ingen fasit. Spredningen i fartsverdiene til et utvalg kjøretøy sier mer om hvor ulike fartsvalg som tas enn om usikkerheten i selve fartsmålingen.
 
-Bør alltid være presis i hva som oppgis, og alltid oppgi begge ovenstående, sammen med utvalgsstørrelsen.
+På steder med *fritt* fartsvalg hvor farten ikke er naturlig å endre, vil farten likevel i mange tilfeller være konstant nok til at målingene kan si noe om fartsnivået. For fartsmålinger kan vi bare ha en formening om omtrentlig nivå, og usikkerheten blir heller vurdert ut fra utstyrsleverandørens opplysninger. Det er lite å hente fra testing av fartsmåling i punkt uten å ha referansemålinger av farten over en liten strekning rundt punktet, eller fra fartsmåler montert i kjøretøyet. Dette er ressurskrevende å gjennomføre.
+
+Uansett må all bruk av fartsdata alltid forutsette god kjennskap til de stedlige forholds eventuelle påvirkninger på fartsvalget.
 
 
 # Referanser
-
 Generelt om målinger:
 
 - JCGM 100:2008 (Guide to the Expression of Uncertainty in Measurement) (https://www.bipm.org/en/publications/guides)

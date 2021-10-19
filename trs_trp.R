@@ -1,13 +1,12 @@
 # TRS and TRP
 
-library(geosphere)
-library(readxl)
-library(writexl)
-
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
+library(geosphere)
+library(readxl)
+library(writexl)
 
 # Large distance from TRS to TRP ----
 # Note that bike trps with LM should not be more than 10 m away
@@ -363,7 +362,7 @@ trs_plural <- trs_with_trp %>%
   dplyr::summarise(no_trps = n()) %>%
   dplyr::filter(no_trps > 1)
 
-write.csv2(trs_plural, file = "stasjoner_med_flere_punkt.csv",
+write.csv2(trs_plural, file = "trs_trp/stasjoner_med_flere_punkt.csv",
            row.names = F)
 
 

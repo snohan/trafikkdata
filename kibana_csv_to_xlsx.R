@@ -21,7 +21,7 @@ add_correct_direction_names <- function(data_from_kibana) {
     dplyr::mutate(is_lane_odd = purrr::map(lane, ~ length(is_odd(.)) > 0),
                   lane_parity_kibana = dplyr::case_when(is_lane_odd == TRUE ~ "odd",
                                                         is_lane_odd == FALSE ~ "even")) %>%
-    dplyr::left_join(points_direction) %>%
+    dplyr::left_join(points_direction, by = c("trp_id", "lane_parity_kibana")) %>%
     dplyr::mutate(lane_number = dplyr::case_when(
       metering_direction_changed == TRUE & lane_parity_kibana == "odd" ~ lane + 1,
       metering_direction_changed == TRUE & lane_parity_kibana == "even" ~ lane - 1,
