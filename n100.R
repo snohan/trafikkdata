@@ -1,10 +1,7 @@
 # Wrangle vbv data for N100
 
 # Setup ----
-source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
-
-library(readxl)
-library(writexl)
+source("H:/Programmering/R/trafikkdata/kibana_csv_to_xlsx.R")
 
 # Read trp list ----
 # Data from a list of trps, written to Excelfile
@@ -79,8 +76,6 @@ data_from_csv <-
   list.files(path = folder_in_focus, pattern = "*.csv",
              full.names = TRUE) %>%
   map_df(~read_csv2(.))
-
-
 
 data_from_csv_meta <- data_from_csv %>%
   dplyr::mutate(event_timestamp = event_timestamp %>%
