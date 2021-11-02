@@ -56,7 +56,7 @@ nvdb_crs <- leafletCRS(
 
 ```{r file_path, include=FALSE}
 geopackage_file <- "trafikklenker/steg2_AADT_ALL_EV_RV_2020.gpkg"
-layers <- sf::st_layers(geopackage_file)
+#layers <- sf::st_layers(geopackage_file)
 ```
 
 ```{r explore_rows, message=FALSE, include=FALSE}
@@ -73,38 +73,75 @@ links_selected_id <- links_selected %>%
 ```
 
 ```{r transform_geometry}
-traffic_links_wide <- trafikklenker_selected %>%
+traffic_links_wide <- links_selected %>%
   dplyr::select(ID,
                 roadcat = ROADREF_CATEGORY,
                 roadn = ROADREF_NUMBER,
                 with = med_metrering,
-                pred_aadt
+                pred_aadt,
+                sd = pred_aadt_sd,
+                nettaadt_mangler
                 ) %>% 
   sf::st_drop_geometry() %>% 
   tidyr::pivot_wider(
     names_from = with,
     names_prefix = "med_",
-    values_from = pred_aadt
+    values_from = c(pred_aadt, sd, nettaadt_mangler)
   ) %>% 
   dplyr::rowwise() %>% 
-  dplyr::mutate(aadt = sum(med_0, med_1, na.rm = TRUE)) %>% 
+  dplyr::mutate(
+    aadt = sum(pred_aadt_med_0, pred_aadt_med_1, na.rm = TRUE),
+    sd = dplyr::case_when(
+      # if one or both directions are missing
+      is.na(pred_aadt_med_1) || is.na(pred_aadt_med_0) ~ 
+        sum(sd_med_1, sd_med_0, na.rm = TRUE),
+      # when both is present, combined sd
+      TRUE ~ sqrt((sd_med_1^2 + sd_med_0^2)/2 + 
+        ((pred_aadt_med_1 - pred_aadt_med_0)/2)^2)
+    )
+  ) %>% 
   dplyr::ungroup() %>% 
-  dplyr::mutate(across(.cols = med_1:aadt,
-                       ~ round(.x)))
+  dplyr::mutate(
+    across(
+      .cols = c(pred_aadt_med_1, pred_aadt_med_0,
+                sd_med_1, sd_med_0,
+                aadt, sd),
+      ~ round(.x)
+    )
+  )
 
 traffic_links_transformed <- links_selected_id %>% 
   dplyr::left_join(traffic_links_wide, by = "ID") %>% 
   sf::st_zm(drop = T, what = "ZM") %>% 
   dplyr::mutate(line_length = round(sf::st_length(geom),
                                     digits = 0)) %>% 
-  dplyr::mutate(link_label = paste("ÅDT ", aadt, "<br/>",
-                                   "Med ", med_1, "<br/>",
-                                   "Mot ", med_0, "<br/>",
-                                   line_length, " m"),
-                link_label = lapply(link_label, htmltools::HTML)) %>% 
+  dplyr::mutate(
+    link_label = paste("ÅDT ", aadt, "S: ", sd, "<br/>",
+                       "Med ", pred_aadt_med_1, "S: ", sd_med_1, 
+                       "TM-ÅDT: ", nettaadt_mangler_med_1,  "<br/>",
+                       "Mot ", pred_aadt_med_0, "S: ", sd_med_0, 
+                       "TM-ÅDT: ", nettaadt_mangler_med_0,"<br/>",
+                       line_length, " m"),
+    link_label = lapply(link_label, htmltools::HTML)) %>% 
   sf::st_transform("+proj=longlat +datum=WGS84")
+
+# TODO: compare to manual aadt
 ```
 
+```{r compare}
+# Try Rv 15
+manual_adt <- get_aadt_by_road("RV15")
+
+rv15 <- traffic_links_transformed %>% 
+  dplyr::filter(roadn == 15)
+
+
+sf::st_intersects()
+```
+
+
+
+Sammenligning mellom predikert ÅDT fra Norsk Regnesentrals modell og manuell ÅDT-belegging.
 
 ```{r map_links}
 leaflet(width = "100%",
