@@ -80,16 +80,18 @@ traffic_links_wide <- links_selected %>%
                 with = med_metrering,
                 pred_aadt,
                 sd = pred_aadt_sd,
-                nettaadt_mangler
+                tm_aadt = AADT_ALLE_MEAN#,
+                #nettaadt_mangler
                 ) %>% 
   sf::st_drop_geometry() %>% 
   tidyr::pivot_wider(
     names_from = with,
     names_prefix = "med_",
-    values_from = c(pred_aadt, sd, nettaadt_mangler)
+    values_from = c(pred_aadt, sd, tm_aadt)
   ) %>% 
   dplyr::rowwise() %>% 
   dplyr::mutate(
+    tm_aadt = sum(tm_aadt_med_0, tm_aadt_med_1, na.rm = TRUE),
     aadt = sum(pred_aadt_med_0, pred_aadt_med_1, na.rm = TRUE),
     sd = dplyr::case_when(
       # if one or both directions are missing
@@ -105,7 +107,8 @@ traffic_links_wide <- links_selected %>%
     across(
       .cols = c(pred_aadt_med_1, pred_aadt_med_0,
                 sd_med_1, sd_med_0,
-                aadt, sd),
+                tm_aadt_med_1, tm_aadt_med_0,
+                tm_aadt, aadt, sd),
       ~ round(.x)
     )
   )
@@ -116,11 +119,11 @@ traffic_links_transformed <- links_selected_id %>%
   dplyr::mutate(line_length = round(sf::st_length(geom),
                                     digits = 0)) %>% 
   dplyr::mutate(
-    link_label = paste("ÅDT ", aadt, "S: ", sd, "<br/>",
+    link_label = paste("Modell-ÅDT ", aadt, "S: ", sd, "TM:", tm_aadt, "<br/>",
                        "Med ", pred_aadt_med_1, "S: ", sd_med_1, 
-                       "TM-ÅDT: ", nettaadt_mangler_med_1,  "<br/>",
+                       "TM-ÅDT: ", tm_aadt_med_1,  "<br/>",
                        "Mot ", pred_aadt_med_0, "S: ", sd_med_0, 
-                       "TM-ÅDT: ", nettaadt_mangler_med_0,"<br/>",
+                       "TM-ÅDT: ", tm_aadt_med_0, "<br/>",
                        line_length, " m"),
     link_label = lapply(link_label, htmltools::HTML)) %>% 
   sf::st_transform("+proj=longlat +datum=WGS84")
@@ -130,15 +133,40 @@ traffic_links_transformed <- links_selected_id %>%
 
 ```{r compare}
 # Try Rv 15
-manual_adt <- get_aadt_by_road("RV15")
+manual_adt_rv15 <- get_aadt_by_road("RV15") %>% 
+  dplyr::filter(
+    purrr::map_lgl(
+      county_numbers, ~ 46 %in% .)
+  )
 
-rv15 <- traffic_links_transformed %>% 
+nr_model_rv15 <- traffic_links_transformed %>% 
   dplyr::filter(roadn == 15)
 
+# test <- sf::st_intersects(
+#   nr_model_rv15$geom[1],
+#   manual_adt_rv15$geometry
+#   ) %>% 
+#   unlist()
 
-sf::st_intersects()
+matchende <- sf::st_join(
+  nr_model_rv15,
+  manual_adt_rv15,
+  largest = TRUE
+  ) %>% 
+  dplyr::mutate(
+    aadt_diff = round((aadt - aadt_total) / aadt_total * 100, digits = 0),
+    link_label_final = paste0(link_label,
+                              "<br/>", 
+                              "NVDB-ÅDT: ", aadt_total, " Kilde: ", source),
+    link_label_final = lapply(link_label_final, htmltools::HTML)
+  ) %>% 
+  dplyr::select(-link_label)
+
+# Three links do not match along Oppstrynsvatnet, as it seems
+# the geometry is a little moved to the side. Has something changed to 
+# its geometry in NVDB since the traffic link was genereated?
+# An st_buffer must be set in UTM
 ```
-
 
 
 Sammenligning mellom predikert ÅDT fra Norsk Regnesentrals modell og manuell ÅDT-belegging.
@@ -150,15 +178,87 @@ leaflet(width = "100%",
                                  zoomControl = F)) %>%
   addTiles(urlTemplate = nvdb_map_url,
            attribution = nvdb_map_attribution) %>%
-  addPolylines(data = traffic_links_transformed,
-               popup = ~link_label,
+  addPolylines(data = matchende,
+               popup = ~link_label_final,
                highlightOptions = highlightOptions(bringToFront = TRUE,
                                                    sendToBack = FALSE,
                                                    color = "red",
                                                    opacity = 0.6))
+
+aadt_df <- matchende
+
+create_aadt_comparison_map <- function(aadt_df) {
+  
+  # Create a red-green scale based on index values
+  negative_value <- round(abs(min(aadt_df$aadt_diff, na.rm = T)), digits = 0) + 1
+  positive_value <- round(max(aadt_df$aadt_diff, na.rm = T), digits = 0) + 1
+
+  # If even the max value is negative
+  if(positive_value < 0) positive_value <- 1
+
+  rc1 <- colorRampPalette(
+    colors = c("purple", "green"), 
+    space = "Lab")(negative_value)
+
+  ## Make vector of colors for values larger than 0 (180 colors)
+  rc2 <- colorRampPalette(
+    colors = c("green", "orange"), 
+    space = "Lab")(positive_value)
+
+  ## Combine the two color palettes
+  rampcols <- c(rc1, rc2)
+
+  palett_index <-
+    leaflet::colorNumeric(
+      palette = rampcols,
+      domain = NULL
+      )
+
+  aadt_map <- 
+    leaflet(
+      width = "100%",
+      height = 700,
+      options = leafletOptions(
+        crs = nvdb_crs,
+        zoomControl = TRUE
+        )
+      ) %>%
+  addTiles(
+    urlTemplate = nvdb_map_url,
+    attribution = nvdb_map_attribution
+    ) %>%
+  addPolylines(
+    data = aadt_df,
+    label = ~link_label_final,
+    opacity = 0.8,
+    #fill = T,
+    #fillColor = ~palett_index(aadt_diff),
+    color = ~palett_index(aadt_diff),
+    #fillColor = ~palett_index(aadt_df$aadt_diff),
+    #fillOpacity = 0.9,
+    highlightOptions = highlightOptions(
+      bringToFront = TRUE,
+      sendToBack = FALSE,
+      color = "red",
+      opacity = 0.6
+      )
+    ) %>%
+    addLegend(
+      "bottomright",
+      pal = palett_index,
+      values = aadt_df$aadt_diff,
+      title = "Forskjell i ÅDT",
+      opacity = 0.8,
+      labFormat = labelFormat(big.mark = " ")
+      )
+  
+  return(aadt_map)
+}
+
 ```
 
 ```{r trp}
 # TODO: show trps
+create_aadt_comparison_map(matchende)
 ```
 
