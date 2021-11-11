@@ -21,7 +21,6 @@ factor_curve_daily <- read.csv2("factor_curve_method/factor_curves_daily.csv") %
 
 
 # Function to calculate aadt by daily traffic ####
-
 calculate_aadt_by_daily_traffic <- function(daily_traffic) {
 
   # Daily traffic with coverage > 99 %, i.e. hourly factor is 1.
@@ -118,12 +117,12 @@ calculate_aadt_by_hourly_traffic <- function(hourly_traffic) {
       hourno = lubridate::hour(datetime),
       datetime_epoch = as.numeric(datetime) / 3600,
       hour_before = abs(dplyr::lag(datetime_epoch) - datetime_epoch),
-      hour_after = dplyr::lead(datetime_epoch) - datetime_epoch
-      ) %>%
-    dplyr::filter(
-      hour_before == 1,
-      hour_after == 1
-      )
+      hour_after = dplyr::lead(datetime_epoch) - datetime_epoch)
+    #   ) %>%
+    # dplyr::filter(
+    #   hour_before == 1,
+    #   hour_after == 1
+    #   )
 
   hourly_traffic_expanded <- hourly_traffic_complete_hours %>%
     dplyr::left_join(factor_curve_yearly, by = c("weekno" = "uke")) %>%
@@ -144,13 +143,19 @@ calculate_aadt_by_hourly_traffic <- function(hourly_traffic) {
 
   final_aadt_estimate <- hourly_traffic_expanded %>%
     dplyr::group_by(point_id, curve) %>%
-    dplyr::summarise(aadt = round(mean(estimated_aadt, na.rm = TRUE),
-                                  digits = -1),
+    dplyr::summarise(#aadt = round(mean(estimated_aadt, na.rm = TRUE),
+                     #             digits = -1),
+                     aadt =
+                       round(
+                         sum(total_volume, na.rm = TRUE) /
+                           sum(combined_factor, na.rm = TRUE),
+                        digits = 0),
                      standard_deviation = round(sd(estimated_aadt, na.rm = TRUE), digits = 0),
                      n_days = n(),
                      # TODO: multiply SE by finite population correction factor?
                      standard_error = round(standard_deviation / sqrt(n_days), digits = 0),
-                     squares = sum((estimated_aadt - aadt)^2)) %>%
+                     squares = sum((estimated_aadt - aadt)^2) # could be meaned
+                     ) %>%
     dplyr::slice_min(squares)
 
   heavy_percentage <- hourly_traffic %>%

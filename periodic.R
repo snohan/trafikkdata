@@ -141,6 +141,32 @@ bergheim_uten_dag_1 <- bergheim_hourly %>%
   dplyr::slice(-(1:18)) %>%
   calculate_aadt_by_hourly_traffic()
 
+# Factor curve method implementation test
+diagonalen <-
+  readr::read_csv2("factor_curve_method/94877V319535.csv",
+                   locale = locale(tz = "Europe/Oslo")) %>%
+  dplyr::mutate(
+    point_id = "94877V319535",
+    datetime = lubridate::ymd_hms(Dato, tz = "CET"),
+    heavy = NA
+    ) %>%
+  dplyr::select(
+    point_id, datetime, total_volume = Volum, heavy
+    ) %>%
+  calculate_aadt_by_hourly_traffic()
 
+#hourly_traffic <-
+okstadbakken <-
+  readr::read_csv2("factor_curve_method/25419V72197.csv",
+                   locale = locale(tz = "Europe/Oslo")) %>%
+  dplyr::mutate(
+    point_id = "25419V72197",
+    datetime = lubridate::ymd_hms(Dato),
+    heavy = NA
+  ) %>%
+  dplyr::select(
+    point_id, datetime, total_volume = Volum, heavy
+  ) %>%
+  calculate_aadt_by_hourly_traffic()
 
 

@@ -54,6 +54,14 @@ nvdb_crs <- leafletCRS(
   origin = c(-2500000.0, 9045984.0))
 ```
 
+
+```{r gdb}
+klepp <- sf::st_read("trafikklenker/klepp.gdb")
+kinn <- sf::st_read("trafikklenker/kinn.gdb")
+vestland <- sf::st_read("trafikklenker/vestland.gdb")
+```
+
+
 ```{r file_path, include=FALSE}
 geopackage_file <- "trafikklenker/steg2_AADT_ALL_EV_RV_2020.gpkg"
 #layers <- sf::st_layers(geopackage_file)
@@ -139,8 +147,27 @@ manual_adt_rv15 <- get_aadt_by_road("RV15") %>%
       county_numbers, ~ 46 %in% .)
   )
 
-nr_model_rv15 <- traffic_links_transformed %>% 
-  dplyr::filter(roadn == 15)
+manual_adt_rv5 <- get_aadt_by_road("RV5") %>% 
+  dplyr::filter(
+    purrr::map_lgl(
+      county_numbers, ~ 46 %in% .)
+  )
+
+manual_adt_ev16 <- get_aadt_by_road("EV16") %>% 
+  dplyr::filter(
+    purrr::map_lgl(
+      county_numbers, ~ 46 %in% .)
+  )
+
+manual_adt <- 
+  dplyr::bind_rows(
+    manual_adt_rv5,
+    manual_adt_rv15,
+    manual_adt_ev16
+  )
+
+nr_model <- traffic_links_transformed %>% 
+  dplyr::filter(roadn %in% c(5, 15, 16))
 
 # test <- sf::st_intersects(
 #   nr_model_rv15$geom[1],
@@ -149,8 +176,8 @@ nr_model_rv15 <- traffic_links_transformed %>%
 #   unlist()
 
 matchende <- sf::st_join(
-  nr_model_rv15,
-  manual_adt_rv15,
+  nr_model,
+  manual_adt,
   largest = TRUE
   ) %>% 
   dplyr::mutate(
@@ -171,22 +198,7 @@ matchende <- sf::st_join(
 
 Sammenligning mellom predikert ÅDT fra Norsk Regnesentrals modell og manuell ÅDT-belegging.
 
-```{r map_links}
-leaflet(width = "100%",
-        height = 700,
-        options = leafletOptions(crs = nvdb_crs,
-                                 zoomControl = F)) %>%
-  addTiles(urlTemplate = nvdb_map_url,
-           attribution = nvdb_map_attribution) %>%
-  addPolylines(data = matchende,
-               popup = ~link_label_final,
-               highlightOptions = highlightOptions(bringToFront = TRUE,
-                                                   sendToBack = FALSE,
-                                                   color = "red",
-                                                   opacity = 0.6))
-
-aadt_df <- matchende
-
+```{r map_function}
 create_aadt_comparison_map <- function(aadt_df) {
   
   # Create a red-green scale based on index values
@@ -257,8 +269,35 @@ create_aadt_comparison_map <- function(aadt_df) {
 
 ```
 
-```{r trp}
+```{r map}
 # TODO: show trps
 create_aadt_comparison_map(matchende)
 ```
+
+
+```{r plot}
+matchende %>% 
+  ggplot(
+    aes(
+      aadt_total, aadt
+      )
+    ) +
+  ggplot2::geom_point() +
+  geom_abline(
+    slope = 1,
+    intercept = 0
+  ) +
+  xlim(0, 5e4) +
+  ylim(0, 5e4) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90),
+        panel.grid.minor.x = element_blank()) +
+  #scale_fill_brewer(palette = "Set3") +
+  labs(x = "\nNVDB-ÅDT", y = "Predikert ÅDT\n") +
+  ggtitle("Predikert ÅDT sammenlignet med NVDB-ÅDT")
+```
+
+
+
+
 
