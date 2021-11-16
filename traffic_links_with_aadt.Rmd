@@ -9,6 +9,7 @@ library(leaflet)
 library(sf)
 library(knitr)
 library(htmltools)
+library(geojsonsf)
 
 source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
@@ -58,7 +59,9 @@ nvdb_crs <- leafletCRS(
 ```{r gdb}
 klepp <- sf::st_read("trafikklenker/klepp.gdb")
 kinn <- sf::st_read("trafikklenker/kinn.gdb")
-vestland <- sf::st_read("trafikklenker/vestland.gdb")
+kinn <- sf::read_sf("trafikklenker/kinn.gdb")
+vestland <- sf::st_read("trafikklenker/vestland_erf.gdb")
+vestland <- geojsonsf::geojson_sf("trafikklenker/vestland_erf.gdb")
 ```
 
 
