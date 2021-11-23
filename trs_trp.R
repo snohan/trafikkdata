@@ -608,3 +608,32 @@ trp_lanes_fw <- firmware_history %>%
                 )
 
 writexl::write_xlsx(trp_lanes_fw, path = "trs_trp/trp_lanes_fw.xlsx")
+
+
+# Periodic TRPs ----
+all_trps <- get_points()
+
+periodic_trps <- all_trps %>%
+  dplyr::filter(registration_frequency == "PERIODIC",
+                validFrom >= "2018-01-01") %>%
+  dplyr::group_by(trp_id) %>%
+  dplyr::slice_max(validFrom)
+
+test_dt <- get_daily_traffic(
+  "59044V971518",
+  "2019-01-01T00:00:00+01:00",
+  "2019-12-31T00:00:00+01:00"
+  )
+
+test_aadt <- test_dt %>%
+  dplyr::filter(coverage >= 95) %>%
+  dplyr::summarise(aadt = mean(total_volume))
+
+
+sykkel_tromso <- all_trps %>%
+  dplyr::filter(traffic_type == "BICYCLE",
+                municipality_name == "Tromsø") %>%
+  dplyr::group_by(trp_id) %>%
+  dplyr::slice_min(validFrom)
+
+

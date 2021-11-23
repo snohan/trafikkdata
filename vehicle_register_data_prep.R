@@ -53,14 +53,22 @@ terrain_vehicles %>%
 terrain_vehicles <- read_csv2("kjoretoyregisteret/kjoretoy_M1G_M2G_N1G_N2G.csv")
 
 
-# Transformer ----
+# Transform ----
 categorize_vehicles <- function(length_limit) {
 
-  all_small_vehicles <- dplyr::bind_rows(shorter_vehicles, terrain_vehicles) %>%
-    dplyr::select(-tekn_avreg_dato, -tekn_reg_status) %>% # nothing interesting
-    dplyr::filter(tekn_reg_aar > 2e7, # removing old vehicles
-                  tekn_lengde < 16e3, # removing obviously mistyped lengths
-                  tekn_lengde > 2500 # no real cars shorter than this, removing obviously mistyped lengths
+  all_small_vehicles <-
+    dplyr::bind_rows(
+      shorter_vehicles,
+      terrain_vehicles
+      ) %>%
+    dplyr::select(
+      -tekn_avreg_dato,
+      -tekn_reg_status
+      ) %>% # nothing interesting
+    dplyr::filter(
+      tekn_reg_aar > 2e7, # removing old vehicles
+      tekn_lengde < 16e3, # removing obviously mistyped lengths
+      tekn_lengde > 2500 # no real cars shorter than this, removing obviously mistyped lengths
     ) %>%
     dplyr::mutate(
       tekn_tknavn = stringr::str_sub(tekn_tknavn, 1, 2),
@@ -96,14 +104,30 @@ total_number_of_vehicles_per_group <- vehicles_5.6 %>%
 vehicles_5.6_grouped <- vehicles_5.6 %>%
   group_categorized_vehicles()
 
+vehicles_5.6_grouped %>%
+  write.csv2("kjoretoyregisteret/vehicles_5.6_grouped.csv",
+             row.names = FALSE)
+
 vehicles_5.4_grouped <- categorize_vehicles(5.4) %>%
   group_categorized_vehicles()
+
+vehicles_5.4_grouped %>%
+  write.csv2("kjoretoyregisteret/vehicles_5.4_grouped.csv",
+             row.names = FALSE)
 
 vehicles_5.8_grouped <- categorize_vehicles(5.8) %>%
   group_categorized_vehicles()
 
+vehicles_5.8_grouped %>%
+  write.csv2("kjoretoyregisteret/vehicles_5.8_grouped.csv",
+             row.names = FALSE)
+
 vehicles_6.0_grouped <- categorize_vehicles(6) %>%
   group_categorized_vehicles()
+
+vehicles_6.0_grouped %>%
+  write.csv2("kjoretoyregisteret/vehicles_6.0_grouped.csv",
+             row.names = FALSE)
 
 # Find relative distribution for different length values ----
 vehicles_5.6_grouped_relative <- vehicles_5.6_grouped %>%
@@ -195,6 +219,11 @@ vehicles_relative <- dplyr::bind_rows(
   categorize_vehicles(8.6) %>%
     calculate_relative_distribution_of_grouped_categorized_vehicles
 )
+
+
+vehicles_relative %>%
+  write.csv2("kjoretoyregisteret/vehicles_relative.csv",
+             row.names = FALSE)
 
 # Looking at specific vehicles ----
 short_lengths <- vehicles_5.6 %>%
