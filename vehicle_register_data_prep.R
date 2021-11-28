@@ -16,11 +16,11 @@ source("get_from_data_norge.R")
 #vehicle_groups <- get_vehicle_groups()
 
 # Klassene brukt i Kjøretøyforskriften
-vehicle_technical_codes <- get_technical_codes()
+#vehicle_technical_codes <- get_technical_codes()
 # TODO: map to NorSiKT classes
 
 # The available parameters
-vehicle_info_fields <- get_vehicle_info_fields()
+#vehicle_info_fields <- get_vehicle_info_fields()
 
 # The vehicle data, light goods vehicles
 #vehicle_info_N1 <- get_vehicle_info("N1")
@@ -29,57 +29,116 @@ vehicle_info_fields <- get_vehicle_info_fields()
 
 # Complete set in CSV dump ----
 # OBS! 2 GB i csv-fila!
-#komplett_liste <- readr::read_csv2("kjoretoyregisteret/kjoretoy_komplett.csv",
-#                           col_select = traffic_data_relevant_columns)
+komplett_liste <- readr::read_csv2("kjoretoyregisteret/kjoretoy_komplett.csv",
+                           col_select = traffic_data_relevant_columns)
 
-# Ser kun på korte
-shorter_vehicles <- komplett_liste %>%
-  dplyr::filter(tekn_reg_status == "REGISTRERT",
-                tekn_tknavn %in% c("M1", "M2", "N1", "N2"))
+
+# Filter vehicles ----
+registered_vehicles <- komplett_liste %>%
+  dplyr::filter(
+    tekn_reg_status == "REGISTRERT",
+    tekn_reg_aar > 2e7 # removing old vehicles
+    )
+
+class_codes <- registered_vehicles %>%
+  dplyr::group_by(tekn_tknavn) %>%
+  dplyr::summarise(antall = n())
+
+class_examples <- registered_vehicles %>%
+  dplyr::filter(tekn_tknavn == "TT")
+
+classified_vehicles <- registered_vehicles %>%
+  dplyr::mutate(
+    class = dplyr::case_when(
+      tekn_tknavn %in% c("L1e", "L2e", "L3e", "L4e", "L5e", "L6e", "L7e",
+                         "MCL", "MCM", "MCT") ~ "L",
+      tekn_tknavn %in% c("M1", "M1G") ~ "M1",
+      tekn_tknavn %in% c("M2", "M2G") ~ "M2",
+      tekn_tknavn %in% c("M3", "M3G") ~ "M3",
+      tekn_tknavn %in% c("N1", "N1G") ~ "N1",
+      tekn_tknavn %in% c("N2", "N2G") ~ "N2",
+      tekn_tknavn %in% c("N3", "N3G") ~ "N3",
+      tekn_tknavn == "O1" ~ "O1",
+      tekn_tknavn == "O2" ~ "O2",
+      tekn_tknavn == "O3" ~ "O3",
+      tekn_tknavn == "O4" ~ "O4",
+      TRUE ~ "no_class"
+    ),
+   lengde_m = tekn_lengde / 1e3,
+   vekt_t = tekn_totvekt / 1e3
+  ) %>%
+  dplyr::filter(
+    class != "no_class",
+    !is.na(lengde_m)
+  ) %>%
+  dplyr::mutate(
+    valid_length = dplyr::case_when(
+      class == "L" & lengde_m < 1 ~ FALSE,
+      class == "L" & lengde_m > 4 ~ FALSE,
+      class == "M1" & lengde_m < 2.5 ~ FALSE,
+      class == "M1" & lengde_m > 12 ~ FALSE,
+      # M2 og M3 har alle troverdige lengder
+      class == "N1" & lengde_m < 4 ~ FALSE,
+      class == "N1" & lengde_m > 10 ~ FALSE,
+      class == "N2" & lengde_m < 3 ~ FALSE,
+      class == "N2" & lengde_m > 12 ~ FALSE,
+      class == "N3" & lengde_m < 3 ~ FALSE,
+      class == "N3" & lengde_m > 20 ~ FALSE,
+      class == "O1" & lengde_m < 1 ~ FALSE,
+      class == "O1" & lengde_m > 10 ~ FALSE,
+      class == "O2" & lengde_m < 2 ~ FALSE,
+      class == "O2" & lengde_m > 15 ~ FALSE,
+      class == "O3" & lengde_m < 4 ~ FALSE,
+      class == "O3" & lengde_m > 15 ~ FALSE,
+      class == "O4" & lengde_m < 2 ~ FALSE,
+      class == "O4" & lengde_m > 25 ~ FALSE,
+      TRUE ~ TRUE
+    ),
+    valid_weight = dplyr::case_when(
+      class == "L" & vekt_t > 2 ~ FALSE,
+      TRUE ~ TRUE
+    )
+  ) %>%
+  dplyr::select(tekn_merkenavn, tekn_modell, class, lengde_m, valid_length,
+                vekt_t, valid_weight, tekn_vogntogvekt)
+
+classified_vehicles %>%
+  write.csv2("kjoretoyregisteret/kjoretoy_filtrert.csv",
+             row.names = FALSE)
+#classified_vehicles <- read_csv2("kjoretoyregisteret/kjoretoy_filtrert.csv")
+
+# length_check <- classified_vehicles %>%
+#   dplyr::filter(class == "M3",
+#                 lengde_m < 10
+#                 ) %>%
+#   dplyr::arrange(lengde_m)
+
+# weight_check <- classified_vehicles %>%
+#   dplyr::filter(class == "N2",
+#                 vekt_t < 3.5
+#                 ) %>%
+#   dplyr::arrange(vekt_t)
+
+
+# Shorter vehicles
+shorter_vehicles <- classified_vehicles %>%
+  dplyr::filter(class %in% c("M1", "M2", "N1", "N2"))
 
 shorter_vehicles %>%
   write.csv2("kjoretoyregisteret/kjoretoy_M1_M2_N1_N2.csv",
              row.names = FALSE)
-shorter_vehicles <- read_csv2("kjoretoyregisteret/kjoretoy_M1_M2_N1_N2.csv")
+#shorter_vehicles <- read_csv2("kjoretoyregisteret/kjoretoy_M1_M2_N1_N2.csv")
 
-# Må inkludere m1g og n1g da f.eks. Land Cruiser er med her.
-terrain_vehicles <- komplett_liste %>%
-  dplyr::filter(tekn_reg_status == "REGISTRERT",
-                tekn_tknavn %in% c("M1G", "M2G", "N1G", "N2G"))
-
-terrain_vehicles %>%
-  write.csv2("kjoretoyregisteret/kjoretoy_M1G_M2G_N1G_N2G.csv",
-             row.names = FALSE)
-terrain_vehicles <- read_csv2("kjoretoyregisteret/kjoretoy_M1G_M2G_N1G_N2G.csv")
-
-
-# Transform ----
 categorize_vehicles <- function(length_limit) {
 
-  all_small_vehicles <-
-    dplyr::bind_rows(
-      shorter_vehicles,
-      terrain_vehicles
-      ) %>%
-    dplyr::select(
-      -tekn_avreg_dato,
-      -tekn_reg_status
-      ) %>% # nothing interesting
-    dplyr::filter(
-      tekn_reg_aar > 2e7, # removing old vehicles
-      tekn_lengde < 16e3, # removing obviously mistyped lengths
-      tekn_lengde > 2500 # no real cars shorter than this, removing obviously mistyped lengths
-    ) %>%
+  shorter_vehicles_categorized <- shorter_vehicles %>%
     dplyr::mutate(
-      tekn_tknavn = stringr::str_sub(tekn_tknavn, 1, 2),
-      tekn_lengde = tekn_lengde / 1e3,
-      tekn_totvekt = tekn_totvekt / 1e3,
       lengdegrense = length_limit,
       kategori = dplyr::case_when(
-        tekn_lengde < length_limit & tekn_totvekt <= 3.5 ~ "kort_og_lett",
-        tekn_lengde >= length_limit & tekn_totvekt <= 3.5 ~ "lang_og_lett",
-        tekn_lengde < length_limit & tekn_totvekt > 3.5 ~ "kort_og_tung",
-        tekn_lengde >= length_limit & tekn_totvekt > 3.5 ~ "lang_og_tung",
+        lengde_m < length_limit & vekt_t <= 3.5 ~ "kort_og_lett",
+        lengde_m >= length_limit & vekt_t <= 3.5 ~ "lang_og_lett",
+        lengde_m < length_limit & vekt_t > 3.5 ~ "kort_og_tung",
+        lengde_m >= length_limit & vekt_t > 3.5 ~ "lang_og_tung",
         TRUE ~ ""
       ))
 }
@@ -87,21 +146,12 @@ categorize_vehicles <- function(length_limit) {
 group_categorized_vehicles <- function(categorized_vehicle_df) {
 
   categorized_vehicle_df %>%
-    dplyr::group_by(tekn_tknavn, kategori) %>%
+    dplyr::group_by(class, kategori) %>%
     dplyr::summarise(antall = n())
 
 }
 
-vehicles_5.6 <- categorize_vehicles(5.6)
-vehicles_6 <- categorize_vehicles(6)
-
-total_number_of_vehicles <- nrow(vehicles_5.6)
-total_number_of_vehicles_per_group <- vehicles_5.6 %>%
-  dplyr::group_by(tekn_tknavn) %>%
-  dplyr::summarise(totalantall = n())
-
-
-vehicles_5.6_grouped <- vehicles_5.6 %>%
+vehicles_5.6_grouped <- categorize_vehicles(5.6) %>%
   group_categorized_vehicles()
 
 vehicles_5.6_grouped %>%
@@ -129,11 +179,9 @@ vehicles_6.0_grouped %>%
   write.csv2("kjoretoyregisteret/vehicles_6.0_grouped.csv",
              row.names = FALSE)
 
+
 # Find relative distribution for different length values ----
-vehicles_5.6_grouped_relative <- vehicles_5.6_grouped %>%
-  dplyr::left_join(total_number_of_vehicles_per_group,
-                   by = "tekn_tknavn") %>%
-  dplyr::mutate(prosentandel = round(100 * (antall / totalantall), digits = 1))
+total_number_of_vehicles <- nrow(shorter_vehicles)
 
 calculate_relative_distribution_of_grouped_categorized_vehicles <-
   function(categorized_vehicle_df) {
@@ -149,7 +197,7 @@ calculate_relative_distribution_of_grouped_categorized_vehicles <-
 
   }
 
-length_values <- seq(5.4, 8.9, 0.1)
+#length_values <- seq(5.4, 8.9, 0.1)
 
 vehicles_relative <- dplyr::bind_rows(
   categorize_vehicles(5.4) %>%
@@ -220,12 +268,17 @@ vehicles_relative <- dplyr::bind_rows(
     calculate_relative_distribution_of_grouped_categorized_vehicles
 )
 
-
 vehicles_relative %>%
   write.csv2("kjoretoyregisteret/vehicles_relative.csv",
              row.names = FALSE)
 
+
+
+
+
 # Looking at specific vehicles ----
+vehicles_5.6 <- categorize_vehicles(5.6)
+
 short_lengths <- vehicles_5.6 %>%
   dplyr::filter(tekn_lengde < 3)
 
@@ -270,12 +323,9 @@ mitsubishi_outlander <- vehicles_5.6 %>%
   dplyr::filter(tekn_merkenavn == "MITSUBISHI",
                 tekn_modell == "OUTLANDER")
 
-# TODO: finne optimalt lengdeskille
-# Målet er å ha færrest andel i mellomkategoriene
-# Simulere med lengder mellom 5,4 - 6,2
-# TODO: motorsykler
-# TODO: hvilke kjøretøy havner i mellomkategoriene?
-# TODO: hengere...?
+
+
+# TODO: vehicles with trailers
 
 
 

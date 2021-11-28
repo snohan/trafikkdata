@@ -13,7 +13,7 @@ output:
       width: 1.0
       caption:
         style: Tabelltekst
-        pre: 'Tabell'
+        pre: 'Tabell '
         sep: '. '
       conditional:
         first_row: true
@@ -37,13 +37,18 @@ output:
 ```{r setup, include = FALSE, echo = FALSE}
 source("H:/Programmering/R/byindeks/rmd_setup.R")
 
-knitr::opts_chunk$set(fig.width = 6
-                      )
+knitr::opts_chunk$set(
+  fig.width = 6.2
+  )
 
+svv_background_color <- "#F5F5F5"
 # Data is prepared in vehicle_register_data_prep.R
 ```
 
 ```{r data}
+classified_vehicles <- 
+  readr::read_csv2("kjoretoyregisteret/kjoretoy_filtrert.csv")
+
 vehicles_5.4_grouped <-
   read.csv2("kjoretoyregisteret/vehicles_5.4_grouped.csv")
 
@@ -58,6 +63,10 @@ vehicles_6.0_grouped <-
 
 vehicles_relative <-
   read.csv2("kjoretoyregisteret/vehicles_relative.csv")
+
+classes_joined <-
+  readr::read_csv2("kjoretoyregisteret/classes_joined.csv")
+#
 ```
 
 <br>
@@ -76,7 +85,13 @@ officer::block_toc(style = "Figurtekst")
 
 
 # Sammendrag
-DDD
+Her presenteres en oversikt over fire ulike kjøretøyklassifiseringssystemer. Disse er den tradisjonelle lengdeklassifiseringen brukt i trafikkdata, Kjøretøyforskriften, nordisk klassifiseringsstandard og klassifisering fra trafikkregistreringsutstyret som i dag benyttes i Trafikkdatasystemet. 
+
+En analyse av sammenhengen mellom kjøretøylengde Kjøretøyforskriftens klasser viser at det ikke i alle tilfeller er et entydig skille mellom disse to klassifiseringssystemene. En tilsvarende oversikt over sammenhengen mellom kjøretøys tillatte totalvekt og Kjøretøyforskriftens klasser viser at disse to er entydig definert foruten noen få unntak.
+
+Videre viser en analyse av sammenhengen mellom kjøretøylengde og tillatt totalvekt at skillet mellom korte og lange kjøretøy burde vært ved 7,5 m dersom grensen skal passe best til skillet mellom lette og tunge ved 3,5 tonn. Likevel er forskjellen fra den tradisjonelle lengdegrensen på 5,6 m relativt liten, og ikke av særlig betydning.
+
+Til slutt er det sett på sammenghengen mellom alle klassifiseringssystmene for å se hvilke klassekoder som tilsvarer hverandre. Dersom NorSIKT-systemet skal benyttes, viser det seg å være nivå 3 som passer best med data fra dagens trafikkregistreringsutstyr som benyttes i Trafikkdatasystemet.
 
 
 # Bakgrunn
@@ -84,7 +99,7 @@ I trafikkdatasammenheng har det i mange år vært vanlig å klassifisere motorkj
 
 Denne rapporten tar for seg sammenhengen mellom den tradisjonelle lengdeklassifiseringen og kjøretøyklassifiseringen slik den er beskrevet i Kjøretøyforskriften. Videre sammenlignes dette med en felles nordisk standard for kjøretøyklassifisering, samt klassifiseringen som fås fra trafikkregistreringsutstyret som benyttes til innsamling av trafikkdata i Norge.
 
-Sammenhenger mellom lengde- og kjøretøyklassifisering er basert på tekniske data fra  Kjøretøyregisteret.
+Sammenhenger mellom lengde- og kjøretøyklassifisering er basert på tekniske data fraKjøretøyregisteret.
 
 
 # Lengdeklassifisering
@@ -122,71 +137,97 @@ Følgende kjøretøygrupper nevnes i forskriften:
   - O2 (tilhenger, mellom 0,75 og 3,5 tonn)
   - O3 (tilhenger, mellom 3,5 og 10 tonn)
   - O4 (tilhenger, over 10 tonn)
-  - G (terrenggående varianter av gruppende M og N. For eksempel er en ganske vanlig personbil som Toyota Land Cruiser blant disse)
-  - L (moped og motorsykkel, med undergrupper som ikke er relevante her)
+  - G (terrenggående varianter av gruppene M og N. For eksempel er en ganske vanlig personbil som Toyota Land Cruiser blant disse)
+  - L, MCL, MCM, MCT (moped og motorsykkel, med undergrupper som ikke er relevante her)
   - T (traktor, med undergrupper som ikke er relevante her)
   - C (beltetraktor, med undergrupper som ikke er relevante her)
   - R (traktorhenger, med undergrupper som ikke er relevante her)
   - S (utskiftbar trukket maskin, med undergrupper som ikke er relevante her)
+  - BB (beltebil)
+  - BM (beltemotorsykkel)
   
+Det antas at bidraget til trafikkarbeid på offentlig veg fra klassene T, C, R, S, BB og BM kan neglisjeres.
+
 
 # Nordisk klassifiseringsstandard (NorSIKT)
 De nordiske landene har samarbeidet om et felles klassifiseringssystem, Nordic System for Intelligent Classification of Traffic (NorSIKT). Systemet inneholder 6 nivåer med ulikt antall klasser. Nivå 1 er triviell og har kun én klasse for motorkjøretøy.
 
-NorSIKT nivå 2 har følgende tre klasser:
+NorSIKT nivå 2 har følgende fem klasser:
 
   - LMV: light motor vehicle (lett kjøretøy)
+  - LMV WC: light motor vehicle with coupled (lett kjøretøy med henger)
   - HMV: heavy motor vehicle (tungt kjøretøy)
+  - HMV WC: heavy motor vehicle with coupled (tungt kjøretøy med henger)
   - OMV: other motor vehicle (andre kjøretøy)
   
-NorSIKT nivå 3 har følgende fire klasser:
+NorSIKT nivå 3 har følgende sju klasser:
 
   - MC_MP: motorcycle, moped (motorsykkel, moped)
+  - MC_MP WC: motorcycle, moped with coupled (motorsykkel, moped med henger)
   - PC_LGV_LB: personal car, light goods vehicle, light bus (personbil, varebil, lett buss)
+  - PC_LGV_LB WC: personal car, light goods vehicle, light bus with coupled (personbil, varebil, lett buss med henger)
   - HMV: heavy motor vehicle (tungt kjøretøy)
+  - HMV WC: heavy motor vehicle with coupled (tungt kjøretøy med henger)
   - OMV: other motor vehicle (andre kjøretøy)
   
-NorSIKT nivå 4 har følgende seks klasser:
+NorSIKT nivå 4 har følgende 11 klasser:
 
   - MC_MP: motorcycle, moped (motorsykkel, moped)
+  - MC_MP WC: motorcycle, moped with coupled (motorsykkel, moped med henger)
   - PC_LGV: personal car, light goods vehicle (personbil, varebil)
+  - PC_LGV WC: personal car, light goods vehicle with coupled (personbil, varebil med henger)
   - LB: light bus (lett buss)
+  - LB WC: light bus with coupled (lett buss med henger)
   - HB: heavy bus (tung buss)
+  - HB WC: heavy bus with coupled (tung buss med henger)
   - HGV_RT_EMS: heavy goods vehicle, road tractor, other heavy vehicle (lastebil, trekkbil, annet tungt kjøretøy)
+  - HGV_RT_EMS WC: heavy goods vehicle, road tractor, other heavy vehicle with coupled (lastebil, trekkbil, annet tungt kjøretøy med henger)
   - OMV: other motor vehicle (andre kjøretøy)
 
 
-NorSIKT nivå 5 har følgende åtte klasser:
+NorSIKT nivå 5 har følgende 14 klasser:
 
   - MC_MP: motorcycle, moped (motorsykkel, moped)
+  - MC_MP WC: motorcycle, moped with coupled (motorsykkel, moped med henger)
   - PC_LGV: personal car, light goods vehicle (personbil, varebil)
+  - PC_LGV WC: personal car, light goods vehicle with coupled (personbil, varebil med henger)
   - LB: light bus (lett buss)
+  - LB WC: light bus with coupled (lett buss med henger)
   - HB: heavy bus (tung buss)
+  - HB WC: heavy bus with coupled (tung buss med henger)
   - HGV: heavy goods vehicle (lastebil)
+  - HGV WC: heavy goods vehicle with coupled (lastebil med henger)
   - RT: road tractor (trekkbil)
+  - RT WC: road tractor with coupled (trekkbil med semitrailer)
   - EMS: other heavy vehicle (annet tungt kjøretøy)
   - OMV: other motor vehicle (andre kjøretøy)
   
   
-NorSIKT nivå 6 har følgende 13 klasser:
+NorSIKT nivå 6 har følgende 19 klasser:
 
   - MP: moped (moped)
   - MC: motorcycle (motorsykkel)
+  - MC WC: motorcycle with coupled (motorsykkel med henger)
   - PC: personal car (personbil)
+  - PC WC: personal car with coupled (personbil med henger)
   - Small LGV: small light goods vehicle (liten varebil)
+  - Small LGV WC: small light goods vehicle with coupled (liten varebil med henger)
   - Big LGV: big light goods vehicle (stor varebil)
+  - Big LGV WC: big light goods vehicle with coupled (stor varebil med henger)
   - LB: light bus (lett buss)
+  - LB WC: light bus with coupled (lett buss med henger)
   - HB: heavy bus (tung buss)
+  - HB WC: heavy bus with coupled (tung buss med henger)
   - HGV: heavy goods vehicle (lastebil)
-  - HGV_WC: heavy goods vehicle with coupled vehicle (lastebil med henger)
+  - HGV WC: heavy goods vehicle with coupled (lastebil med henger)
   - RT: road tractor (trekkbil)
-  - RT_WC: road tractor with coupled vehicle (trekkbil med semitrailer)
+  - RT WC: road tractor with coupled (trekkbil med semitrailer)
   - EMS: other heavy vehicle (annet tungt kjøretøy)
   - OMV: other motor vehicle (andre kjøretøy)
   
 
 # Kjøretøyklasser fra trafikkregistreringsutstyr
-Kjøretøyklassifiseringen som trafikkregistreringsutstyret gir er basert på mer enn bare lengdemåling. Hvilke måleverdier som inngår i klassifiseringen er avhengig av sensortype og leverandør.
+Kjøretøyklassifiseringen fra trafikkregistreringsutstyret er basert på mer enn bare lengdemåling. Hvilke måleverdier som inngår i klassifiseringen er avhengig av sensortype og leverandør.
 
 I perioden fra 2015 til 2018 ble det innfaset nytt utstyr som gir klassifisering. Det er til nå blitt registrert med to ulike apparattyper.
 
@@ -214,6 +255,144 @@ Fra EMU3 får vi følgende 6 kjøretøyklasser:
   - UC/LOOP: uklassifisert
   
 
+# Sammenheng mellom lengde og Kjøretøyforskriftens klasser
+Datagrunnlaget i denne analysen er teknisk informasjon om dagens bilpark slik Kjøretøyregisteret var 4. september 2021. Her begrenses datagrunnlaget til kjøretøy som har status "registrert", og kjøretøy som er avskiltet eller vraket inngår ikke. Videre er det begrenset til kjøretøy som er registrert første gang etter 1.1.2000, da eldre kjøretøy antas å utgjøre en neglisjerbar andel av dagens kjørte kilometer på det norske vegnettet.
+
+Lengden som er oppgitt i Kjøretøyregisteret er i noen tilfeller lagt inn med opplagte feil. Disse er luket ut etter følgende kriterier:
+
+  - L må være mellom 1 og 4 m
+  - M1 må være mellom 2,5 og 12 m
+  - N1 må være mellom 4 og 10 m
+  - N2 må være mellom 3 og 12 m
+  - N3 må være mellom 3 og 20 m
+  - O1 må være mellom 1 og 10 m
+  - O2 må være mellom 2 og 15 m
+  - O3 må være mellom 4 og 15 m
+  - O4 må være mellom 2 og 25 m
+  
+M2 og M3 har alle troverdige lengder.
+
+Tabellen nedenfor viser antall kjøretøy i kjøretøyklassene.
+
+<br>
+  
+```{r autosys_valid_length_table}
+classified_vehicles %>%
+  dplyr::group_by(class, valid_length) %>% 
+  dplyr::summarise(n_vehicles = n()) %>% 
+  tidyr::pivot_wider(
+    names_from = valid_length,
+    names_prefix = "valid_length_",
+    values_from = n_vehicles
+    ) %>% 
+  dplyr::select(class, valid_length_TRUE, valid_length_FALSE) %>% 
+  flextable() %>%
+  set_header_labels(
+    class = "Kjøretøyklasse",
+    valid_length_TRUE = "Antall med\n troverdig lengde",
+    valid_length_FALSE = "Antall med\n ikke-troverdig lengde"
+    ) %>%
+  bold(part = "header") %>%
+  bg(bg = "#ED9300", part = "header") %>%
+  border_remove() %>%
+  hline_top(part = "header", border = borderline) %>%
+  hline_bottom(part = "all", border = borderline) %>%
+  height_all(height = .2) %>%
+  fix_border_issues() %>% 
+  set_caption("Antall kjøretøy per klasse i Kjøretøyregisteret.",
+              autonum = table_numbers,
+              style = "Tabelltekst")
+```
+<br>
+
+I figuren nedenfor vises fordeling av lengder per klasse.
+
+```{r plot_length_distributions, fig.height=6, fig.cap="Fordeling av Kjøretøyregisterets lengder per kjøretøyklasse"}
+limit_color = "#ed1c2e"
+alpha_value = 0.6
+
+classified_vehicles %>% 
+  dplyr::filter(valid_length == TRUE) %>% 
+  ggplot(aes(class, lengde_m)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 5.6), color = limit_color, alpha = alpha_value) +
+  geom_hline(aes(yintercept = 7.6), color = limit_color, alpha = alpha_value) +
+  geom_hline(aes(yintercept = 12.5), color = limit_color, alpha = alpha_value) +
+  geom_hline(aes(yintercept = 16), color = limit_color, alpha = alpha_value) +
+  theme_bw() +
+  theme(axis.title.y = element_text(
+          margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(
+          margin = margin(t = 15, r = 0, b = 0, l = 0))) +
+  labs(x = "Kjøretøyklasse i Kjøretøyforskriften",
+       y = "Kjøretøylengde i Kjøretøyregisteret (m)",
+       title = "Fordeling av kjøretøylengde per kjøretøyklasse")
+```
+
+<br>
+
+I figuren går det tydelig fram at klassene L, M1 og N1 stort sett passer inn under 5,6 m Videre er det ganske bra plass til de fleste i klasse M2 og N2 mellom 5,6 m og 7,6 m. M3 blir delt i to ved skillet på 12,5 m. N3 passer rimelig reit inn  mellom 7,6 m og 12,5 m, men disse kjøretøyene har jo ofte henger i tillegg. Foreløpig foreligger ingen informasjon om typiske sammensetninger av bil og henger.
+
+<br>
+
+```{r autosys_length_table}
+classified_vehicles %>%
+  dplyr::filter(valid_length == TRUE) %>% 
+  dplyr::group_by(class) %>% 
+  dplyr::summarise(
+    Antall = n(),
+    Minimum = min(lengde_m),
+    Persentil_25 = quantile(lengde_m, 0.25, na.rm = TRUE),
+    Median = median(lengde_m, na.rm = TRUE),
+    Persentil_75 = quantile(lengde_m, 0.75, na.rm = TRUE),
+    Maksimum = max(lengde_m),
+    Gjennomsnitt = mean(lengde_m, na.rm = TRUE),
+    Standardavvik = sd(lengde_m, na.rm = TRUE)
+    ) %>% 
+  flextable() %>%
+  colformat_double(j = 3:9, digits = 2) %>% 
+  set_header_labels(
+    class = "Kjøretøyklasse"
+    ) %>%
+  bold(part = "header") %>%
+  bg(bg = "#ED9300", part = "header") %>%
+  border_remove() %>%
+  hline_top(part = "header", border = borderline) %>%
+  hline_bottom(part = "all", border = borderline) %>%
+  height_all(height = .2) %>%
+  fix_border_issues() %>% 
+  set_caption("Verdier for lengdefordeling per klasse. Lengder er oppgitt i meter.",
+              autonum = table_numbers,
+              style = "Tabelltekst")
+```
+<br>
+
+I figuren nedenfor vises fordeling av tillatt totalvekt per klasse.
+
+```{r plot_weight_distributions, fig.height=6, fig.cap="Fordeling av Kjøretøyregisterets tillatte totalvekter per kjøretøyklasse"}
+classified_vehicles %>% 
+  dplyr::filter(
+    valid_weight == TRUE,
+    vekt_t <= 60
+    ) %>% 
+  ggplot(aes(class, vekt_t)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 3.5), color = limit_color, alpha = alpha_value) +
+  theme_bw() +
+  theme(axis.title.y = element_text(
+          margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        axis.title.x = element_text(
+          margin = margin(t = 15, r = 0, b = 0, l = 0))) +
+  labs(x = "Kjøretøyklasse i Kjøretøyforskriften",
+       y = "Tillatt totalvekt (kg)",
+       title = "Fordeling av tillatt totalvekt per kjøretøyklasse")
+```
+
+Her er kjøretøy med tillatt totalvekt over 60 tonn utelatt. Disse er for det meste dumpere (N3) som ikke kan kjøre på offentlig veg, eller spesielle hengere (O4, maskinhenger o.l).
+
+I M2 er det noen få kjøretøy som er korte og/eller lette (42 som er under 3,5 tonn), men stort sett er alle i M2 både lange og tunge.
+
+
 # Sammenheng mellom lengde og tillatt totalvekt
 Teknisk kjøretøyinformasjon i Kjøretøyregisteret er et åpent datasett som her er grunnlag for en analyse av sammenhengen mellom kjøretøylengde og klassifisering. Spørsmålet er hvor godt lengdegrensen på 5,6 m passer med skillet mellom lett og tung på 3,5 tonn tillatt totalvekt.
 
@@ -226,7 +405,7 @@ For å se nærmere på grensen mellom lette og tunge, er det tilstrekkelig å in
   - M1, M1G (personbil, maks 8 sitteplasser)
   - M2, M2G (minibuss, flere enn 8 sitteplasser, maks 5 tonn totalvekt)
   - N1, N1G (lett varebil, maks 3,5 tonn totalvekt)
-  - N2, N2G (lett lastebil, totalvekt mellom 3,5 og 12 tonn)
+  - N2, N2G (liten lastebil, totalvekt mellom 3,5 og 12 tonn)
 
 De øvrige klassene inneholder kun lengre kjøretøy.
 
@@ -267,7 +446,7 @@ plot_combination_distribution <- function(vehicle_grouped_df, subtitle_text) {
                 color = "grey",
                 position = position_dodge(0.9),
                 vjust = 0) +
-    facet_wrap(vars(tekn_tknavn)) +
+    facet_wrap(vars(class)) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90),
           axis.title.y = element_text(
@@ -311,8 +490,9 @@ I alle disse tilfellene er det "kort og lett" som dominerer i antall. Det er rel
 
 For enklere å kunne sammenligne fordelingen mellom de ulike lengdevalgene, settes disse i samme visualisering hvor vi ser på forskjellige lengdeskiller og relativ fordeling av kjøretøyene i kategorier.
 
+<br>
 
-```{r rel_dist}
+```{r rel_dist, fig.cap="Relativ andel kjøretøy i kategorier ved flere valg av lengdegrense."}
 vehicles_relative %>% 
   dplyr::filter(lengdegrense %in% c(
     "5.4", "5.6", "6", "6.5", "7", "7.3", "7.4", "7.5", "8", "8.5"
@@ -336,7 +516,7 @@ Ser nærmere på de to mellomkategoriene som vi vil ha færrest mulig kjøretøy
 
 <br>
 
-```{r rel_dist_closer}
+```{r rel_dist_closer, fig.cap="Relativ andel kjøretøy i mellomkategoriene ved ulike valg av lengdegrense."}
 vehicles_relative %>%
   dplyr::filter(kategori %in% c("kort_og_tung", "lang_og_lett")) %>% 
   ggplot(aes(lengdegrense, prosentandel, fill = kategori)) +
@@ -360,7 +540,7 @@ Konklusjonen er at 7,5 m er det optimale, men at forskjellen ikke er mer enn omk
 
 
 ## Korte og tunge
-Med 5,6 m som grense er det kun 500 kjøretøy som samtidig er korte og tunge. Typisk er dette SUV-er, små varebiler eller veldig små lastebiler. Med 6,0 m som grense økes denn gruppa til 2 200 kjøretøy, men den består av de samme typene.
+Med 5,6 m som grense er det kun 500 kjøretøy som samtidig er korte og tunge. Typisk er dette SUV-er, små varebiler eller veldig små lastebiler. Med 6,0 m som grense økes denne gruppa til 2 200 kjøretøy, men den består av de samme typene.
 
 
 ## Lange og lette
@@ -379,41 +559,187 @@ I byområder er det høy andel varebiler. En andel av disse er definert som lett
 Kombinasjonen av lette og korte biler med hvilken som helst henger, vil gi samlet lengde over 5,6 m. Disse vil bli lengdeklassifisert over 5,6 m og føre til en for høy andel tunge. Overrepresentasjon av dette vil typisk være sommertrafikk med campingvogn og lastehenger ved hytteområder.
 
 
-# Feilkilder
+## Feilkilder
 Fordelingene presentert over er teoretiske og tar ikke hensyn til at ulike kjøretøy benyttes ulikt. Det kan være at lengre kjøretøy kjører mer enn korte, og at "problemområdet" rundt 5,6 m utgjør en større andel av trafikkarbeidet enn i Kjøretøyregisteret.
 
 Lengdemålinger har alltid noe usikkerhet knyttet til seg. I hvilken grad påvirker dette fordelingen av lette og tunge? Se egen rapport.
 
 
+
+
+
+
 # Sammenheng mellom klassifiseringssystemene
 DDD
 
-NorSiKT nivå 2:
+NorSIKT nivå 2:
 
-- LMV
-- HMV
-- OMV (ukjent)
+<br>
 
-NorSiKT nivå 3 (kjøretøyforskriftens klasser i parentes):
+```{r norsikt_2_compare}
+classes_joined %>%
+  dplyr::filter(norsikt_level == 2) %>% 
+  dplyr::select(-norsikt_level) %>% 
+  flextable() %>%
+  set_header_labels(
+    norsikt_class = "NorSIKT-klasse",
+    register_class = "Forskriftsklasse",
+    length_class = "Lengdeklasse",
+    lm_class = "LM",
+    emu3_class = "EMU3",
+    norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    ) %>%
+  bold(part = "header") %>%
+  bg(bg = "#ED9300", part = "header") %>%
+  border_remove() %>%
+  hline_top(part = "header", border = borderline) %>%
+  hline_bottom(part = "all", border = borderline) %>%
+  height_all(height = .2) %>%
+  fix_border_issues() %>% 
+  set_caption("Sammenheng mellom klassifiseringssystemene, NorSIKT nivå 2.",
+              autonum = table_numbers,
+              style = "Tabelltekst")
+```
+<br>
 
-- MC (L)
-- LMV (M1, N1)
-- HMV (M2, M3, N2, N3, T)
+NorSIKT nivå 3 (kjøretøyforskriftens klasser i parentes):
+
+<br>
+
+```{r norsikt_3_compare}
+classes_joined %>%
+  dplyr::filter(norsikt_level == 3) %>% 
+  dplyr::select(-norsikt_level) %>% 
+  flextable() %>%
+  set_header_labels(
+    norsikt_class = "NorSIKT-klasse",
+    register_class = "Forskriftsklasse",
+    length_class = "Lengdeklasse",
+    lm_class = "LM",
+    emu3_class = "EMU3",
+    norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    ) %>%
+  bold(part = "header") %>%
+  bg(bg = "#ED9300", part = "header") %>%
+  border_remove() %>%
+  hline_top(part = "header", border = borderline) %>%
+  hline_bottom(part = "all", border = borderline) %>%
+  height_all(height = .2) %>%
+  fix_border_issues() %>% 
+  set_caption("Sammenheng mellom klassifiseringssystemene, NorSIKT nivå 3.",
+              autonum = table_numbers,
+              style = "Tabelltekst")
+```
+<br>
+
+Nivå 4
+
+<br>
+
+```{r norsikt_4_compare}
+classes_joined %>%
+  dplyr::filter(norsikt_level == 4) %>% 
+  dplyr::select(-norsikt_level) %>% 
+  flextable() %>%
+  set_header_labels(
+    norsikt_class = "NorSIKT-klasse",
+    register_class = "Forskriftsklasse",
+    length_class = "Lengdeklasse",
+    lm_class = "LM",
+    emu3_class = "EMU3",
+    norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    ) %>%
+  bold(part = "header") %>%
+  bg(bg = "#ED9300", part = "header") %>%
+  border_remove() %>%
+  hline_top(part = "header", border = borderline) %>%
+  hline_bottom(part = "all", border = borderline) %>%
+  height_all(height = .2) %>%
+  fix_border_issues() %>% 
+  set_caption("Sammenheng mellom klassifiseringssystemene, NorSIKT nivå 4.",
+              autonum = table_numbers,
+              style = "Tabelltekst")
+```
+<br>
+
+Nivå 5
+
+<br>
+
+```{r norsikt_5_compare}
+classes_joined %>%
+  dplyr::filter(norsikt_level == 5) %>% 
+  dplyr::select(-norsikt_level) %>% 
+  flextable() %>%
+  set_header_labels(
+    norsikt_class = "NorSIKT-klasse",
+    register_class = "Forskriftsklasse",
+    length_class = "Lengdeklasse",
+    lm_class = "LM",
+    emu3_class = "EMU3",
+    norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    ) %>%
+  bold(part = "header") %>%
+  bg(bg = "#ED9300", part = "header") %>%
+  border_remove() %>%
+  hline_top(part = "header", border = borderline) %>%
+  hline_bottom(part = "all", border = borderline) %>%
+  height_all(height = .2) %>%
+  fix_border_issues() %>% 
+  set_caption("Sammenheng mellom klassifiseringssystemene, NorSIKT nivå 5.",
+              autonum = table_numbers,
+              style = "Tabelltekst")
+```
+
+
+<br>
+
+Nivå 6
+
+<br>
+
+```{r norsikt_6_compare}
+classes_joined %>%
+  dplyr::filter(norsikt_level == 6) %>% 
+  dplyr::select(-norsikt_level) %>% 
+  flextable() %>%
+  set_header_labels(
+    norsikt_class = "NorSIKT-klasse",
+    register_class = "Forskriftsklasse",
+    length_class = "Lengdeklasse",
+    lm_class = "LM",
+    emu3_class = "EMU3",
+    norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    ) %>%
+  bold(part = "header") %>%
+  bg(bg = "#ED9300", part = "header") %>%
+  border_remove() %>%
+  hline_top(part = "header", border = borderline) %>%
+  hline_bottom(part = "all", border = borderline) %>%
+  height_all(height = .2) %>%
+  fix_border_issues() %>% 
+  set_caption("Sammenheng mellom klassifiseringssystemene, NorSIKT nivå 6.",
+              autonum = table_numbers,
+              style = "Tabelltekst")
+```
+
+
+Hybridnivå mellom NorSIKT og LM (LMs klasser i parentes):
+
+- MC WOC WC (1)
+- LMV WOC (2, 4)
+- LMV WC (3, 5)
+- HB WOC WC (6)
+- HGV RT WOC (71, 72)
+- HGV WC (8)
+- RT WC (9)
 - OMV
 
-Hybridnivå mellom NorSiKT 6 og LM (LMs klasser i parentes):
-
-- MC (1)
-- LMV (2, 4)
-- LMV+WC (3, 5)
-- HB (6)
-- HGV+WOC (71, 72)
-- HGV+WC (8)
-- RT+WOC
-- RT+WC (9)
-- OMV
-
-OBS! Skal vi ha egne klasser med henger?
 
 
 
