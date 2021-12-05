@@ -236,6 +236,8 @@ NorSIKT nivå 6 har følgende 19 klasser:
 # Kjøretøyklasser fra trafikkregistreringsutstyr
 Kjøretøyklassifiseringen fra trafikkregistreringsutstyret er basert på mer enn bare lengdemåling. Hvilke måleverdier som inngår i klassifiseringen er avhengig av sensortype og leverandør.
 
+
+## Kontinuerlige registreringer
 I perioden fra 2015 til 2018 ble det innfaset nytt utstyr som gir klassifisering. Det er til nå blitt registrert med to ulike apparattyper.
 
 Fra Loop Monitor får vi følgende 11 kjøretøyklasser:
@@ -260,6 +262,49 @@ Fra EMU3 får vi følgende 6 kjøretøyklasser:
   - HMV: lastebil
   - HMV_WC: lastebil med henger
   - UC/LOOP: uklassifisert
+  
+
+## Periodiske registreringer
+For periodiske registreringer med faste sensorer benyttes samme apparattyper som for kontinuerlige registreringer. FOr mobile periodiske registreringer er det fra og med 2019 benyttet to ulike radartyper.
+
+Fra Armadillo får vi følgende kjøretøyklasser:
+
+  - Small: motorsykkel, små biler (omtrent under 4 m)
+  - Medium: personbil, varebil (omtrent mellom 4 m og 6 m)
+  - Large: buss, lastebil (omtrent over 6 m)
+  
+TOPO gir klassifisering i fire nivåer. 
+
+TOPO nivå TZ2:
+
+  - 64: motorsykkel, personbil, personbil med henger, varebil
+  - 40: lastebil, lastebil med henger, buss
+  
+TOPO nivå TZ4:
+
+  - 10: motorsykkel
+  - 37: personbil, personbil med henger, varebil
+  - 34: lastebil, lastebil med henger
+  - 5: buss
+  
+TOPO nivå TZ5:
+
+  - 10: motorsykkel
+  - 37: personbil, personbil med henger, varebil
+  - 3: lastebil
+  - 4: lastebil med henger
+  - 5: buss
+  
+TOPO nivå Basic:
+
+  - 10: motorsykkel
+  - 7: personbil, 
+  - 2: personbil med henger
+  - 11: varebil
+  - 3: lastebil
+  - 8: lastebil med henger
+  - 9: trekkbil med semitrailer
+  - 5: buss
   
 
 # Sammenheng mellom lengde og Kjøretøyforskriftens klasser
@@ -610,7 +655,9 @@ Nivå 2 omfatter fem klasser og sammenheng med øvrige klassifiseringer er vist 
 ```{r norsikt_2_compare}
 classes_joined %>%
   dplyr::filter(norsikt_level == 2) %>% 
-  dplyr::select(-norsikt_level) %>% 
+  dplyr::select(
+    -norsikt_level
+    ) %>% 
   flextable() %>%
   set_header_labels(
     norsikt_class = "NorSIKT-klasse",
@@ -618,8 +665,12 @@ classes_joined %>%
     length_class = "Lengdeklasse",
     lm_class = "LM",
     emu3_class = "EMU3",
+    armadillo_class = "Armadillo",
+    topo_class = "TOPO",
     norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
-    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_armadillo = "Armadillo entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_topo = "TOPO entydig med NorSIKT"
     ) %>%
   bold(part = "header") %>%
   bg(bg = "#ED9300", part = "header") %>%
@@ -634,7 +685,7 @@ classes_joined %>%
 ```
 <br>
 
-De to siste kolonnene i tabellen over angir om det er en entydig sammenheng mellom klassene. For nivå 2 er det en helt entydig sammenheng med klassene som trafikkregistreringsutstyret gir.
+De siste kolonnene i tabellen over angir om det er en entydig sammenheng mellom klassene. For nivå 2 er det en helt entydig sammenheng med klassene som trafikkregistreringsutstyret for kontinuerlig registrering gir. Det samme gjelder for det mobile utstyret, bortsett fra at Armadillo ikke har egne klasser for kjøretøy med henger.
 
 
 ## NorSIKT nivå 3
@@ -653,8 +704,12 @@ classes_joined %>%
     length_class = "Lengdeklasse",
     lm_class = "LM",
     emu3_class = "EMU3",
+    armadillo_class = "Armadillo",
+    topo_class = "TOPO",
     norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
-    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_armadillo = "Armadillo entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_topo = "TOPO entydig med NorSIKT"
     ) %>%
   bold(part = "header") %>%
   bg(bg = "#ED9300", part = "header") %>%
@@ -688,8 +743,12 @@ classes_joined %>%
     length_class = "Lengdeklasse",
     lm_class = "LM",
     emu3_class = "EMU3",
+    armadillo_class = "Armadillo",
+    topo_class = "TOPO",
     norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
-    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_armadillo = "Armadillo entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_topo = "TOPO entydig med NorSIKT"
     ) %>%
   bold(part = "header") %>%
   bg(bg = "#ED9300", part = "header") %>%
@@ -705,7 +764,7 @@ classes_joined %>%
 
 <br>
 
-Forskjellen fra nivå 3 er at lett og tung buss er skilt ut som egne klasser med og uten henger. Det er kun Lm som har egen klasse for buss uten henger. Andel tunge busser med henger vil være fåtallig slik at disse kan inngå i klassen for buss. En tilpasning av nivå 4 der utvidelsen fra nivå 3 kun er en egen klasse for tunge busser vil passe utstyret best.
+Forskjellen fra nivå 3 er at lett og tung buss er skilt ut som egne klasser med og uten henger. Det er kun LM og TOPO som har egen klasse for buss uten henger. Andel tunge busser med henger vil være fåtallig slik at disse kan inngå i klassen for buss. En tilpasning av nivå 4 der utvidelsen fra nivå 3 kun er en egen klasse for tunge busser vil passe utstyret best.
 
 
 ## NorSIKT nivå 5
@@ -724,8 +783,12 @@ classes_joined %>%
     length_class = "Lengdeklasse",
     lm_class = "LM",
     emu3_class = "EMU3",
+    armadillo_class = "Armadillo",
+    topo_class = "TOPO",
     norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
-    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_armadillo = "Armadillo entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_topo = "TOPO entydig med NorSIKT"
     ) %>%
   bold(part = "header") %>%
   bg(bg = "#ED9300", part = "header") %>%
@@ -741,7 +804,7 @@ classes_joined %>%
 
 <br>
 
-Utvidelsen fra nivå 4 til nivå 5 består av at de tunge deles inn i egne klasser for lastebil og trekkbil med og uten henger, samt en for øvrige tunge kjøretøy. Denne utvidelsen har ingen tilsvarende klasser fra EMU3, men LM har egne klasser for lastebil med henger og trekkbil med semitrailer.
+Utvidelsen fra nivå 4 til nivå 5 består av at de tunge deles inn i egne klasser for lastebil og trekkbil med og uten henger, samt en for øvrige tunge kjøretøy. Denne utvidelsen har ingen tilsvarende klasser fra EMU3 eller Armadillo, men LM og TOPO har egne klasser for lastebil med henger og trekkbil med semitrailer.
 
 
 ## NorSIKT nivå 6
@@ -760,8 +823,12 @@ classes_joined %>%
     length_class = "Lengdeklasse",
     lm_class = "LM",
     emu3_class = "EMU3",
+    armadillo_class = "Armadillo",
+    topo_class = "TOPO",
     norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
-    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
+    norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_armadillo = "Armadillo entydig med NorSIKT",
+    norsikt_class_unambiguously_defined_by_topo = "TOPO entydig med NorSIKT"
     ) %>%
   bold(part = "header") %>%
   bg(bg = "#ED9300", part = "header") %>%
@@ -792,7 +859,9 @@ norsikt_rtdce_mapping %>%
   dplyr::select(
     norsikt_class,
     lm_class,
-    emu3_class
+    emu3_class,
+    armadillo_class,
+    topo_class
     ) %>% 
   flextable() %>%
   set_header_labels(
@@ -800,7 +869,9 @@ norsikt_rtdce_mapping %>%
     #register_class = "Forskriftsklasse",
     #length_class = "Lengdeklasse",
     lm_class = "LM",
-    emu3_class = "EMU3"#,
+    emu3_class = "EMU3",
+    armadillo_class = "Armadillo",
+    topo_class = "TOPO"
     #norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
     #norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
     ) %>%
@@ -817,6 +888,7 @@ norsikt_rtdce_mapping %>%
 ```
 
 <br>
+Armadillo har ikke egne klasser med henger, men har sammenheng med de øvrige klassene.
 
 NorSIKT nivå 3 kan tilpasses ved at de to klassene for motorsykkel med og uten henger blir slått sammen til en. Sammenhengen er vist i tabellen under.
 
@@ -828,7 +900,9 @@ norsikt_rtdce_mapping %>%
   dplyr::select(
     norsikt_class,
     lm_class,
-    emu3_class
+    emu3_class,
+    armadillo_class,
+    topo_class
     ) %>% 
   flextable() %>%
   set_header_labels(
@@ -836,7 +910,9 @@ norsikt_rtdce_mapping %>%
     #register_class = "Forskriftsklasse",
     #length_class = "Lengdeklasse",
     lm_class = "LM",
-    emu3_class = "EMU3"#,
+    emu3_class = "EMU3",
+    armadillo_class = "Armadillo",
+    topo_class = "TOPO"
     #norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
     #norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
     ) %>%
@@ -851,6 +927,8 @@ norsikt_rtdce_mapping %>%
               autonum = table_numbers,
               style = "Tabelltekst")
 ```
+<br>
+Armadillo har ikke egne klasser med henger, men har sammenheng med de øvrige klassene.
 
 NorSIKT nivå 4 må tilpasses på flere måter. For det første må samme tilpasning som i nivå 3 gjøres. Videre kan lette busser beholdes i klassen for lette kjøretøy slik de er i nivå 3. De tunge bussene kan skilles ut fra tunge, men da i en felles klasse med og uten henger. I tillegg kan de tunge splittes opp delvis slik de gjøres i nivå 5, ved å ha en klasse for lastebil og trekkbil uten henger, og så en egen klasse for lastebil med henger og en klasse for trekkbil med semitrailer. Dette nivået er da aktuelt kun for LM og ikke EMU3, og sammenhengen er vist i tabellen nedenfor.
 
@@ -861,14 +939,16 @@ norsikt_rtdce_mapping %>%
   dplyr::filter(norsikt_level == "45") %>% 
   dplyr::select(
     norsikt_class,
-    lm_class
+    lm_class,
+    topo_class
     ) %>% 
   flextable() %>%
   set_header_labels(
     norsikt_class = "NorSIKT-klasse",
     #register_class = "Forskriftsklasse",
     #length_class = "Lengdeklasse",
-    lm_class = "LM"#,
+    lm_class = "LM",
+    topo_class = "TOPO"
     #emu3_class = "EMU3"#,
     #norsikt_class_unambiguously_defined_by_lm = "LM entydig med NorSIKT",
     #norsikt_class_unambiguously_defined_by_emu3 = "EMU3 entydig med NorSIKT"
