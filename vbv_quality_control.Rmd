@@ -8,7 +8,7 @@ output:
     toc_float: 
       collapsed: false
       smooth_scroll: false
-    toc_depth: 3
+    toc_depth: 2
 ---
 
 ```{r setup, message=F, include=FALSE}
@@ -20,12 +20,14 @@ library(lubridate)
 library(rmarkdown)
 library(RColorBrewer)
 
-knitr::opts_chunk$set(echo = FALSE,
-                      warning = FALSE,
-                      message = FALSE,
-                      error = FALSE,
-                      cache = TRUE,
-                      dev = "ragg_png")
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  error = FALSE,
+  cache = TRUE,
+  dev = "ragg_png"
+  )
 ```
 
 
@@ -450,6 +452,12 @@ Vurdering:
   - Noen lange kjøretøy har usannsynlig høy fart.
 
 
+## Rv 706 Havnegata og Rotvollekra
+Begge disse trafikkregistreringspunktene har fire felt, med ÅDT på henholdsvis 20 000 og 30 000. På Havnegata er det tidvis saktegående trafikk, mens på Rotvollekra er det god flyt med fartsnivå rundt 70 km/h. Felles for disse to punktene er forekomsten av feltskifte akkurat der hvor sløyfene ligger.
+
+Hele 1. desember 2021 var det en del snøfall gjennom hele døgnet. Derfor er det ikke forventet en eneste motorsykkel i datagrunnlaget, men likevel er det ganske mange forkomster. Dette skyldes feltskifte og det typiske er at ett reellt kjøretøy blir registrert som to. Som oftest får begge korte lengder, hvorav ett nesten alltid blir feilaktig klassifisert som motorsykkel.
+
+
 # Analyse av data fra EMU3
 For EMU3 må det eventuelt tas hensyn til at ulike firmwareversjoner har hatt ulik grenseverdi for fartsulikhet:
 
@@ -628,7 +636,15 @@ Vurdering:
 
   - Greit fartsnivå. En del tilfeller med positiv fartsulikhet forskjellig fra 0, men dette synes ikke å være noen god indikator på lav datakvalitet.
   - Noen lange kjøretøy har usannsynlig høy fart.
-  
+
+
+### Fv 6690 Holtermannsvegen
+Dette trafikkregistreringspunktet har seks felt, med ÅDT på omkring 20 000. Det er tidvis saktegående trafikk. Det er en liten forekomst av feltskifte akkurat der hvor sløyfene ligger. I felt 6 er sløyfene plassert akkurat ved et hyppig brukt busstopp.
+
+Hele 1. desember 2021 var det en del snøfall gjennom hele døgnet. Derfor er det ikke forventet en eneste motorsykkel i datagrunnlaget, men likevel er det noen forkomster. Dette skyldes nok hovedsaklig feltskifte eller saktegående trafikk. Det typiske er at ett reellt kjøretøy blir registrert som to, og som oftest får begge korte lengder, hvorav ett nesten alltid blir feilaktig klassifisert som motorsykkel.
+
+I felt 6 er det relativt lite trafikk og det er nesten kun busser. Her er det større problem med stoppende busser enn feltskifte. Det er observert buss som stoppet på sløyfene og som ikke ble registrert. Det er en del registreringer med lav fart.
+
 
 ## Samme punkt, ulik firmware
 En hypotese er at lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
@@ -764,13 +780,13 @@ Vurdering:
   - Andel tunge er veldig lik mellom EMU3 og LM. 
   
   
-## Øysand teststrekning
+# Sammenligning av LM og EMU3
 Teststrekningen på Ev 39 ved Øysand har tre sløyfesett (F05, F07, F09) plassert rett etter hverandre. Dermed kan den samme trafikken sammenlignes på ulike dataloggere og firmwareversjoner.
 
 I felt 2 på F05 har en av sløyfene lavere frekvens enn normalt, og fra tidligere testing er det kjent at LM typisk gir noe lengre lengder enn de samme målingene i felt 2 på F07 og F09.
 
 
-### Generell fordeling av lengdemålinger
+## Generell fordeling av lengdemålinger
 Analyse av data fra uke 23, 2021, mandag 7. juni - onsdag 9. juni. Følgende oppsett for sløyfesett, datalogger og firmware:
 
 - F05: LM 1.14.419
@@ -833,7 +849,7 @@ oysand_2021w23 %>%
 Også her vises klart at LM på F05 har lengre lengder i felt 2. Ellers er det ganske likt.
 
 
-### Lengde- og kjøretøyklassifisering
+## Lengde- og kjøretøyklassifisering
 Hvordan påvirkes lengdeklassifiseringen av at dataloggerne har litt ulike lengder?
 
 
@@ -889,7 +905,7 @@ Tendensen er at EMU3 har større andel tunge kjøretøy. Det er også her tydeli
 
 
 
-### Sammenligning av flere måleverdier
+## Sammenligning av flere måleverdier
 Ser på data fra tre dager i juni og sammenligner per felt.
 
 ```{r oysand_compare_1, fig.height=12, fig.width=8}
@@ -908,11 +924,11 @@ oysand_2021w23 %>%
 Grovt sett er det veldig likt. Fartsulikhet virker ikke å være noen god indikator på data med lav kvalitet verken for EMU3 eller LM.
 
 
-### Sammenligning av kjøretøy mot kjøretøy
+## Sammenligning av kjøretøy mot kjøretøy
 I tre tilfeller er det gjort matching av kjøretøy mot kjøretøy mellom data fra to punkter på Øysand. Dette er gjort for å sammenligne måleverdier fra det samme kjøretøyet fra ulike dataloggere og sløyfesett.
 
 
-#### EMU3 på F05
+### EMU3 på F05
 Med data fra 12. april 2021 er lengdemålingene sammenlignet mellom EMU3 på F05 (1.04) og LM på F09 (1.14.419). Det er kjent at den ene sløyfa i felt 2 på F05 har omkring 20 kHz lavere frekvens enn normalt.
 
 ```{r vbv_f05_1}
@@ -971,7 +987,7 @@ plot_different_length_classes(EMU3_F05_under_3,
 Selv om det er en del avvik på lengdemålingene, er begge datalogger enige om at disse er lette.
 
 
-#### EMU3 på F07
+### EMU3 på F07
 Med data fra 27. mars 2020 er lengdemålingene sammenlignet mellom EMU3 på F07 (1.04) og LM på F09 (1.14.414).
 
 ```{r vbv_3}
@@ -1031,7 +1047,7 @@ plot_different_length_classes(EMU3_F07_under_3,
 Begge dataloggere er enige om klassifiseringen av disse korte kjøretøyene.
 
 
-#### EMU3 på F09
+### EMU3 på F09
 Med data fra 30. august 2021 er lengdemålingene sammenlignet mellom EMU3 på F09 (1.04) og LM på F07 (1.14.419).
 
 ```{r vbv_f09_1}
@@ -1107,10 +1123,32 @@ Oppsummert fra analysen:
 
 
 ## Høy fart på tunge kjøretøy
-I Kjøretøyforskriften står det at alle (med visse unntak) tunge kjøretøy skal ha fartssperre på 90 eller 100 km/h. En kontroll som sjekker sammenhengen mellom fart og lengde vil luke vekk en del opplagte feil på fart dersom vi kan anta at lengden er noenlunde korrekt. For å være litt sikker på at ikke gode data underkjennes kan kontrollen være at fart over 110 km/h på kjøretøy lenger enn 7,6 m underkjennes.
+I Kjøretøyforskriften står det at alle (med visse unntak) tunge kjøretøy skal ha fartssperre på 90 eller 100 km/h. En kontroll som sjekker sammenhengen mellom fart og lengde vil luke vekk en del opplagte feil på fart dersom vi kan anta at lengden er noenlunde korrekt. For å være litt sikker på at ikke gode data underkjennes kan kontrollen være at fart over 110 km/h på kjøretøy som er klassifisert som tunge underkjennes.
 
 Dette blir da en ny kontroll som gjelder alle dataloggertyper for motorkjøretøy.
-  
+
+
+## Feltskifte
+Sentrisk kjøring er når et kjøretøy passerer mellom to felt og passerer kun delvis sløyfene i det ene eller begge feltene. På tofeltsveg skal dette være håndtert av dataloggerne. Men på veger med to eller flere felt i samme retning kan det oppstå sentrisk kjøring ved feltskifte. Noen steder er det mange tilfeller av dette.
+
+Problemer som følger av at et kjøretøy passerer delvis over to sløyfepar er:
+
+- Ett kjøretøy kan bli registrert som to
+- Lengdemålingen kan bli feil uten at kontrollene fanger det opp
+- Klassen kan bli feil uten at kontrollene fanger det opp
+
+Der kjøretøy skifter felt over sløyfene vil det i mange tilfeller bli målt for kort lengde og gitt feil klasse, typisk vil dette føre til falske motorsykler. Det vil i mange tilfeller også oppstå duplikater hvor minst en av registreringene er veldig korte.
+
+Det synes vanskelig å unngå og filtrere vekk reelle kjøretøy samtidig som rene duplikater fjernes. Et trenet menneskelig øye kan se forskjell på en del tilfeller når informasjon om føreforhold tas med i betraktningen, som når vi kan være sikre på at ingen motorsykler kjører i tett snøvær. 
+
+Det vil også en sjelden gang være en reell motorsykkel som passerer over sløyfene i sitt felt samtidig med en bil i det nærmeste feltet. Forekomsten av falske motorsykler fra feltskifte er likevel mye større, slik at et filter som fjerner de fleste falske, men også et fåtall reelle kan forsvares. 
+
+Et duplikatfilter kan derfor lete etter alle passeringspar i nærliggende kjørefelt i samme retning, som har passeringstidspunkt innenfor 0,5 s. Kriteriet for at det er et duplikat er at minst ett av registreringene har lengde på 2,0 m eller kortere. Da kan den registreringen som har lavest kvalitet settes som en ikke-godkjent registrering. Typisk vil de med klassen motorsykkel være lite troverdig i denne sammenheng, men begge kan ha fått denne klassen.
+
+
+## Saktegående trafikk
+Ved saktegående trafikk vil lengdemålingene bli veldig usikre. Når kjøretøy står stille på sløyfene og det påfølgende kjøretøy kommer veldig tett på, kan det oppstå sammenslåing av registreringer. For eksempel kan to personbiler bli tolket som ett langt kjøretøy både i form av lengde og klasse. Noe slike sammenslåtte registreringer ser ut som et autentisk langt kjøretøy, men noen får lengde over 27 m og/eller ukjent klasse.
+
 
 ## Konklusjon for felles kontroller
 Kontrollene som gjelder uansett dataloggertype, bør justeres til følgende (endringer er angitt i parentes):

@@ -406,3 +406,107 @@ plot_heavy_ratio <- function(df) {
     labs(x = "\nUkedag", y = "Andel tunge\n") +
     ggtitle("Andel tunge kjøretøy")
 }
+
+
+# Centric passings ----
+options(digits.secs = 3)
+
+
+read_vbv_for_centric <- function(vbv_file) {
+
+  vbv_data <- read_csv2(vbv_file) %>%
+    dplyr::mutate(
+      event_timestamp = with_tz(ymd_hms(event_timestamp, tz = "CET")),
+      epoch_time = as.numeric(event_timestamp)
+    ) %>%
+    dplyr::arrange(epoch_time) %>%
+    make_norsikt_classes()
+}
+
+find_centric_passings <- function(vbv_data) {
+
+  # Not for just two lanes in opposite directions
+  # In: vbv with timestamp in ms, lane number
+  # Out: possible centric passings in pairs
+  # TODO: at least one in the pair must have length 2 or shorter (LM)
+  # TODO: set the one of least quality as valid_event == FALSE
+
+  possible_adjacent_lanes <-
+    tibble(
+      one = c(1, 3, 5, 2, 4, 6),
+      two = c(3, 5, 7, 4, 6, 8)
+    )
+
+  present_lanes <- vbv_data$lane %>%
+    unique()
+
+  present_lanes_to_loop <- possible_adjacent_lanes %>%
+    dplyr::mutate(
+      present = one %in% present_lanes & two %in% present_lanes
+    ) %>%
+    dplyr::filter(present == TRUE)
+
+
+  iterations <- nrow(present_lanes_to_loop)
+  iteration_n <- 1
+  possible_centrics <- data.frame()
+
+  while (iteration_n <= iterations) {
+
+    centrics <- vbv_data %>%
+      dplyr::filter(
+        lane %in% c(
+          present_lanes_to_loop$one[iteration_n],
+          present_lanes_to_loop$two[iteration_n]
+          )
+        ) %>%
+    dplyr::mutate(
+      close_in_time =
+        abs(epoch_time - dplyr::lag(epoch_time)) < 0.5 |
+        abs(epoch_time - dplyr::lead(epoch_time)) < 0.5
+    ) %>%
+    dplyr::filter(
+      close_in_time == TRUE
+    )
+
+    possible_centrics <-
+      dplyr::bind_rows(
+        possible_centrics,
+        centrics
+      )
+
+    iteration_n <- iteration_n + 1
+  }
+
+  return(possible_centrics)
+
+}
+
+find_single_short_vehicles <- function(vbv_data, centric_passings) {
+
+  # filter based on length, leave out event numbers found in centric passings
+
+  short_vehicles_not_in_centric_pairs <-
+    vbv_data %>%
+    dplyr::filter(length < 3,
+                  length >= 0) %>%
+    dplyr::filter(!(event_number %in% centric_passings$event_number))
+
+}
+
+havnegata <- read_vbv_for_centric("vbv_data/havnegata.csv")
+havnegata_sentriske <- find_centric_passings(havnegata)
+havnegate_enslige <- find_single_short_vehicles(havnegata, havnegata_sentriske)
+
+rotvollekra <- read_vbv_for_centric("vbv_data/rotvollekra.csv")
+rotvollekra_sentriske <- find_centric_passings(rotvollekra)
+rotvollekra_enslige <- find_single_short_vehicles(rotvollekra, rotvollekra_sentriske)
+
+holtermannsvegen <- read_vbv_for_centric("vbv_data/holtermannsvegen.csv")
+holtermannsvegen_sentriske <- find_centric_passings(holtermannsvegen)
+holtermannsvegen_enslige <- find_single_short_vehicles(holtermannsvegen,
+                                                       holtermannsvegen_sentriske)
+
+
+
+
