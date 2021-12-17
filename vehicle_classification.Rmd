@@ -273,38 +273,17 @@ Fra Armadillo får vi følgende kjøretøyklasser:
   - Medium: personbil, varebil (omtrent mellom 4 m og 6 m)
   - Large: buss, lastebil (omtrent over 6 m)
   
-TOPO gir klassifisering i fire nivåer. 
+TOPO gir klassifisering i følgende kjøretøyklasser:
 
-TOPO nivå TZ2:
-
-  - 64: motorsykkel, personbil, personbil med henger, varebil
-  - 40: lastebil, lastebil med henger, buss
-  
-TOPO nivå TZ4:
-
-  - 10: motorsykkel
-  - 37: personbil, personbil med henger, varebil
-  - 34: lastebil, lastebil med henger
-  - 5: buss
-  
-TOPO nivå TZ5:
-
-  - 10: motorsykkel
-  - 37: personbil, personbil med henger, varebil
-  - 3: lastebil
-  - 4: lastebil med henger
-  - 5: buss
-  
-TOPO nivå Basic:
-
-  - 10: motorsykkel
-  - 7: personbil, 
-  - 2: personbil med henger
-  - 11: varebil
-  - 3: lastebil
+  - 1: motorsykkel
+  - 2: personbil
+  - 3: personbil med henger, varebil med henger
+  - 4: varebil
+  - 6: buss
+  - 7: lastebil
   - 8: lastebil med henger
   - 9: trekkbil med semitrailer
-  - 5: buss
+  - 10: ukjent
   
 
 # Sammenheng mellom lengde og Kjøretøyforskriftens klasser
@@ -842,6 +821,8 @@ classes_joined %>%
               style = "Tabelltekst")
 ```
 
+<br>
+
 Utvidelsen av nivå 5 til nivå 6 består i å splitte moped ut fra motorsykkel, og egne klasser for henholdsvis personbil, liten lett varebil og stor lett varebil. Disse distinksjonene er ikke tilgjengelig i utstyrsklassene.
 
 
@@ -888,6 +869,7 @@ norsikt_rtdce_mapping %>%
 ```
 
 <br>
+
 Armadillo har ikke egne klasser med henger, men har sammenheng med de øvrige klassene.
 
 NorSIKT nivå 3 kan tilpasses ved at de to klassene for motorsykkel med og uten henger blir slått sammen til en. Sammenhengen er vist i tabellen under.
@@ -927,7 +909,9 @@ norsikt_rtdce_mapping %>%
               autonum = table_numbers,
               style = "Tabelltekst")
 ```
+
 <br>
+
 Armadillo har ikke egne klasser med henger, men har sammenheng med de øvrige klassene.
 
 NorSIKT nivå 4 må tilpasses på flere måter. For det første må samme tilpasning som i nivå 3 gjøres. Videre kan lette busser beholdes i klassen for lette kjøretøy slik de er i nivå 3. De tunge bussene kan skilles ut fra tunge, men da i en felles klasse med og uten henger. I tillegg kan de tunge splittes opp delvis slik de gjøres i nivå 5, ved å ha en klasse for lastebil og trekkbil uten henger, og så en egen klasse for lastebil med henger og en klasse for trekkbil med semitrailer. Dette nivået er da aktuelt kun for LM og ikke EMU3, og sammenhengen er vist i tabellen nedenfor.

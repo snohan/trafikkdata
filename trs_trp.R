@@ -8,6 +8,31 @@ library(geosphere)
 library(readxl)
 library(writexl)
 
+# TRP stats ----
+trp <- get_points()
+
+distinct_trps <- trp %>%
+  split_road_system_reference() %>%
+  dplyr::select(
+    trp_id,
+    traffic_type,
+    road_category,
+    county_name,
+    registration_frequency,
+    operational_status
+    ) %>%
+  dplyr::distinct(trp_id, .keep_all = T)
+
+trp_stats_road_category <- distinct_trps %>%
+  dplyr::group_by(
+    traffic_type,
+    road_category,
+    registration_frequency
+  ) %>%
+  dplyr::summarise(
+    n_trp = n()
+  )
+
 # Large distance from TRS to TRP ----
 # Note that bike trps with LM should not be more than 10 m away
 trs_trp <- get_trs_and_trps_with_coordinates_from_trp_api()
@@ -33,6 +58,7 @@ trp_with_commissions <- get_trp_with_commissions()
 trs_with_trp <- get_all_trs_with_trp()
 trs_with_trp_via_sensorconfig <- get_all_trs_with_trp_via_sensorconfig()
 
+
 # TRPs and lanes ----
 trp <- get_points()
 
@@ -48,6 +74,7 @@ trp_tidy <- trp %>%
 
 writexl::write_xlsx(trp_tidy, path = "trs_trp/punkter_med_feltnummer.xlsx")
 
+
 # TRP and legacies ----
 trs_with_trp %>%
   dplyr::filter(!is.na(legacyNortrafMpn)) %>%
@@ -55,7 +82,7 @@ trs_with_trp %>%
              row.names = F)
 
 
-## TRS with AADT in Nortraf in 2014, 2013 or 2012 ####
+## TRS with AADT in Nortraf in 2014, 2013 or 2012 ----
 trs_nortraf <- read_csv2("trs_from_nortraf_with_adt_in_2014-2012.csv")
 
 #trp_from_kristin <- read_csv2("trp_fra_kristin.csv")
@@ -161,6 +188,7 @@ trs_info <- get_trs_info()
 
 # periodic_trp <- periodic_trs_and_trp_id %>%
 #   dplyr::filter(!is.na(trp_id))
+
 
 ## Parse NorTraf CSV ----
 parse_nortrafweb_csv <- function(filename, year) {
