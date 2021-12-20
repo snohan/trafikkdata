@@ -646,6 +646,10 @@ Hele 1. desember 2021 var det en del snøfall gjennom hele døgnet. Derfor er de
 I felt 6 er det relativt lite trafikk og det er nesten kun busser. Her er det større problem med stoppende busser enn feltskifte. Det er observert buss som stoppet på sløyfene og som ikke ble registrert. Det er en del registreringer med lav fart.
 
 
+# Rv 706 Havnegata
+På Havnegata er det en del feltskifte ovr sløyfene. I tilfeller studert med videoopptak er det ikke funnet noen duplikater, men enkelte får for kort lengde. I ett enkelt tilfelle ble det observert en personbil med sann lengde omkring 4 m som fikk målt lengde på 1,9 m og feilklassifisert som motorsykkel.
+
+
 ## Samme punkt, ulik firmware
 En hypotese er at lengdemålingene har vært vesentlig forskjellige for de ulike fw-versjonene.
 
