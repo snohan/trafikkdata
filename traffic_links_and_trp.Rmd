@@ -1,0 +1,221 @@
+---
+title: "Trafikklenker og trafikkregistreringspunkt"
+output: html_notebook
+---
+
+```{r setup, include = FALSE, echo = FALSE}
+library(tidyverse)
+library(leaflet)
+library(sf)
+library(knitr)
+library(htmltools)
+library(geojsonsf)
+
+source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+
+# knitr options ####
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE,
+                      error = FALSE,
+                      cache = FALSE)
+
+# Map essentials ####
+nvdb_map_url <-
+  "https://nvdbcache.geodataonline.no/arcgis/rest/services/Trafikkportalen/GeocacheTrafikkJPG/MapServer/tile/{z}/{y}/{x}"
+
+nvdb_map_attribution <-
+  "NVDB, Geovekst, kommunene og Open Street Map contributors (utenfor Norge)"
+
+nvdb_crs <- leafletCRS(
+  crsClass = "L.Proj.CRS", code = "EPSG:25833",
+  proj4def = "+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs",
+  resolutions = c(
+    21674.7100160867,
+    10837.35500804335,
+    5418.677504021675,
+    2709.3387520108377,
+    1354.6693760054188,
+    677.3346880027094,
+    338.6673440013547,
+    169.33367200067735,
+    84.66683600033868,
+    42.33341800016934,
+    21.16670900008467,
+    10.583354500042335,
+    5.291677250021167,
+    2.6458386250105836,
+    1.3229193125052918,
+    0.6614596562526459,
+    0.33072982812632296,
+    0.16536491406316148
+  ),
+  origin = c(-2500000.0, 9045984.0))
+```
+
+
+
+```{r get_data}
+ev6_viken <- 
+  get_traffic_links("&kommune=3030,3033&vegsystemreferanse=E")
+
+traffic_link_positions <- dplyr::bind_rows(
+  ev6_viken$veglenkeposisjoner
+)
+
+traffic_link_geometries <- dplyr::bind_rows(
+  ev6_viken$geometri
+)
+
+
+points <- get_points() %>%
+  dplyr::distinct(trp_id, .keep_all = T) %>%
+  dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
+
+points_metadata <- points %>%
+  dplyr::filter(
+    traffic_type == "VEHICLE",
+    operational_status %in% c("OPERATIONAL", "TEMPORARILY_OUT_OF_SERVICE")) %>% 
+  split_road_system_reference() %>%
+  dplyr::select(
+    trp_id, 
+    name, 
+    registration_frequency,
+    road_category_and_number,
+    road_reference,
+    lane_numbers,
+    county_geono, 
+    county_name, 
+    municipality_name,
+    lat, lon, 
+    road_network_position, road_network_link, road_link_position
+  )
+```
+
+```{r data_prep}
+trps_on_links <- traffic_link_positions %>%
+  dplyr::left_join(
+    points_metadata,
+    by = c("veglenkesekvensid" = "road_network_link")
+  ) %>% 
+  dplyr::mutate(
+    on_link = road_network_position > startposisjon & road_network_position < sluttposisjon,
+    length_m = round(length_m)
+  ) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(
+    lanes = sort(lane_numbers) %>% 
+      paste(collapse = ", ")
+  ) %>% 
+  ungroup() %>% 
+  dplyr::filter(
+    on_link == TRUE
+  ) %>% 
+  dplyr::select(
+    object_id,
+    length_m,
+    trp_id,
+    name,
+    registration_frequency,
+    road_category_and_number,
+    road_reference,
+    lanes,
+    county_name,
+    municipality_name,
+    lat, lon
+  )
+
+traffic_link_geometries_and_trp <-
+  traffic_link_geometries %>% 
+  dplyr::left_join(
+    trps_on_links, by = "object_id"
+  ) %>% 
+  dplyr::mutate(
+    has_trp = !is.na(trp_id)
+  ) %>% 
+  dplyr::mutate(
+    link_label = paste(trp_id, "<br/>",
+                       name, "<br/>",
+                       registration_frequency,  "<br/>",
+                       "Felt: ", lanes, "<br/>",
+                       length_m, " m"),
+    link_label = lapply(link_label, htmltools::HTML))
+
+# Write to file for further processing in ArcGIS
+traffic_link_geometries_and_trp %>% 
+  dplyr::select(-link_label) %>% 
+  sf::st_write("trafikklenker/trafikklenker_med_trp.gpkg")
+```
+
+
+
+```{r map_function}
+create_trafficlink_map <- function() {
+  
+  colors_has_trps <-
+    colorFactor(palette = c("#db3b99", "#444f55"),
+                domain = c(TRUE, FALSE))
+
+  map <- 
+    leaflet(
+      width = "100%",
+      height = 700,
+      options = leafletOptions(
+        crs = nvdb_crs,
+        zoomControl = TRUE
+        )
+      ) %>%
+  addTiles(
+    urlTemplate = nvdb_map_url,
+    attribution = nvdb_map_attribution
+    ) %>%
+  addPolylines(
+    data = traffic_link_geometries_and_trp,
+    label = ~link_label,
+    opacity = 0.8,
+    #fill = T,
+    #fillColor = ~palett_index(aadt_diff),
+    color = ~colors_has_trps(has_trp),
+    #fillColor = ~palett_index(aadt_df$aadt_diff),
+    #fillOpacity = 0.9,
+    highlightOptions = highlightOptions(
+      bringToFront = TRUE,
+      sendToBack = FALSE,
+      color = "red",
+      opacity = 0.6
+      )
+    ) %>%
+    addLegend(
+      "bottomright",
+      pal = colors_has_trps,
+      values = traffic_link_geometries_and_trp$has_trp,
+      title = "Lenke med TRP",
+      opacity = 0.8,
+      labFormat = labelFormat(big.mark = " ")
+      )
+  
+  return(map)
+}
+
+```
+
+```{r map}
+create_trafficlink_map()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
