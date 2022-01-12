@@ -8,58 +8,88 @@ make_norsikt_classes <- function(vbv_raw_df) {
   # input must have the column 'vehicle_type_raw'
 
   vbv_classified <- vbv_raw_df %>%
-    dplyr::mutate(norsikt_l2 =
-                    dplyr::case_when(
-                      # EMU3:
-                      vehicle_type_raw == "LMV1" ~ "LMV",
-                      vehicle_type_raw == "LMV2" ~ "LMV",
-                      vehicle_type_raw == "LMV2+WC" ~ "LMV",
-                      vehicle_type_raw == "HMV" ~ "HMV",
-                      vehicle_type_raw == "HMV+WC" ~ "HMV",
-                      # LM:
-                      vehicle_type_raw == "1" ~ "LMV",
-                      vehicle_type_raw == "2" ~ "LMV",
-                      vehicle_type_raw == "3" ~ "LMV",
-                      vehicle_type_raw == "4" ~ "LMV",
-                      vehicle_type_raw == "5" ~ "LMV",
-                      vehicle_type_raw == "6" ~ "HMV",
-                      vehicle_type_raw == "71" ~ "HMV",
-                      vehicle_type_raw == "72" ~ "HMV",
-                      vehicle_type_raw == "8" ~ "HMV",
-                      vehicle_type_raw == "9" ~ "HMV",
-                      TRUE ~ "OMV"
-                    ),
-                  norsikt_l2 = factor(norsikt_l2,
-                                      levels = c("LMV",
-                                                 "HMV",
-                                                 "OMV")),
-                  norsikt_l3 =
-                    dplyr::case_when(
-                      # EMU3:
-                      vehicle_type_raw == "LMV1" ~ "MC_MP",
-                      vehicle_type_raw == "LMV2" ~ "PC_LGV_LB",
-                      vehicle_type_raw == "LMV2+WC" ~ "PC_LGV_LB",
-                      vehicle_type_raw == "HMV" ~ "HMV",
-                      vehicle_type_raw == "HMV+WC" ~ "HMV",
-                      # LM:
-                      vehicle_type_raw == "1" ~ "MC_MP",
-                      vehicle_type_raw == "2" ~ "PC_LGV_LB",
-                      vehicle_type_raw == "3" ~ "PC_LGV_LB",
-                      vehicle_type_raw == "4" ~ "PC_LGV_LB",
-                      vehicle_type_raw == "5" ~ "PC_LGV_LB",
-                      vehicle_type_raw == "6" ~ "HMV",
-                      vehicle_type_raw == "71" ~ "HMV",
-                      vehicle_type_raw == "72" ~ "HMV",
-                      vehicle_type_raw == "8" ~ "HMV",
-                      vehicle_type_raw == "9" ~ "HMV",
-                      TRUE ~ "OMV"
-                    ),
-                  norsikt_l3 = factor(norsikt_l3,
-                                      levels = c("MC_MP",
-                                                 "PC_LGV_LB",
-                                                 "HMV",
-                                                 "OMV"))
-                  )
+    dplyr::mutate(
+      norsikt_l2 =
+        dplyr::case_when(
+          # EMU3:
+          vehicle_type_raw == "LMV1" ~ "LMV",
+          vehicle_type_raw == "LMV2" ~ "LMV",
+          vehicle_type_raw == "LMV2+WC" ~ "LMV",
+          vehicle_type_raw == "HMV" ~ "HMV",
+          vehicle_type_raw == "HMV+WC" ~ "HMV",
+          # LM:
+          vehicle_type_raw == "1" ~ "LMV",
+          vehicle_type_raw == "2" ~ "LMV",
+          vehicle_type_raw == "3" ~ "LMV",
+          vehicle_type_raw == "4" ~ "LMV",
+          vehicle_type_raw == "5" ~ "LMV",
+          vehicle_type_raw == "6" ~ "HMV",
+          vehicle_type_raw == "71" ~ "HMV",
+          vehicle_type_raw == "72" ~ "HMV",
+          vehicle_type_raw == "8" ~ "HMV",
+          vehicle_type_raw == "9" ~ "HMV",
+          TRUE ~ "OMV"
+        ),
+      norsikt_l2 = factor(norsikt_l2,
+                          levels = c("LMV",
+                                     "HMV",
+                                     "OMV")),
+      norsikt_l3 =
+        dplyr::case_when(
+          # EMU3:
+          vehicle_type_raw == "LMV1" ~ "MC_MP",
+          vehicle_type_raw == "LMV2" ~ "PC_LGV_LB",
+          vehicle_type_raw == "LMV2+WC" ~ "PC_LGV_LB",
+          vehicle_type_raw == "HMV" ~ "HMV",
+          vehicle_type_raw == "HMV+WC" ~ "HMV",
+          # LM:
+          vehicle_type_raw == "1" ~ "MC_MP",
+          vehicle_type_raw == "2" ~ "PC_LGV_LB",
+          vehicle_type_raw == "3" ~ "PC_LGV_LB",
+          vehicle_type_raw == "4" ~ "PC_LGV_LB",
+          vehicle_type_raw == "5" ~ "PC_LGV_LB",
+          vehicle_type_raw == "6" ~ "HMV",
+          vehicle_type_raw == "71" ~ "HMV",
+          vehicle_type_raw == "72" ~ "HMV",
+          vehicle_type_raw == "8" ~ "HMV",
+          vehicle_type_raw == "9" ~ "HMV",
+          TRUE ~ "OMV"
+        ),
+      norsikt_l3 = factor(norsikt_l3,
+                          levels = c("MC_MP",
+                                     "PC_LGV_LB",
+                                     "HMV",
+                                     "OMV")),
+      norsikt_l4h =
+        dplyr::case_when(
+          # EMU3:
+          vehicle_type_raw == "LMV1" ~ "MC_MP",
+          vehicle_type_raw == "LMV2" ~ "PC_LGV_LB",
+          vehicle_type_raw == "LMV2+WC" ~ "PC_LGV_LB",
+          vehicle_type_raw == "HMV" ~ "OMV",
+          vehicle_type_raw == "HMV+WC" ~ "OMV",
+          # LM:
+          vehicle_type_raw == "1" ~ "MC_MP",
+          vehicle_type_raw == "2" ~ "PC_LGV_LB",
+          vehicle_type_raw == "3" ~ "PC_LGV_LB",
+          vehicle_type_raw == "4" ~ "PC_LGV_LB",
+          vehicle_type_raw == "5" ~ "PC_LGV_LB",
+          vehicle_type_raw == "6" ~ "HB",
+          vehicle_type_raw == "71" ~ "HGV_RT_EMS",
+          vehicle_type_raw == "72" ~ "HGV_RT_EMS",
+          vehicle_type_raw == "8" ~ "HGV_WC",
+          vehicle_type_raw == "9" ~ "RT_WC",
+          TRUE ~ "OMV"
+        ),
+      norsikt_l4h = factor(norsikt_l4h,
+                          levels = c("MC_MP",
+                                     "PC_LGV_LB",
+                                     "HB",
+                                     "HGV_RT_EMS",
+                                     "HGV_WC",
+                                     "RT_WC",
+                                     "OMV"))
+    )
 }
 
 make_length_classes <- function(vbv_raw_df) {
@@ -212,7 +242,11 @@ plot_length_speed <- function(vbv_data) {
     theme_bw() +
     theme(strip.background = element_rect(fill = "#ececec"),
           legend.position = "bottom") +
-    labs(x = "lengde (m)", y = "fart (km/h)\n", color = "Kjøretøyklasse (NorSiKT nivå 3)")
+    labs(
+      x = "lengde (m)",
+      y = "fart (km/h)\n",
+      color = "Kjøretøyklasse (NorSiKT nivå 3)"
+    )
 }
 
 # plot_speed_relqspeed <- function(vbv_data) {
@@ -494,19 +528,60 @@ find_single_short_vehicles <- function(vbv_data, centric_passings) {
 
 }
 
-havnegata <- read_vbv_for_centric("vbv_data/havnegata.csv")
-havnegata_sentriske <- find_centric_passings(havnegata)
-havnegate_enslige <- find_single_short_vehicles(havnegata, havnegata_sentriske)
+# havnegata <- read_vbv_for_centric("vbv_data/havnegata.csv")
+# havnegata_sentriske <- find_centric_passings(havnegata)
+# havnegate_enslige <- find_single_short_vehicles(havnegata, havnegata_sentriske)
+#
+# rotvollekra <- read_vbv_for_centric("vbv_data/rotvollekra.csv")
+# rotvollekra_sentriske <- find_centric_passings(rotvollekra)
+# rotvollekra_enslige <- find_single_short_vehicles(rotvollekra, rotvollekra_sentriske)
+#
+# holtermannsvegen <- read_vbv_for_centric("vbv_data/holtermannsvegen.csv")
+# holtermannsvegen_sentriske <- find_centric_passings(holtermannsvegen)
+# holtermannsvegen_enslige <- find_single_short_vehicles(holtermannsvegen,
+#                                                        holtermannsvegen_sentriske)
 
-rotvollekra <- read_vbv_for_centric("vbv_data/rotvollekra.csv")
-rotvollekra_sentriske <- find_centric_passings(rotvollekra)
-rotvollekra_enslige <- find_single_short_vehicles(rotvollekra, rotvollekra_sentriske)
 
-holtermannsvegen <- read_vbv_for_centric("vbv_data/holtermannsvegen.csv")
-holtermannsvegen_sentriske <- find_centric_passings(holtermannsvegen)
-holtermannsvegen_enslige <- find_single_short_vehicles(holtermannsvegen,
-                                                       holtermannsvegen_sentriske)
+# Read manual video verification files ----
+read_manual_video_verification_file <-
+  function(manual_file_location, datalogger_type) {
 
-
-
+  manual_file <-
+    readxl::read_excel(
+      manual_file_location,
+      1
+    ) %>%
+    dplyr::filter(
+      !is.na(event_type),
+      !is.na(true_vehicle)
+    ) %>%
+    dplyr::mutate(
+      datalogger_type = datalogger_type,
+      vehicle_type_raw = as.character(vehicle_type_raw)
+    ) %>%
+    make_norsikt_classes() %>%
+    make_length_classes() %>%
+    dplyr::select(
+      datalogger_type,
+      event_type,
+      comment,
+      true_vehicle,
+      length,
+      valid_length,
+      length_ok,
+      true_length_class_2,
+      length_class_2,
+      vehicle_type_raw,
+      valid_classification,
+      true_norsikt_2,
+      norsikt_l2,
+      true_norsikt_3,
+      norsikt_l3,
+      true_norsikt_4,
+      norsikt_l4h,
+      speed,
+      valid_speed,
+      speed_ok
+    )
+}
 

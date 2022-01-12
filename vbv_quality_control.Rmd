@@ -452,10 +452,10 @@ Vurdering:
   - Noen lange kjøretøy har usannsynlig høy fart.
 
 
-## Rv 706 Havnegata og Rotvollekra
+### Rv 706 Havnegata og Rotvollekra
 Begge disse trafikkregistreringspunktene har fire felt, med ÅDT på henholdsvis 20 000 og 30 000. På Havnegata er det tidvis saktegående trafikk, mens på Rotvollekra er det god flyt med fartsnivå rundt 70 km/h. Felles for disse to punktene er forekomsten av feltskifte akkurat der hvor sløyfene ligger.
 
-Hele 1. desember 2021 var det en del snøfall gjennom hele døgnet. Derfor er det ikke forventet en eneste motorsykkel i datagrunnlaget, men likevel er det ganske mange forkomster. Dette skyldes feltskifte og det typiske er at ett reellt kjøretøy blir registrert som to. Som oftest får begge korte lengder, hvorav ett nesten alltid blir feilaktig klassifisert som motorsykkel.
+Hele 1. desember 2021 var det en del snøfall gjennom hele døgnet. Derfor er det ikke forventet en eneste motorsykkel i datagrunnlaget, men likevel er det ganske mange forekomster. Dette skyldes feltskifte og det typiske er at ett reellt kjøretøy blir registrert som to. Som oftest får begge korte lengder, hvorav ett nesten alltid blir feilaktig klassifisert som motorsykkel.
 
 
 # Analyse av data fra EMU3
@@ -641,12 +641,12 @@ Vurdering:
 ### Fv 6690 Holtermannsvegen
 Dette trafikkregistreringspunktet har seks felt, med ÅDT på omkring 20 000. Det er tidvis saktegående trafikk. Det er en liten forekomst av feltskifte akkurat der hvor sløyfene ligger. I felt 6 er sløyfene plassert akkurat ved et hyppig brukt busstopp.
 
-Hele 1. desember 2021 var det en del snøfall gjennom hele døgnet. Derfor er det ikke forventet en eneste motorsykkel i datagrunnlaget, men likevel er det noen forkomster. Dette skyldes nok hovedsaklig feltskifte eller saktegående trafikk. Det typiske er at ett reellt kjøretøy blir registrert som to, og som oftest får begge korte lengder, hvorav ett nesten alltid blir feilaktig klassifisert som motorsykkel.
+Hele 1. desember 2021 var det en del snøfall gjennom hele døgnet. Derfor er det ikke forventet en eneste motorsykkel i datagrunnlaget, men likevel er det noen forekomster. Dette skyldes nok hovedsaklig feltskifte eller saktegående trafikk. Det typiske er at ett reellt kjøretøy blir registrert som to, og som oftest får begge korte lengder, hvorav ett nesten alltid blir feilaktig klassifisert som motorsykkel.
 
 I felt 6 er det relativt lite trafikk og det er nesten kun busser. Her er det større problem med stoppende busser enn feltskifte. Det er observert buss som stoppet på sløyfene og som ikke ble registrert. Det er en del registreringer med lav fart.
 
 
-# Rv 706 Havnegata
+### Rv 706 Havnegata
 På Havnegata er det en del feltskifte ovr sløyfene. I tilfeller studert med videoopptak er det ikke funnet noen duplikater, men enkelte får for kort lengde. I ett enkelt tilfelle ble det observert en personbil med sann lengde omkring 4 m som fikk målt lengde på 1,9 m og feilklassifisert som motorsykkel.
 
 
@@ -1141,7 +1141,7 @@ Problemer som følger av at et kjøretøy passerer delvis over to sløyfepar er:
 - Lengdemålingen kan bli feil uten at kontrollene fanger det opp
 - Klassen kan bli feil uten at kontrollene fanger det opp
 
-Der kjøretøy skifter felt over sløyfene vil det i mange tilfeller bli målt for kort lengde og gitt feil klasse, typisk vil dette føre til falske motorsykler. Det vil i mange tilfeller også oppstå duplikater hvor minst en av registreringene er veldig korte.
+Der kjøretøy skifter felt over sløyfene vil det i mange tilfeller bli målt for kort lengde og gitt feil klasse, typisk vil dette føre til falske motorsykler. Det vil i mange tilfeller også oppstå duplikater hvor minst en av registreringene får veldig kort lengde.
 
 Det synes vanskelig å unngå og filtrere vekk reelle kjøretøy samtidig som rene duplikater fjernes. Et trenet menneskelig øye kan se forskjell på en del tilfeller når informasjon om føreforhold tas med i betraktningen, som når vi kan være sikre på at ingen motorsykler kjører i tett snøvær. 
 
@@ -1151,7 +1151,7 @@ Et duplikatfilter kan derfor lete etter alle passeringspar i nærliggende kjøre
 
 
 ## Saktegående trafikk
-Ved saktegående trafikk vil lengdemålingene bli veldig usikre. Når kjøretøy står stille på sløyfene og det påfølgende kjøretøy kommer veldig tett på, kan det oppstå sammenslåing av registreringer. For eksempel kan to personbiler bli tolket som ett langt kjøretøy både i form av lengde og klasse. Noe slike sammenslåtte registreringer ser ut som et autentisk langt kjøretøy, men noen får lengde over 27 m og/eller ukjent klasse.
+Ved saktegående trafikk vil lengdemålingene bli veldig usikre. Når kjøretøy står stille på sløyfene og det påfølgende kjøretøy kommer veldig tett på, kan det oppstå sammenslåing av kjøretøy. For eksempel kan to personbiler bli tolket som ett langt kjøretøy både i form av lengde og klasse. Noen slike sammenslåtte registreringer ser ut som et autentisk langt kjøretøy, men noen får lengde over 27 m og/eller ukjent klasse.
 
 
 ## Konklusjon for felles kontroller
@@ -1268,13 +1268,15 @@ Forslag til nytt kontrollsett (endringer angitt i parentes):
 
 
 ## Gjenstående analyser
-Gjenstående analyser:
+Gjenstående analyser av enkeltkjøretøyregistreringer med videoopptak:
 
   - Hva er korrekt klassifisering av kjøretøy som får målt lengde under 2 m? Er alle disse lette kjøretøy?
   - Lengde over 27 m gir underkjent lengde. Bør testes om klasse og fart er ok. De fleste har fart 7-15 km/h. Mange her har klasse 8, 72, 1 eller 2 - litt skeptisk til klasse.... Relativt høy andel med høy fartsulikhet.
+  -   - Hvor god er klassifiseringen av hengere? Spesielt lette kjøretøy med henger - blir disse tolket som tunge?
+  
+Statistiske analyser:
+
   - Finn ut om signalkodekontrollen til LM skal slå ut på lengde også.
   - Er det mulig å avdekke sensorproblemer ut fra fordeling av lengdeverdier?
   - Bruke data fra mange punkter til å finne normal fordeling av lengder rundt 5,6 m, f.eks. (3, 7,6). Hvordan ser denne ut dersom alle forhold ellers er ok? (Fart, feltskifte, sløyfer)
   - Hvilken tungbilandel er mest korrekt - den basert på lengde eller klassifisering?
-  - Hva sier kjøretøyregisteret om sammenhengen mellom lengde og klasseskillet mellom lette og tunge?
-  - Hvor god er klassifiseringen av hengere? Spesielt lette kjøretøy med henger - blir disse tolket som tunge?

@@ -69,6 +69,10 @@ traffic_link_geometries <- dplyr::bind_rows(
   ev6_viken$geometri
 )
 
+traffic_link_road_references <- dplyr::bind_rows(
+  ev6_viken$vegreferanser
+)
+
 
 points <- get_points() %>%
   dplyr::distinct(trp_id, .keep_all = T) %>%
@@ -115,12 +119,9 @@ trps_on_links <- traffic_link_positions %>%
   ) %>% 
   dplyr::select(
     object_id,
-    length_m,
     trp_id,
     name,
     registration_frequency,
-    road_category_and_number,
-    road_reference,
     lanes,
     county_name,
     municipality_name,
@@ -131,6 +132,13 @@ traffic_link_geometries_and_trp <-
   traffic_link_geometries %>% 
   dplyr::left_join(
     trps_on_links, by = "object_id"
+  ) %>% 
+  dplyr::select(
+    -year
+  ) %>% 
+  dplyr::left_join(
+    traffic_link_road_references,
+    by = "object_id"
   ) %>% 
   dplyr::mutate(
     has_trp = !is.na(trp_id)
@@ -145,8 +153,31 @@ traffic_link_geometries_and_trp <-
 
 # Write to file for further processing in ArcGIS
 traffic_link_geometries_and_trp %>% 
-  dplyr::select(-link_label) %>% 
-  sf::st_write("trafikklenker/trafikklenker_med_trp.gpkg")
+  dplyr::select(
+    -link_label,
+    -lokasjon.geometri.srid
+  ) %>% 
+  sf::st_write(
+    "trafikklenker/trafikklenker_med_trp.gpkg",
+    append = FALSE
+  )
+
+geopackage_file <- "trafikklenker/trafikklenker_med_trp.gpkg"
+
+# To see layers in gpkg file
+layers <- sf::st_layers(geopackage_file)
+
+link_query <- "SELECT * FROM \"features\""
+
+test <- 
+  sf::st_read(
+    geopackage_file, 
+    "features",
+    as_tibble = TRUE,
+    query = link_query
+  )
+
+
 ```
 
 

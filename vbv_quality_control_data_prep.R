@@ -357,3 +357,90 @@ brekktunnelen_hr_by_length <- dplyr::bind_rows(vbv_brekktunnelen_lm, vbv_brekktu
 
 brekktunnelen_hr_by_class <- dplyr::bind_rows(vbv_brekktunnelen_lm, vbv_brekktunnelen_emu) %>%
   calculate_heavy_ratio_from_vbv_by_class()
+
+
+# Low speeds and lane changes ----
+lm_havnegata <-
+  read_manual_video_verification_file(
+    "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Trafikkregistreringsutstyr/Egnethet på utstyr/Køtest/2021 - Havnegata/havnegata_lm_2021-11-30.xlsx",
+    "LM"
+  )
+
+emu3_havnegata_1 <-
+  read_manual_video_verification_file(
+    "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Trafikkregistreringsutstyr/Egnethet på utstyr/Køtest/2021 - Havnegata/havnegata_emu3_2021-12-14.xlsx",
+    "EMU3"
+  )
+
+
+all_manual_verifications <-
+  dplyr::bind_rows(
+    lm_havnegata,
+    emu3_havnegata_1
+  )
+
+
+# Two perspectives:
+# 1. From the data
+#    - short length (< 3.5 m)
+#    - no class
+#    - low speed (< 15 km/h)
+# What causes this and can we trust this data?
+#
+# 2. From observations
+#    - centric passing
+#    - small gap
+#    - standstill
+# (All these are hard to define strictly.)
+# Are data correct?
+
+# Objective measures:
+# 1. True vehicle ratio
+# 2. True length class ratio (how many are classified correctly by length,
+# not accounting for the valid_length tag)
+#
+# Explanations given by event type distribution
+#
+# Similarly for class and speed, but this is not in focus now
+
+
+## Short length ----
+short_lengths <- lm_havnegata %>%
+  dplyr::filter(
+    !is.na(length),
+    length < 3.5
+  ) %>%
+  dplyr::mutate(
+    correct_length_class_2 =
+      length_class_2 == true_length_class_2
+  ) %>%
+  dplyr::select(
+    datalogger_type,
+    event_type,
+    true_vehicle,
+    length,
+    correct_length_class_2
+  )
+
+
+## No class ----
+no_class <- lm_havnegata %>%
+  dplyr::filter(
+    !is.na(vehicle_type_raw),
+    norsikt_l2 == "OMV"
+  )
+
+
+## Low speed ----
+low_speed <- lm_havnegata %>%
+  dplyr::filter(
+    speed < 15
+  )
+
+# Propositions:
+# If we propose that length is ok if its sole purpose
+# is to classify as light or heavy, then what?
+#
+# Length < X it is not possible to know if it is light?
+# If length < X and class is defined, can we trust the class? At what level?
+
