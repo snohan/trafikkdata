@@ -337,6 +337,99 @@ writexl::write_xlsx(periodic_trps_2018_2019,
                     path = "periodisk_adt/aadt_periodiske_punkt_faste_sensorer_2018_2019.xlsx")
 
 
+# Periodic AADT ----
+periodic_trps <-
+  trp %>%
+  split_road_system_reference() %>%
+  dplyr::select(
+    trp_id,
+    name,
+    traffic_type,
+    registration_frequency,
+    road_category,
+    road_category_and_number,
+    road_reference,
+    county_name,
+    municipality_name
+  ) %>%
+  dplyr::distinct(trp_id, .keep_all = T) %>%
+  dplyr::filter(
+    traffic_type == "VEHICLE",
+    registration_frequency == "PERIODIC"
+  )
+
+# 1. Fetch AADT from API and calculate heavy_ratio
+# 2. Read AADT by factor curve method currently only available in Kibana
+
+periodic_aadt_raw <-
+  get_aadt_by_length_for_trp_list(
+    periodic_trps$trp_id
+  ) %>%
+  dplyr::select(
+    trp_id,
+    year,
+    length_range,
+    aadt_length_range,
+    aadt_total
+  )
+
+periodic_aadt_tidy <-
+  periodic_aadt_raw %>%
+  dplyr::filter(
+    length_range == "[5.6,..)"
+  ) %>%
+  dplyr::mutate(
+    heavy_ratio = round(aadt_length_range / aadt_total * 100, digits = 0)
+  ) %>%
+  dplyr::left_join(
+    periodic_trps,
+    by = "trp_id"
+  ) %>%
+  dplyr::filter(
+    year > 2017
+  ) %>%
+  dplyr::select(
+    trp_id,
+    name,
+    traffic_type,
+    registration_frequency,
+    road_category,
+    road_category_and_number,
+    road_reference,
+    county_name,
+    municipality_name,
+    year,
+    adt_plain = aadt_total,
+    heavy_ratio
+  )
+
+aadt_by_factor_curve <-
+  readr::read_csv2(
+    "periodic_data/periodic_aadt_by_factor_curve.csv"
+  ) %>%
+  dplyr::select(
+    trp_id = traffic_registration_point_id,
+    year,
+    adt_factor_curve = adt,
+    curve
+  )
+
+periodic_aadt_with_factor_curve <-
+  periodic_aadt_tidy %>%
+  dplyr::left_join(
+    aadt_by_factor_curve,
+    by = c("trp_id", "year")
+  ) %>%
+  dplyr::arrange(
+    county_name,
+    road_reference
+  )
+
+writexl::write_xlsx(
+  periodic_aadt_with_factor_curve,
+  path = "periodic_data/aadt_periodiske_punkt_faste_sensorer_2018-2020.xlsx")
+
+
 # Add new road reference to TRS list from nortraf ----
 nortraf_n2 <- readxl::read_xlsx("periodisk_adt_nortraf/nortraf_trs_n2.xlsx",
                                 skip = 4) %>%
