@@ -59,7 +59,9 @@ nvdb_crs <- leafletCRS(
 
 ```{r get_data}
 ev6_viken <- 
-  get_traffic_links("&kommune=3030,3033&vegsystemreferanse=E")
+  get_traffic_links("&kommune=3030,3033&vegsystemreferanse=E,R")
+
+# the query does not support pagination yet
 
 traffic_link_positions <- dplyr::bind_rows(
   ev6_viken$veglenkeposisjoner
@@ -72,6 +74,16 @@ traffic_link_geometries <- dplyr::bind_rows(
 traffic_link_road_references <- dplyr::bind_rows(
   ev6_viken$vegreferanser
 )
+
+traffic_link_road_info <-
+  traffic_link_road_references %>% 
+  dplyr::select(
+    object_id,
+    road,
+    road_category,
+    length_m
+  ) %>% 
+  dplyr::distinct()
 
 
 points <- get_points() %>%
@@ -137,9 +149,14 @@ traffic_link_geometries_and_trp <-
     -year
   ) %>% 
   dplyr::left_join(
-    traffic_link_road_references,
+    traffic_link_road_info,
     by = "object_id"
+  ) %>%
+  dplyr::group_by(
+    object_id
   ) %>% 
+  dplyr::slice_head() %>% 
+  dplyr::ungroup() %>% 
   dplyr::mutate(
     has_trp = !is.na(trp_id)
   ) %>% 
@@ -148,7 +165,8 @@ traffic_link_geometries_and_trp <-
                        name, "<br/>",
                        registration_frequency,  "<br/>",
                        "Felt: ", lanes, "<br/>",
-                       length_m, " m"),
+                       length_m, " m"
+                       ),
     link_label = lapply(link_label, htmltools::HTML))
 
 # Write to file for further processing in ArcGIS
@@ -157,8 +175,9 @@ traffic_link_geometries_and_trp %>%
     -link_label,
     -lokasjon.geometri.srid
   ) %>% 
-  sf::st_write(
+  sf::write_sf(
     "trafikklenker/trafikklenker_med_trp.gpkg",
+    quiet = FALSE,
     append = FALSE
   )
 
@@ -167,12 +186,11 @@ geopackage_file <- "trafikklenker/trafikklenker_med_trp.gpkg"
 # To see layers in gpkg file
 layers <- sf::st_layers(geopackage_file)
 
-link_query <- "SELECT * FROM \"features\""
+link_query <- "SELECT * FROM \"trafikklenker_med_trp\""
 
 test <- 
   sf::st_read(
     geopackage_file, 
-    "features",
     as_tibble = TRUE,
     query = link_query
   )
