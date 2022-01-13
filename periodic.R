@@ -160,7 +160,7 @@ mobile_trps <- get_mobile_trps_with_commission() %>%
     commission_to,
     commission_interval,
     commission_length_in_days
-    )
+  )
 
 mobile_trps_distinct <- mobile_trps %>%
   dplyr::distinct(
@@ -199,8 +199,8 @@ mobile_trp_commission_stats <- mobile_trps %>%
     n_commissions = n()
   ) %>%
   dplyr::filter(
-    !is.na(days),
-    year == 2021
+    !is.na(days)#,
+    #year == 2021
   )
 
 mobile_trp_stats <- mobile_trps %>%
@@ -249,7 +249,11 @@ heavy_ratio_periodic_mobile_raw <-
   dplyr::bind_rows(
     read_csv2("periodic_data/periodic_mobile_daily_traffic_2021-01-04.csv"),
     read_csv2("periodic_data/periodic_mobile_daily_traffic_2021-05-08.csv"),
-    read_csv2("periodic_data/periodic_mobile_daily_traffic_2021-09-12.csv")
+    read_csv2("periodic_data/periodic_mobile_daily_traffic_2021-09-12.csv"),
+    read_csv2("periodic_data/periodic_mobile_daily_traffic_2020-01-06.csv"),
+    read_csv2("periodic_data/periodic_mobile_daily_traffic_2020-07-12.csv"),
+    read_csv2("periodic_data/periodic_mobile_daily_traffic_2019-01-12.csv"),
+    read_csv2("periodic_data/periodic_mobile_daily_traffic_2018-01-12.csv")
   )
 
 heavy_ratio_periodic_mobile <-
@@ -279,7 +283,7 @@ heavy_ratio_periodic_mobile <-
 # aadt from ES
 periodic_mobile_adt <-
   read_csv2(
-  "periodic_data/mobile_periodic_aadt_2021.csv"
+  "periodic_data/mobile_periodic_aadt.csv"
   )
 
 # Combined trp info, adt and heavy ratio
@@ -313,9 +317,9 @@ periodic_mobile <-
   )
 
 # All periodic adts ----
-periodic_adt_2021 <-
+periodic_adt <-
   dplyr::bind_rows(
-    periodic_permanent,
+    #periodic_permanent,
     periodic_mobile
   ) %>%
   dplyr::filter(
@@ -340,9 +344,9 @@ periodic_adt_2021 %>%
   )
 
 # User's Excel
-periodic_adt_2021 %>%
+periodic_adt %>%
   writexl::write_xlsx(
-    path = "periodic_data/aadt_periodiske_registreringer_2021.xlsx"
+    path = "periodic_data/aadt_mobile_registreringer.xlsx"
   )
 
 

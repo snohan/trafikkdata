@@ -405,10 +405,12 @@ all_manual_verifications <-
 
 
 ## Short length ----
-short_lengths <- lm_havnegata %>%
+short_lengths <-
+  all_manual_verifications %>%
   dplyr::filter(
     !is.na(length),
-    length < 3.5
+    !is.na(true_length_class_2),
+    length < 3.3 | length > 27
   ) %>%
   dplyr::mutate(
     correct_length_class_2 =
