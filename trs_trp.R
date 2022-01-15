@@ -593,6 +593,39 @@ types_of_fw_used <- firmware_history %>%
   dplyr::distinct()
 
 
+# TRS device type history ----
+trs_device_history <- get_trs_device()
+
+# not interested in when
+trs_device_types <-
+  trs_device_history %>%
+  dplyr::select(
+    trs_id,
+    device_type
+  ) %>%
+  dplyr::distinct()
+
+# to find trp device history
+trs_trp_id <- get_trs_and_trp_id()
+
+trp_device_history <-
+  trs_trp_id %>%
+  dplyr::select(
+    trp_id,
+    trs_id
+  ) %>%
+  dplyr::left_join(
+    trs_device_history,
+    by = "trs_id"
+  ) %>%
+  dplyr::filter(
+    !is.na(trp_id),
+    !is.na(device_type)
+  )
+
+saveRDS(trp_device_history,
+        file = "trs_trp/trp_device_types.rds")
+
 # TRS and sensorconfig errors ----
 sensorconfig_errors <- get_all_trs_with_trp_via_sensorconfig() %>%
   dplyr::filter(purrr::map_lgl(errors, ~!rlang::is_empty(.x)))
