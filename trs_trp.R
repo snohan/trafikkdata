@@ -349,6 +349,7 @@ periodic_trps <-
     road_category,
     road_category_and_number,
     road_reference,
+    road_link_position,
     county_name,
     municipality_name
   ) %>%
@@ -396,6 +397,7 @@ periodic_aadt_tidy <-
     road_category,
     road_category_and_number,
     road_reference,
+    road_link_position,
     county_name,
     municipality_name,
     year,
@@ -428,6 +430,19 @@ periodic_aadt_with_factor_curve <-
 writexl::write_xlsx(
   periodic_aadt_with_factor_curve,
   path = "periodic_data/aadt_periodiske_punkt_faste_sensorer_2018-2020.xlsx")
+
+# For Triona
+periodic_aadt_with_factor_curve %>%
+  dplyr::filter(
+    year == 2021
+  ) %>%
+  dplyr::select(
+    -adt_plain
+  ) %>%
+  write.csv2(
+    file = "periodic_data/aadt_periodiske_punkt_faste_sensorer_2021.csv",
+    row.names = FALSE
+  )
 
 
 # Add new road reference to TRS list from nortraf ----

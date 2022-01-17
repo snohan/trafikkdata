@@ -767,6 +767,8 @@ Det er få tunge kjøretøy som kjører sakte over sløyfene i datamaterialet, s
 
 Ved lav fart der mange kjører med liten fysisk luke, vil det føre til sammenslåing av kjøretøy. De sammenslåtte vil i mange tilfeller se ut som tunge kjøretøy i dataene. Det blir da to feil i data, nemlig en for lav trafikkmengde og en for høy andel tunge.
 
+Ved oppbremsing blir lengdene for lange, og ved akselerasjon blir de for korte. Ved feltskifte er det få tilfeller av duplikater. Stillestående kjøretøy blir registrert, men i etterkant blir det mye tull og flere kan mangle. Virker ganske tolerant for små luker.
+
 
 
 ## Samme punkt, ulik firmware
