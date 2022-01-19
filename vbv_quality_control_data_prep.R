@@ -372,11 +372,17 @@ emu3_havnegata_1 <-
     "EMU3"
   )
 
+emu3_havnegata_2 <-
+  read_manual_video_verification_file(
+    "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Trafikkregistreringsutstyr/Egnethet på utstyr/Køtest/2021 - Havnegata/havnegata_emu3_2022-01-07.xlsx",
+    "EMU3"
+  )
 
 all_manual_verifications <-
   dplyr::bind_rows(
     lm_havnegata,
-    emu3_havnegata_1
+    emu3_havnegata_1,
+    emu3_havnegata_2
   )
 
 
@@ -434,9 +440,24 @@ no_class <- lm_havnegata %>%
 
 
 ## Low speed ----
-low_speed <- lm_havnegata %>%
+low_speed <-
+  all_manual_verifications %>%
   dplyr::filter(
     speed < 15
+  ) %>%
+  dplyr::mutate(
+    correct_length_class_2 =
+      length_class_2 == true_length_class_2
+  ) %>%
+  dplyr::select(
+    datalogger_type,
+    event_type,
+    true_vehicle,
+    true_norsikt_4,
+    speed,
+    length,
+    length_ok,
+    correct_length_class_2
   )
 
 # Propositions:

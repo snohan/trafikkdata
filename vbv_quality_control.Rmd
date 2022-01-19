@@ -463,6 +463,8 @@ Trafikkregistreringspunktet på Rv 706 Havnegata ligger nær en rundkjøring. De
 
 Ved å se på videoopptak og gå gjennom data kjøretøy for kjøretøy er det utarbeidet en fasit for lengdeklassifisering. En sammenligning er gitt i tabellen nedenfor.
 
+<\br>
+
 ```{r contingency_lm_length_vs_true_vehicle}
 # short_lengths_lm <-
 #   short_lengths %>% 
@@ -508,6 +510,7 @@ short_lengths %>%
   flextable::bg(bg = "#ED9300", part = "header")
 ```
 
+Selv om lengdemålingene gir for korte lengder, er det likevel faktiske kjøretøy.
 
 ```{r contingency_lm_length_vs_true_length_class}
 short_lengths %>% 
@@ -723,7 +726,7 @@ I felt 6 er det relativt lite trafikk og det er nesten kun busser. Her er det st
 På Havnegata er det en del feltskifte ovr sløyfene. I tilfeller studert med videoopptak er det ikke funnet noen duplikater, men enkelte får for kort lengde. I ett enkelt tilfelle ble det observert en personbil med sann lengde omkring 4 m som fikk målt lengde på 1,9 m og feilklassifisert som motorsykkel.
 
 
-### Kø på Rv 706 Havnegata
+## Kø på Rv 706 Havnegata
 Trafikkregistreringspunktet på Rv 706 Havnegata ligger nær en rundkjøring. Det er fire felt og en del feltskifte over sløyfene. Når det er mye trafikk vil en del kjøretøy passere sløyfene med veldig lav fart og tidvis inntreffer helt stillestående trafikk.
 
 Ved å se på videoopptak og gå gjennom data kjøretøy for kjøretøy er det utarbeidet en fasit for lengdeklassifisering. En sammenligning er gitt i tabellen nedenfor.
@@ -745,6 +748,7 @@ short_lengths %>%
   flextable::bg(bg = "#ED9300", part = "header")
 ```
 
+Alle registreringer med korte lengder i dette datautvalget var reelle kjøretøy.
 
 ```{r contingency_emu3_length_vs_true_length_class}
 short_lengths %>% 
@@ -765,10 +769,13 @@ short_lengths %>%
 
 Det er få tunge kjøretøy som kjører sakte over sløyfene i datamaterialet, så det kan ikke sies at det kun er korrekt at alle med kort lengde blir riktig lengdeklassifisert. 
 
-Ved lav fart der mange kjører med liten fysisk luke, vil det føre til sammenslåing av kjøretøy. De sammenslåtte vil i mange tilfeller se ut som tunge kjøretøy i dataene. Det blir da to feil i data, nemlig en for lav trafikkmengde og en for høy andel tunge.
+Ved lav fart der mange kjører med liten fysisk luke, men det er veldig få tilfeller der to kjøretøy blir slått sammen til en registrering. EMU3 virker ganske tolerant for små luker.
 
-Ved oppbremsing blir lengdene for lange, og ved akselerasjon blir de for korte. Ved feltskifte er det få tilfeller av duplikater. Stillestående kjøretøy blir registrert, men i etterkant blir det mye tull og flere kan mangle. Virker ganske tolerant for små luker.
+Lengdemålingene blir tydelig påvirket av endring i fart over sløyfene. Dette er lett å observere når farten er relativt lav. Det er gjentakende observert at ved oppbremsing blir lengdene for lange, og ved akselerasjon blir de for korte. 
 
+Stillestående kjøretøy blir registrert, men i etterkant kan det virke som om datalogger kommer "ut av rytmen" og overser flere kjøretøy.
+
+Ved feltskifte er det få tilfeller av duplikater.
 
 
 ## Samme punkt, ulik firmware
