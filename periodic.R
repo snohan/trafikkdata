@@ -2,6 +2,7 @@
 
 library(writexl)
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
 # TRP info from Traffic Data API
@@ -151,15 +152,38 @@ mobile_trps <- get_mobile_trps_with_commission() %>%
   dplyr::select(
     trp_id,
     name = trp_name,
+    device_type,
     county_name,
     municipality_name,
+    municipality_number,
     road_category,
     road_reference,
     road_link_position,
+    lat,
+    lon,
+    wkt,
+    srid,
     commission_from,
     commission_to,
     commission_interval,
     commission_length_in_days
+  )
+
+mobile_trps_and_device_types <-
+  mobile_trps %>%
+  dplyr::select(
+    trp_id,
+    device_type
+  ) %>%
+  dplyr::distinct() %>%
+  dplyr::group_by(
+    trp_id
+  ) %>%
+  dplyr::summarise(
+    n_device_types = n()
+  ) %>%
+  dplyr::filter(
+    n_device_types > 1
   )
 
 mobile_trps_distinct <- mobile_trps %>%
@@ -171,9 +195,14 @@ mobile_trps_distinct <- mobile_trps %>%
     name,
     county_name,
     municipality_name,
+    municipality_number,
     road_category,
     road_reference,
-    road_link_position
+    road_link_position,
+    lat,
+    lon,
+    wkt,
+    srid
   )
 
 # Use commissions to filter incomplete days, assuming they are
@@ -303,9 +332,14 @@ periodic_mobile <-
     name,
     county_name,
     municipality_name,
+    municipality_number,
     road_category,
     road_reference,
     road_link_position,
+    lat,
+    lon,
+    wkt,
+    srid,
     year,
     factor_curve,
     days,
@@ -314,6 +348,10 @@ periodic_mobile <-
   ) %>%
   dplyr::mutate(
     installation_type = "mobile"
+  ) %>%
+  # Do not use Armadillo-data now as their API does not give us complete data
+  dplyr::filter(
+    !(trp_id %in% mobile_trps_and_device_types$trp_id)
   )
 
 # All periodic adts ----
@@ -346,7 +384,7 @@ periodic_adt_2021 %>%
 # User's Excel
 periodic_adt %>%
   writexl::write_xlsx(
-    path = "periodic_data/aadt_mobile_registreringer.xlsx"
+    path = "periodic_data/aadt_mobile_registreringer_topo.xlsx"
   )
 
 
