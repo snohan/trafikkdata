@@ -187,6 +187,9 @@ mobile_trps_and_device_types <-
   )
 
 mobile_trps_distinct <- mobile_trps %>%
+  dplyr::filter(
+    device_type == "TOPO"
+  ) %>%
   dplyr::distinct(
     trp_id, .keep_all = T
   ) %>%
@@ -351,7 +354,8 @@ periodic_mobile <-
   ) %>%
   # Do not use Armadillo-data now as their API does not give us complete data
   dplyr::filter(
-    !(trp_id %in% mobile_trps_and_device_types$trp_id)
+    !(trp_id %in% mobile_trps_and_device_types$trp_id),
+    !is.na(name)
   )
 
 # All periodic adts ----

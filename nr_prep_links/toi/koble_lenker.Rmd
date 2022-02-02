@@ -1,0 +1,1629 @@
+---
+title: "Dokumentasjon påkobling av ÅDT fra RTM"
+author: "Rikke Ingebrigtsen og Nina Hulleberg, TØI"
+date: "`r Sys.Date()`"
+output: bookdown::html_document2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(knitr)
+library(tidyverse)
+library(sf)
+```
+
+# Forberedelse av trafikklenker
+
+I prosjektet er det opprettet en vegnettsgraf der lenkeretning 
+stemmer overens med trafikkretningen.
+
+*Skriv mer siden, jf. notat.*
+
+# Forberedelse av nettutlagt ÅDT
+
+*Hent fra dokumentet Nina har skrevet i Word*
+
+# Tilordne ÅDT fra RTM til trafikklenkene
+
+Transport-nettverkene som brukes i transportmodellsystemet tar utgangspunkt i data 
+fra NVDB som er segmentert og aggregert via Transport Network Engine (TNE)-funksjonalitet.
+Informasjon om det underliggende referanselenkesystemet finnes i geodatabasene som leses 
+inn i den ArcGIS-baserte tilleggsapplikasjonen TNExtension som 
+produserer nettverk^[Nettverkene er i form av geodatabaser.] til transportmodellene.
+
+Transportmodellen benyttet et nettverk fra 2018, mens trafikklenkene har uttaksdato 
+17.03.2021. At de to nettverkene er fra forskjellige år betyr at det vil være avvik som 
+skyldes åpningen av nye veger^[I prosjektområdet vil det hovedsakelig være Ryfast-forbindelsen.] og andre endringer. 
+En annen viktig forskjell mellom nettverkene er at de har ulike referansesystem: 
+I november 2019 ble det introdusert et nytt nasjonalt vegreferansesystem. 
+Det betyr at trafikklenkene har referanser som følger det nye systemet, 
+mens lenkene fra RTM følger det gamle systemet. 
+
+## Nye vegsystemreferanser
+
+Vi har koblet sammen lenker fra de to nettverkene basert på 
+de nye vegsystemreferansene og vil derfor gi en oversik over hvordan disse er bygget opp. Figur \@ref(fig:vegsysref) viser oppbyggingen av gammel referanse til venstre og 
+ny referanse til høyre.
+
+```{r vegsysref, out.width="90%", fig.cap="Oppbygging av gammel og ny vegsystemreferanse. Kilde: Faktaark om vegreferansesystemet i NVDB (SVV, april 2021)."}
+knitr::include_graphics("img/vegsystemreferanse.PNG")
+```
+
+Den gamle vegreferansen startet med fylkes- og kommunenummer, 
+men med det nye systemet har alle Europa-, Fylkes- og Riksveger (ERF-veger) 
+unike nummer på landsbasis og er uavhengig av administrativ inndeling.
+I stedet for hovedparsell, benyttes nå begrepene strekning ($S$) og delstrekning ($D$).
+
+En strekning deler vegsystemet inn i mindre biter,
+og er nummerert i stigende rekkefølge etter vegens retning. 
+Delstrekning angir om punktet vegsystemreferansen refererer til 
+befinner seg på hovedløpet til vegen, eller om det er på en arm eller gang- og sykkelveg. 
+Normalt er hovedløpet på vegen delstrekning 1, det vil si D1.
+Se Figur \@ref(fig:strekning-delstrekning) for et eksempel.
+
+```{r strekning-delstrekning, out.width="90%", fig.cap="Eksempel på vegsystem med ulike strekninger og delstrekninger. Kilde: Faktaark om vegreferansesystemet i NVDB (SVV, april 2021)."}
+knitr::include_graphics("img/strekning-delstrekning.PNG")
+```
+
+Den enkelte delstrekning metreres for seg. 
+Det vil for eksempel si at *både* $D1$ og $D10$ og $S1D1$ og $S2D1$ metreres for seg. 
+I overgangen fra $SN$ til $SN+1$ går meterverdien fra $M=m_{max}$ til $M=0$. 
+Verdien av $m_{max}$ vil variere fra strekning til strekning, 
+men laveste meterverdi på en strekning er alltid null. 
+
+Lokasjoner på kryss og sideanlegg får et tilleggsledd, henholdsvis $KD$ og $SD$, 
+samt en meterverdi som angir hvor langt inne på kryss/sideanlegg punktet ligger.
+Figur \@ref(fig:kryssdel-sideanlegg) viser to eksempler. 
+
+```{r kryssdel-sideanlegg, out.width="90%", fig.cap="Oppbygging av vegsystemreferansen for kryssdeler og sideanlegg. Kilde: Faktaark om vegreferansesystemet i NVDB (SVV, april 2021)."}
+knitr::include_graphics("img/kryssdel-sideanlegg.PNG")
+```
+
+Første del av vegsystemreferansen viser i disse tilfellene hvor på 
+hovedløpet av vegen krysset eller sideanlegget er koblet på.
+
+## Vegsystemreferanser for trafikklenkene
+
+```{r trafikklenker, message=FALSE}
+
+path_gpkg <- "data/region-vest/2021_04/trafikklenker_rettet_20210502.gpkg"
+
+trafikklenker <- st_read(here::here(path_gpkg), layer = 'lenker', quiet = TRUE)
+
+# Les inn tabell med vegreferanser --------------------------------------------
+
+LENKER <-
+  read_delim(
+    here::here("data/region-vest/2021_04/trafikklenker_vegsystemreferanser.csv"),
+    ";",
+    escape_double = FALSE,
+    col_types = cols(
+      lenke_nr = col_character(),
+      FRA_KD = col_character(),
+      FRA_KD_M = col_double(),
+      TIL_KD = col_character(),
+      TIL_KD_M = col_double(),
+      KOMMENTAR_TOI = col_character()
+    ),
+    trim_ws = TRUE
+  )
+
+
+```
+
+Hver trafikklenke har to egenskaper som angir start- og sluttpunktet for lenken: 
+ID for kryssnodene og vegsystemreferanser. 
+Tabell \@ref(tab:eksempel-tabell-trafikklenker) viser eksempler på noen lenker.
+
+```{r eksempel-tabell-trafikklenker}
+
+trafikklenker %>%
+  st_drop_geometry() %>%
+  select(
+    lenke_nr,
+    START_NODE_OID,
+    END_NODE_OID,
+    ROADREF_START,
+    ROADREF_END,
+  ) %>%
+  head() %>%
+  kable(align = "c", caption = "Eksempel på node ID og vegsystemreferanser for noen rettede trafikklenker.")  
+
+```
+
+Legg merke til at for trafikklenker med toveistrafikk finnes begge retninger i vårt sett med lenker. 
+For eksempel lenke nummer 3 som går fra F79 S5D40 m191,85 til F79 S5D40 m285,564 
+og lenke 4 som har trafikk motsatt vei, 
+fra F79 S5D40 m285,564 til F79 S5D40 m191,85^[Her er meterverdien i desimaler, de ble rundet av før kobling]. 
+
+Vegsystemreferansene er unike for ERF-veger, men ikke for kommunale veger (K-veger). 
+For de kommunale vegene la vi derfor til kommunenummer for unik identifisering av også disse lenkene. Med kommunenummer var det 
+`r n_distinct(LENKER$ID[LENKER$IKKE_UNIK_REF])` trafikklenker (`r sum(LENKER$IKKE_UNIK_REF) ` rettede lenker) med samme referanser, men ulik geografisk plassering. 
+Disse kan vi ikke koble basert på vegsystemreferansen.
+Vi identifiserte også `r n_distinct(LENKER$ID[!is.na(LENKER$KOMMENTAR_TOI)])` trafikklenker 
+(`r sum(!is.na(LENKER$KOMMENTAR_TOI))` rettede lenker) der 
+vegsystemreferansene ikke stemmer med lokasjon i vegnettet^[Disse ble oppdaget fordi enten 1) ROADREF_START = ROADREF_END eller 2) lenkens metreringsretning og meterverdi ikke stemmer overens.]. Disse må vi også håndtere separat.
+
+Totalt består vegnettsgrafen av `r nrow(LENKER)` rettede trafikklenker. 
+Vi gir lenkene beskrevet i avsnittet over kategorien *feil med referanse* (`r sum(LENKER$IKKE_UNIK_REF) +  sum(!is.na(LENKER$KOMMENTAR_TOI))` rettede lenker). 
+For de resterende lenkene kategoriserer vi dem basert på om start- og sluttpunkt ligger på 
+
+- samme vegstrekning, 
+- samme veg, men ulik strekning,
+- samme kryssdel, 
+- ulik veg- eller kryssdel.
+
+Tabell \@ref(tab:kategorier-trafikklenker) viser antall og prosentandel lenker i hver kategori.
+
+```{r kategorier-trafikklenker}
+
+LENKER <- LENKER %>% 
+  mutate(KATEGORI = if_else(IKKE_UNIK_REF | !is.na(KOMMENTAR_TOI), "Feil med referanse", KATEGORI))
+
+LENKER %>% 
+  count(KATEGORI) %>% 
+  mutate(p = round(n/nrow(LENKER)*100, digits = 3)) %>% 
+  arrange(desc(n)) %>% 
+  select(KATEGORI, `ANTALL LENKER` = n, `ANDEL LENKER (%)` = p) %>% 
+  kable(caption = "Kategorisering av trafikklenkenes start- og sluttpunkt.")
+```
+
+Vi har gjort denne kategoriseringen for å kunne bruke disse egenskapene i koblingen.
+
+## Vegsystemreferanser for RTM-lenkene
+
+For lenkene fra transportmodellen er de gamle referansene brukt til å slå opp på nye vegreferanser i NVDB APIet.
+
+*Legg til mer beskrivelse siden*
+
+```{r cube, message=FALSE}
+
+CUBE_RAW <-
+  read_delim(
+    here::here("data/region-vest/2021_04/cube_vegsystemreferanser_rv.csv"),
+    ";",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+```
+
+Vi har `r nrow(CUBE_RAW)` lenker fra transportmodellen. 
+Vi vil referere til disse som RTM-lenker. 
+Siden transportmodellen dekker et større geografisk område enn prosjektområdet 
+kan vi fjerne `r sum(CUBE_RAW$region_vest == 0)` lenker 
+fordi ligger godt utenfor (5 km) et bufferområde rundt Region-Vest.
+
+```{r}
+
+CUBE <- CUBE_RAW %>% 
+  filter(region_vest == 1)
+
+```
+
+Av de `r nrow(CUBE)` RTM-lenkene i Region-Vest er det `r sum(CUBE$KATEGORI == "Mangler vegreferanse")` lenker som mangler vegreferanse. `r sum(is.na(CUBE$HP_ID))` manglet 
+id for hovedparsell, mens for hoveddelen av disse lenkene har det ikke vært treff på enten startpunktet, sluttpunktet eller begge i NVDB. 
+
+Tabellen under viser hvilken vegkategori vegene uten referanse tilhører.
+
+```{r}
+
+CUBE %>% 
+  filter(KATEGORI == "Mangler vegreferanse") %>% 
+  mutate(Vegkategori = str_sub(HP_ID, 5, 5)) %>% 
+  count(Vegkategori) %>% 
+  arrange(desc(n)) %>% 
+  kable()
+
+n_cube_missing_ref <- CUBE %>% 
+ filter(KATEGORI == "Mangler vegreferanse") %>% 
+ nrow()
+
+cube_missing_ref_aadt_0 <- CUBE %>% 
+ filter(KATEGORI == "Mangler vegreferanse" & AADT_ALLE == 0) %>% 
+ nrow()
+
+```
+
+Det er flest K-veger uten referanse, men også noen ERF-veger. 
+`r round(cube_missing_ref_aadt_0/n_cube_missing_ref*100)` prosent av disse RTM-lenkene har 
+ÅDT = 0. 
+RTM-lenkene uten vegsystemreferanse fjernes fra koblingstabellen.
+Videre er det noen få lenker der start- eller sluttreferansen mangler strekningsinformasjon. 
+Dette er 10 KPS-lenker, alle har ÅDT = 0, og vi fjerner også disse fra tabellen. 
+
+```{r}
+
+CUBE <- filter(CUBE, KATEGORI != "Mangler vegreferanse")
+
+# CUBE %>%
+#   filter(is.na(FRA_S_D) | is.na(TIL_S_D)) %>%
+#   select(FRA_REF, TIL_REF, AADT_ALLE) %>%
+#   kable()
+
+```
+
+```{r}
+
+CUBE <- CUBE %>% 
+  filter(!is.na(FRA_S_D) & !is.na(TIL_S_D))
+
+```
+
+Tabell \@ref(tab:cube-kat) viser kategoriseringen av RTM-lenkene etter samme 
+inndeling som i Tabell \@ref(tab:kategorier-trafikklenker).
+
+```{r cube-kat}
+
+CUBE %>% 
+  count(KATEGORI) %>% 
+  mutate(p = round(n/nrow(CUBE)*100, digits = 1)) %>% 
+  arrange(desc(n)) %>% 
+  select(KATEGORI, `ANTALL LENKER` = n, `ANDEL LENKER (%)` = p) %>% 
+  kable(caption = "Kategorisering av lokasjonen til RTM-lenkenes start- og sluttpunkt.")
+
+
+```
+
+## Beskrivelse av koblingsmetodikken
+
+Bakgrunnen for at vi velger å koble de to nettverkene ved hjelp av vegsystemreferansene 
+er for å ha kontroll på trafikkretningen på de rettende lenkene.
+Lenkene i RTM ligger slik at trafikken flyter fra start- til sluttnode, 
+og det er også sånn vi har definert vegnetsgrafen: lenkeretning er lik trafikkretningen.
+
+Fordi trafikklenkene har ulike egenskaper velger vi en trinnvis tilnærming for 
+å koble ÅDT  fra RTM til lenkene. 
+
+1. Start- og sluttpunkt er identiske,
+2. Start- og sluttpunkt er på samme vegstrekning/kryssdel,
+3. Start- og sluttpunkt er på samme veg.
+
+Det enkleste er de lenkene der det er en entydig match mellom lenkesettene.
+For lenkene der begge punktene er på samme vegstrekning eller kryssdel, 
+er det bare meterverdien som skiller start- og sluttpunkt 
+og vi kan bruke dette til koblingen. 
+For lenkene der start- og sluttpunkt ligger på samme veg, men ulik strekning, 
+kan vi bruke egenskapen at strekninger nummereres i stigende rekkefølge i vegens retning.
+
+```{r, eval=FALSE}
+table(LENKER$FRA_D == LENKER$TIL_D)
+
+#  TRUE 
+# 107050
+
+table(CUBE$FRA_D == CUBE$TIL_D)
+
+# FALSE   TRUE 
+#    585 153253 
+
+## NB! Alle trafikklenker har start- og sluttpunkt på samme delstrakning, 
+## det har ikke alle Cube-lenkene. 
+## Dette kan skyldes ting som plassering av kryss (de så sånn ut på en stikkprøve)
+
+```
+
+Fordi trafikklenkene har meterverdier med desimaler, 
+mens RTM-lenkene har meter som heltall, runder vi av meterverdiene for trafikklenkene.
+
+### Start- og sluttpunkt er identiske
+
+Trafikklenkene og RTM-lenkene bygger begge på TNE-databasen, 
+og til tross for ulik uttaksdato, ulik segmentering og ulikt referansesystem, 
+forventer vi at det vil være eksakt match mellom lenkesettene i mange tilfeller. 
+Dette er den aller enkleste koblingen, og vi prøver denne først. 
+
+```{r}
+
+# Fjern lenkene det er noe feil med og lag koblingsnøkler
+L1 <- LENKER %>%
+  filter(KATEGORI != "Feil med referanse") %>%
+  mutate( 
+    vegsystemreferanse_start = if_else(
+      is.na(FRA_KD), # På kryssdel?
+      paste0(FRA_KOMM_VEGSYSREF, " m", FRA_M),
+      paste0(FRA_KOMM_VEGSYSREF, " m", FRA_M, " ", FRA_KD, " m", FRA_KD_M)
+    ),
+    vegsystemreferanse_end = if_else(
+      is.na(TIL_KD), # På kryssdel?
+      paste0(TIL_KOMM_VEGSYSREF, " m", TIL_M),
+      paste0(TIL_KOMM_VEGSYSREF, " m", TIL_M, " ", TIL_KD, " m", TIL_KD_M)
+    )
+  )
+
+# Lag koblingsnøkler
+C1 <- CUBE %>%
+  mutate(
+    vegsystemreferanse_start = if_else(
+      is.na(FRA_KD), # På kryssdel?
+      paste0(FRA_KOMM_VEGSYSREF, " m", FRA_M),
+      paste0(FRA_KOMM_VEGSYSREF, " m", FRA_M, " ", FRA_KD, " m", FRA_KD_M)
+    ),
+    vegsystemreferanse_end = if_else(
+      is.na(TIL_KD), # På kryssdel?
+      paste0(TIL_KOMM_VEGSYSREF, " m", TIL_M),
+      paste0(TIL_KOMM_VEGSYSREF, " m", TIL_M, " ", TIL_KD, " m", TIL_KD_M)
+    )
+  )
+
+# Koble tabellene
+K1 <- left_join(
+  L1,
+  C1,
+  by = c("vegsystemreferanse_start", "vegsystemreferanse_end"),
+  suffix = c("", "_CUBE")
+)
+
+# Behold kun de med match
+K1 <- filter(K1, !is.na(ID_CUBE))
+
+K1 <- K1 %>% mutate(kobling = 1)
+
+# Har sjekket at metreringsfortegnet stemmer for alle bortsett fra de lenkene som ikke er på 
+# samme veg eller kryssdel, for disse 75 lenkene er fortegnet missing fordi de ikke kan sammenliknes
+
+# # A tibble: 3 x 3
+#   SIGN_METRERING SIGN_METRERING_CUBE     n
+#            <dbl>               <dbl> <int>
+# 1             -1                  -1 32151
+# 2              1                   1 32540
+# 3             NA                  NA    75
+
+```
+
+Vegsystemreferansen for start- og sluttpunkt brukes som koblingsnøkler. 
+For K-veger er også kommunenummeret lagt til. 
+Tabellen under viser noen eksempler.
+
+```{r}
+L1 %>% 
+  select(vegsystemreferanse_start, vegsystemreferanse_end) %>% 
+  head() %>% 
+  kable()
+```
+
+Koblingen gjøres ved hjelp av funskjonen `dplyr::left_join`.
+
+```{r echo=T, eval=F}
+
+left_join(TRAFIKKLENKER, RTM_LENKER, by = c("vegsystemreferanse_start", "vegsystemreferanse_end"))
+
+
+```
+
+Vi holdt lenkene der der var noe feil med referansene utenfor, og fikk 
+koblet minst én RTM-lenke til `r n_distinct(K1$lenke_nr)` trafikklenker.
+
+```{r}
+
+id_lenke <- K1 %>% 
+  count(lenke_nr) %>% 
+  filter(n > 1) %>% 
+  pull(lenke_nr)
+
+# K1 %>% 
+#   filter(lenke_nr %in% id_lenke) %>% 
+#   select(lenke_nr, ID_CUBE, vegsystemreferanse_start, vegsystemreferanse_end, AADT_ALLE) %>% 
+#   kable()
+
+antall_doble <- K1 %>% filter(lenke_nr %in% id_lenke) %>% nrow()
+
+```
+
+Koblingstabellen inneholder `r nrow(K1)` rader, 
+det betyr at noen trafikklenker har fått påkoblet mer enn én RTM-lenke.
+Det viser seg at dette gjelder `r antall_doble` trafikklenker på kommunale veger, og de har alle fått koblet på to RTM-lenker. 
+Mange av disse RTM-lenkene har ÅDT = 0 og det er gjerne én lengre lenke og en liten bit. Dette har ingen betydning, da vi skal beregne min og max av ÅDT-verdiene uansett, så vi beholder begge RTM-lenkene i koblingstabellen.
+
+```{r}
+
+# Behold kun koblingen og ÅDT
+K1 <- K1 %>% distinct(lenke_nr, ID, ID_CUBE, AADT_ALLE, AADT_TUNGE, AADT_LETTE)
+
+K1 <- K1 %>% mutate(kobling = 1)
+
+```
+
+Hvordan trafikklenkene med match fordeler seg på de ulike kategoriene vises i Tabell \@ref(tab:kobling1-tabell-kategori) og for vegklasser i Tabell \@ref(tab:kobling1-tabell-vegklasse).
+
+```{r kobling1-tabell-kategori}
+
+LENKER %>% 
+  filter(lenke_nr %in% K1$lenke_nr) %>% 
+  count(KATEGORI) %>% 
+  arrange(desc(n)) %>% 
+  select(KATEGORI, `ANTALL LENKER` = n) %>% 
+  kable(caption = "Kategorisering av trafikklenkene som fikk påkoblet RTM-lenke i første trinn.")
+
+
+```
+
+
+```{r kobling1-tabell-vegklasse}
+
+LENKER %>% 
+  filter(lenke_nr %in% K1$lenke_nr) %>% 
+  count(FRA_VK) %>% 
+  arrange(desc(n)) %>% 
+  select(VEGKLASSE = FRA_VK, `ANTALL LENKER` = n) %>% 
+  kable(caption = "Vegklasse for trafikklenkene som fikk påkoblet RTM-lenke i første trinn.")
+
+
+```
+
+```{r}
+
+# Legg til informasjon om lenker som har fått påkoblet ÅDT eller er brukt til påkobling
+
+LENKER <- mutate(LENKER, kobling = NA_integer_)
+
+LENKER$kobling[LENKER$lenke_nr %in% K1$lenke_nr] <- 1
+
+CUBE <- mutate(CUBE, brukt = NA_integer_)
+
+CUBE$brukt[CUBE$ID_CUBE %in% K1$ID_CUBE] <- 1
+
+```
+
+For `r round(sum(LENKER$kobling == 1, na.rm = T)/nrow(LENKER)*100)` prosent av alle 
+trafikklenkene fant vi en 1-1 match med lenke(r) fra RTM. 
+Det betyr at det gjenstår å koble RTM-lenker til `r sum(is.na(LENKER$kobling))` trafikklenker.
+
+
+### Start- og sluttpunkt ligger på samme vegstrekning eller kryssdel
+
+Den nest enkleste koblingen kan gjøres for lenkene der start- og sluttpunktet 
+ligger på samme vegstrekning eller kryssdel^[Merk at vi bare skriver kryssdel, og ikke sideanlegg, fordi det ikke finnes punkter på sideanlegg i settet med trafikklenker.]. 
+I disse tilfellene skilles punktene kun ved meter-verdien og det eneste som må sjekkes er 
+om en RTM-lenke: 
+
+1. er på samme vegstrekning/kryssdel som trafikklenken,
+2. har samme retning som trafikklenken,
+3. overlapper med trafikklenken.
+
+Vi velger å knytte alle RTM-lenker som har noe overlapp med en trafikklenke til trafikklenken, uansett hvor stort overlappet er. 
+Men  er "overlappet" kun i én node, velger vi å ikke ta med denne lenken. 
+Vi illustrerer dette i Figur \@ref(fig:kobling-illustrasjon).
+
+```{r kobling-illustrasjon, out.width="90%", fig.cap="Illustrasjon av kobling av lenker på samme vegstrekning/kryss."}
+knitr::include_graphics("img/kobling-illustrasjon.PNG")
+```
+
+Figuren over viser en trafikklenke fra punktet *E16 S10D1 m6134* til punktet *E16 S10D1 m7789*. 
+For alle lenkene går trafikken i retning START til END, og i dette tilfellet er 
+trafikkretningen lik metreringsretningen (meterverdien ved END er høyere enn meterverdien ved START). Trafikklenken har en utstrekning på 1655 meter. 
+
+Under er det tegnet inn to (fiktive) lenker fra transportmodellen, 
+én fra node A til node B, og én fra node B til C. 
+I følge vår koblingsmetodikk vil lenke A$\rightarrow$B kobles på trafikklenken, mens
+lenke B$\rightarrow$C vil ikke kobles til siden den kun overlapper i ett punkt, i node B/END.
+
+I dette koblingssteget tar vi bare med:
+
+1. lenker der referansen er i orden, og
+2. lenker som ikke allerede er brukt i det første koblingssteget, og
+3. lenker der start- og sluttpunkt er på samme strekning eller kryssdel.
+
+Vi definerer en koblingsnøkkel bestående av alle ledd i vegsystemreferansen 
+bortsett fra den siste metreringsverdien. For K-veger tar vi også med kommunenummer. 
+
+```{r}
+
+# hent ut enkle lenker
+
+L2 <- LENKER %>% 
+  filter(is.na(kobling) & (KATEGORI == "Samme vegstrekning" | KATEGORI == "Samme kryssdel"))
+
+C2 <- CUBE %>% 
+  filter(is.na(brukt) & (KATEGORI == "Samme vegstrekning" | KATEGORI == "Samme kryssdel"))
+
+# lag koblingsnøkkel
+
+L2 <- L2 %>%
+  mutate(vegsysref = if_else(is.na(FRA_KD), 
+                        FRA_KOMM_VEGSYSREF,
+                        paste0(FRA_KOMM_VEGSYSREF, " m", FRA_M, " ", FRA_KD)))
+      
+
+C2 <- C2 %>%
+  mutate(vegsysref = if_else(is.na(FRA_KD), 
+                        FRA_KOMM_VEGSYSREF,
+                        paste0(FRA_KOMM_VEGSYSREF, " m", FRA_M, " ", FRA_KD)))
+      
+ 
+
+```
+
+Et eksempel på en K-veg referanse er "1133 K1040 S8D1" og på en E-veg referanse på en 
+kryssdel er "E39 S100D1 m422 KD6".
+
+Videre beregner vi en dummy-variabel for retning basert på meterverdien for start- og sluttpunktet som $retning =\text{sign}(m_{sluttpunkt}-m_{startpunkt})$. 
+For kryssdeler betyr det meterverdien på kryssdelen. 
+For lenker der $m_{sluttpunkt} > m_{startpunkt}$ er retning 1, og hvis 
+$m_{sluttpunkt} < m_{startpunkt}$ er retning -1. 
+Vi hadde allerede en retnings-variabel for trafikklenkene, men siden vi manglet 
+dette for RTM-lenkene genererte vi en ny på samme måte for begge lenkesett for konsistens.
+Tabellen under viser at denne nye dummy-variabelen viser det samme som den vi hadde fra 
+før for trafikklenkene.
+
+```{r}
+L2 %>% 
+  count(med_metrering, SIGN_METRERING) %>% 
+  select(med_metrering, retning = SIGN_METRERING, n) %>% 
+  kable()
+```
+
+For RTM-lenkene viser det seg at 111 lenker har samme meterverdi på start- og sluttpunkt. 
+Her har det skjedd noe i overgangen fra gammel til ny referanse. 
+Vi får ikke koblet til disse lenkene i dette steget og fjerner dem fra koblingstabellen.
+
+```{r}
+C2 %>% 
+  count(SIGN_METRERING) %>% 
+  select(retning = SIGN_METRERING, n) %>% 
+  kable()
+
+# Får ikke gjort noe med disse- fjern
+C2 <- C2 %>% filter(FRA_REF != TIL_REF)
+
+```
+
+Siden vi har en dummy-variabel som tar hensyn til retning definerer vi 
+$m_1 = \min(m_{startpunkt}, m_{sluttpunkt})$ og $m_2=\max(m_{startpunkt}, m_{sluttpunkt})$.
+
+Først kobler vi sammen de to tabellene:
+
+```{r, echo=TRUE, eval=FALSE}
+left_join(TRAFIKKLENKER2, RTM_LENKER2, by = c("vegsysref", "retning"))
+```
+
+Deretter sletter vi koblinger der $m_1 \geq m_{2, RTM}$ eller $m_2 \leq m_{1, RTM}$,
+fordi da er det ingen overlapp mellom lenkene (husk at vi ikke tar med lenker der det kun er overlapp i én node jf. Figur \@ref(fig:kobling-illustrasjon)). 
+
+```{r}
+
+L2 <- L2 %>%
+  mutate(
+    # Hvis kryssdel bruk den meter-verdien, hvis ikke bruk meter-verdi på vegstrekning
+    m_s = if_else(is.na(FRA_KD), FRA_M, FRA_KD_M),
+    m_e = if_else(is.na(FRA_KD), TIL_M, TIL_KD_M)
+  ) %>%
+  rowwise() %>%
+  mutate(# La start være laveste m-verdi, og slutt høyeste m-verdi
+    M1 = min(m_s, m_e),
+    M2 = max(m_s, m_e)) %>%
+  ungroup()
+
+C2 <- C2 %>%
+  mutate(
+    # Hvis kryssdel bruk den metreringsverdien, hvis ikke bruk meterverdi på vegstrekning
+    m_s = if_else(is.na(FRA_KD), FRA_M, FRA_KD_M),
+    m_e = if_else(is.na(FRA_KD), TIL_M, TIL_KD_M)
+  ) %>%
+  rowwise() %>%
+  mutate(# La start være laveste m-verdi, og slutt høyeste m-verdi
+    M1 = min(m_s, m_e),
+    M2 = max(m_s, m_e)) %>%
+  ungroup()
+
+# Kobler basert på vegref-id og metreringsretning
+K2 <- left_join(L2, C2, by = c("vegsysref", "SIGN_METRERING"), suffix = c("", "_CUBE"))
+
+```
+
+
+```{r}
+
+K2 <- filter(K2, !(M1 >= M2_CUBE | M2 <= M1_CUBE)) 
+
+# Behold kun koblingen og ÅDT
+K2 <- K2 %>% distinct(lenke_nr, ID, ID_CUBE, AADT_ALLE, AADT_TUNGE, AADT_LETTE)
+
+K2 <- K2 %>% mutate(kobling = 2)
+
+```
+
+Det ble koblet minst én RTM-lenke til 
+`r n_distinct(K2$lenke_nr)` trafikklenker. 
+Den største andelen fikk koblet til to RTM-lenker.
+Eksempelet under viser en trafikklenke på fylkesveg 5050 
+som har trafikkretning mot metreringen og som i RTM var splittet i to lenker. 
+(Merk at tabellen viser de originale vegsystemreferansene, før 
+kobling er V i FV fjernet og meterverdien er rundet av.)
+
+```{r tabell-koblinger2, message=FALSE}
+tmp <- K2 %>% 
+  group_by(lenke_nr) %>% 
+  summarise(antall_cube = length(ID_CUBE)) %>% 
+  ungroup() %>% 
+  count(antall_cube)
+
+# > K2 %>% count(lenke_nr) %>% filter(n==2) 
+# # A tibble: 14,300 x 2
+#    lenke_nr     n
+#       <dbl> <int>
+#  1        3     2
+#  2        4     2
+#  3       31     2
+#  4       32     2
+#  5       61     2
+#  6       62     2
+#  7       79     2
+#  8       80     2
+#  9       82     2
+# 10       83     2
+
+# > K2 %>% 
+# + filter(lenke_nr == 80)
+# # A tibble: 2 x 7
+#   lenke_nr ID                                   ID_CUBE AADT_ALLE AADT_TUNGE AADT_LETTE kobling
+#      <dbl> <chr>                                  <dbl>     <dbl>      <dbl>      <dbl>   <dbl>
+# 1       80 003e5f8d-365b-435a-965d-d1dacf2b67e6  138841      468.      0.285       468.       2
+# 2       80 003e5f8d-365b-435a-965d-d1dacf2b67e6  175234      468.      0.285       468.       2
+
+eksempel <- L2 %>% 
+  filter(lenke_nr == 80) %>% 
+  select(FRA_REF, TIL_REF, SIGN_METRERING) %>% 
+  mutate(type = "Trafikklenle", .before = 1)
+
+eksempel2 <- C2 %>% 
+  filter(ID_CUBE == 138841 | ID_CUBE == 175234) %>% 
+  select(FRA_REF, TIL_REF, SIGN_METRERING) %>% 
+  mutate(type = "RTM-lenke", .before = 1)
+
+eks <- bind_rows(eksempel, eksempel2)
+
+colnames(eks) <- c("Nettverk", "Fra", "Til", "Retning")
+
+kable(eks)
+
+# tmp %>% 
+#   mutate(p = round(n/sum(tmp$n)*100, digits = 1)) %>% 
+#   select(`Antall påkoblede Cube-lenker` = antall_cube, `Antall` = n, `Prosentandel` = p) %>% 
+#   kable(caption = "Hvor mange Cube-lenker ble koblet til trafikklenkene?")
+```
+
+
+```{r}
+
+LENKER$kobling[LENKER$lenke_nr %in% K2$lenke_nr] <- 2
+
+CUBE$brukt[CUBE$ID_CUBE %in% K2$ID_CUBE] <- 2
+
+K <- bind_rows(K1, K2)
+
+```
+
+Hvordan trafikklenkene med match i trinn to fordeler seg på de ulike kategoriene vises i Tabell \@ref(tab:kobling2-tabell-kategori) og for vegklasser i Tabell \@ref(tab:kobling2-tabell-vegklasse).
+
+```{r kobling2-tabell-kategori}
+
+LENKER %>% 
+  filter(lenke_nr %in% K2$lenke_nr) %>% 
+  count(KATEGORI) %>% 
+  arrange(desc(n)) %>% 
+  select(KATEGORI, `ANTALL LENKER` = n) %>% 
+  kable(caption = "Kategorisering av trafikklenkene som fikk påkoblet RTM-lenke i andre trinn.")
+
+
+```
+
+
+```{r kobling2-tabell-vegklasse}
+
+LENKER %>% 
+  filter(lenke_nr %in% K2$lenke_nr) %>% 
+  count(FRA_VK) %>% 
+  arrange(desc(n)) %>% 
+  select(VEGKLASSE = FRA_VK, `ANTALL LENKER` = n) %>% 
+  kable(caption = "Vegklasse for trafikklenkene som fikk påkoblet RTM-lenke i andre trinn.")
+
+
+```
+
+### Start- og sluttpunkt ligger på samme veg, men ulik strekning
+
+Det er `r sum(is.na(LENKER$kobling))` trafikklenker som ikke er matchet med en RTM-lenke. 
+Tabellen under viser hvordan de fordeler seg på kategori.
+
+```{r}
+LENKER %>% 
+  filter(is.na(kobling)) %>% 
+  count(KATEGORI) %>% 
+  mutate(p = round(n/sum(is.na(LENKER$kobling))*100, digits = 2)) %>% 
+  kable()
+
+```
+
+
+```{r}
+
+L3 <- LENKER %>% 
+  filter(is.na(kobling) & 
+           (KATEGORI == "Samme vegstrekning" | KATEGORI == "Samme veg, ulik strekning"))
+
+# alle lenker er på samme arm (D er lik)
+# table(L3$FRA_D == L3$TIL_D)
+# TRUE 
+# 14998
+
+```
+
+I det tredje trinnet i koblingen håndterer vi trafikklenker der start- og sluttpunkt 
+ligger på samme veg, men der strekningsnumrene er forskjellige. 
+Vi tar også med lenkene der punktene ligger 
+på samme vegstrekning, men der vi ikke har fått treff i trinn en eller to. 
+Dette er `r nrow(L3)` trafikklenker.
+
+```{r}
+
+# #Hva med differansen i strekningsnummer? 
+# 
+# SAMME_VEG <- SAMME_VEG %>% 
+#   mutate(DIFF_S = TIL_S - FRA_S, DIFF_S_ABS = abs(DIFF_S))
+# 
+# SAMME_VEG %>% 
+#   count(DIFF_S_ABS) %>% 
+#   arrange(desc(n))
+# 
+# #1000: en kommunalveg på en brygge, kan slette"6541fa1b-1f27-43b3-a182-da3d15c63e6d"
+# # 45: en kommunalveg inn til noe som ser ut som en rasteplass, kan slette: "efc2c7d3-42b4-49a3-8b99-578570191504"
+# 
+# SAMME_VEG %>% 
+#   filter(DIFF_S_ABS > 1) %>% 
+#   count(FRA_VK)
+
+# Det er noen lenker med mistenkelig stor forskjell i strekningsnummer. 
+# Sjekket den med 1000 og 45, og dette er kommunale veger 
+# som egentlig bare kan slettes da de fører inn til en brygge/rasteplass. 
+# Tar dem med, i tilfelle det blir match likevel.
+
+```
+
+```{r}
+
+L3 <- L3 %>%
+  mutate(DIFF_S = TIL_S - FRA_S, DIFF_S_ABS = abs(DIFF_S))
+
+L3_MED <- L3 %>% 
+  filter(med_metrering == 1)
+
+```
+
+For å kunne bruke logikken at strekningsnummer stiger i samme rekkefølge som metreringsretningen, henter vi først ut lenkene der metreringsretningen er positiv.
+Her bruker vi dummy-variabelen som er fra retningsvariabelen for trafikklenkene (DIRECTION).
+Vi ville forventet at $S_{slutt} \geq S_{start}$ for alle disse lenkene, 
+men det finnes `r sum(L3_MED$DIFF_S < 0)` trafikklenker som bryter med denne logikken.
+Dette er kommunale veger og én fylkesveg.
+
+```{r}
+
+# L3_MED %>% 
+#   filter(DIFF_S < 0) %>% 
+#   count(FRA_VK)
+# 
+# # Bryter ikke disse med logikken?? Undersøk nærmere
+
+L3_MED %>% 
+  filter(DIFF_S < 0 & FRA_VK == "F") %>% 
+  select(lenke_nr, ID, FRA_REF, TIL_REF, med_metrering) %>% 
+  kable()
+
+#e5bd56b5-ec7f-4e84-b5a1-0b22e2eee1f0
+
+```
+
+Fylkesvegen er en ferjeforbindelse, og vi fjerner den, og de kommunale vegene som bryter med logikken, fra koblingstabellen med trafikklenker. 
+I koblingstabellen med RTM-lenker beholder vi alle lenker der 
+start- og sluttpunkt er på samme vegstrekning, eller på samme veg, men ulik strekning. 
+Vi inkluderer ikke RTM-lenkene der det var en 1-1- match med en trafikklenke.
+
+```{r}
+
+L3_MED <- L3_MED %>% filter(DIFF_S >= 0)
+
+C3 <- CUBE %>% 
+  filter(is.na(brukt) | brukt != 1) %>% 
+  filter(KATEGORI == "Samme vegstrekning" | KATEGORI == "Samme veg, ulik strekning")
+
+C3 <- C3 %>% 
+  mutate(DIFF_S = TIL_S - FRA_S)
+
+#C3 %>% count(DIFF_S)
+
+# Strekning både stiger og synker, det stemmer fordi denne tabellen har med Cube-lenker i begge retninger.
+
+```
+
+Videre henter vi ut RTM-lenkene der: 
+1. $S_{slutt} > S_{start}$, eller
+2. $S_{slutt} = S_{start}$ og $retning=1$.
+Dette er for å sikre at RTM-lenkene har samme retning som 
+trafikklenlenke i koblingstabellen, der alle har retning *med* metrering.
+
+```{r}
+C3_MED <- C3 %>% 
+  filter(is.na(SIGN_METRERING) | SIGN_METRERING == 1) %>% 
+  filter(DIFF_S >=0)
+```
+
+
+
+```{r}
+
+# Dobbeltsjekker for begge lenkesett at det stemmer at begge punkter er på samme veg og samme delstrekning (det vi si vegarm).
+
+# # Trafikklenkene:
+# table(L3_MED$FRA_VK_VN == L3_MED$TIL_VK_VN)
+# 
+# table(L3_MED$FRA_D == L3_MED$TIL_D)
+# 
+# #Cube-lenkene:
+# table(C3_MED$FRA_VK_VN == C3_MED$TIL_VK_VN)
+# 
+# table(C3_MED$FRA_D == C3_MED$TIL_D)
+# 
+# #OK!
+
+```
+
+Koblingen av lenker baserer seg på samme metodikk som i avsnittet over, 
+forskjellen er bare at vi håndterer hver retning for seg, og at 
+vi må ta hensyn til strekningsnummeret i tillegg til meterverdien. 
+
+Først kobler vi sammen de to tabellene basert på (kommunenummer) vegkategori og nummer:
+
+```{r, echo=TRUE, eval=FALSE}
+left_join(TRAFIKKLENKER3, RTM_LENKER3, by = c("vegsysref"))
+```
+
+Deretter slettes alle koblede lenker der trafikklenke og RTM-lenke: 
+
+1. ikke er på samme delstrekning, eller
+2. ikke overlapper.
+
+Det er ikke overlapp mellom en trafikklenke og en RTM-lenke hvis: 
+
+1. $S_{slutt, RTM} < S_{start}$ eller $S_{slutt, RTM} = S_{start}, m_{slutt, RTM}\leq m_{start}$, eller hvis
+2. $S_{start, RTM} > S_{slutt}$ eller $S_{start, RTM} = S_{slutt}, m_{start, RTM}\geq m_{slutt}$. 
+
+```{r}
+
+# Kobler basert på kommunenummer + vegkategori + vegnummer 
+K3 <- left_join(L3_MED, C3_MED, by = c("FRA_KOMM_REF"), suffix = c("", "_CUBE"))
+
+# Først slettes rader der trafikklenke og Cube-lenke ikke er på samme arm (forskjellig D):
+# NB! siden FRA_D == TIL_D for trafikklenkene, betyr testen under at de alle er like
+K3 <- K3 %>% filter(FRA_D == FRA_D_CUBE & TIL_D == TIL_D_CUBE)
+
+# Behold koblinger der Cube-lenken overlapper noe av trafikklenkens utstrekning
+# Ingen overlapp hvis: (husk at alle lenker her her MED metrering)
+# 1) til-punktet på Cube-lenken er før fra-punktet på trafikklenken
+# 2) fra-punktet på Cube-lenken er etter til-punktet på trafikklenken 
+#
+
+K3 <- K3 %>% 
+  filter( ! ( (TIL_S_CUBE < FRA_S | (TIL_S_CUBE == FRA_S & TIL_M_CUBE <= FRA_M) ) | 
+              (FRA_S_CUBE > TIL_S | (FRA_S_CUBE == TIL_S & FRA_M_CUBE >= TIL_M)) ) )
+
+```
+
+Vi fikk koblet én eller flere RTM-lenker til `r n_distinct(K3$lenke_nr)` nye trafikklenker 
+på denne måten. Når vi skal koble lenkene i motsatt retning fjerner vi først 
+to enveiskjørte lenker. 
+For trafikklenkene med trafikk i begge retninger snur vi om på start- og sluttpunkt 
+og henter ut tilsvarende lenke fra RTM-tabellen.
+
+```{r message=FALSE}
+
+# > K3 %>% distinct(lenke_nr, RETNING) %>% count(RETNING)
+# # A tibble: 2 x 2
+#   RETNING     n
+#     <dbl> <int>
+# 1       1     2
+# 2       3  1178
+
+# For de lenkene som er toveiskjørte har vi nå en kobling for motsatt veg:
+K3_MOT <- K3 %>% filter(RETNING == 3)
+
+# Snu rekkefølgen
+K3_MOT <- K3_MOT %>% 
+  select(ID, FRA_REF_CUBE, TIL_REF_CUBE, HP_ID) %>% 
+  mutate(A = TIL_REF_CUBE, B = FRA_REF_CUBE) %>% 
+  select(-c(FRA_REF_CUBE, TIL_REF_CUBE))
+
+# Legg til Cube-ID
+K3_MOT <- left_join(K3_MOT, CUBE, by = c("A" = "FRA_REF", "B" = "TIL_REF", "HP_ID" = "HP_ID")) 
+K3_MOT <- filter(K3_MOT, !is.na(ID_CUBE))
+
+# Legg til lenke_nr 
+
+# Disse er brukt med
+lenker_id_med <- K3 %>% 
+  mutate(ny_id = paste(lenke_nr, ID)) %>% 
+  pull(ny_id)
+
+lenke_nummer <- LENKER %>% 
+  select(lenke_nr, ID) %>% 
+  mutate(ny_id = paste(lenke_nr, ID)) %>% 
+  filter(ID %in% K3_MOT$ID) %>% 
+  filter( !(ny_id %in% lenker_id_med) ) %>% 
+  select(lenke_nr, ID)
+
+K3_MOT <- left_join(K3_MOT, lenke_nummer, by = "ID")
+
+# Behold kun koblingen og ÅDT
+K3_MED <- K3 %>% distinct(lenke_nr, ID, ID_CUBE, AADT_ALLE, AADT_TUNGE, AADT_LETTE)
+
+K3_MOT <- K3_MOT %>% distinct(lenke_nr, ID, ID_CUBE, AADT_ALLE, AADT_TUNGE, AADT_LETTE)
+
+# Slå sammen
+K3 <- bind_rows(K3_MED, K3_MOT)
+
+K3 <- K3 %>% mutate(kobling = 3)
+
+```
+
+```{r}
+
+LENKER$kobling[LENKER$lenke_nr %in% K3$lenke_nr] <- 3
+
+# Noen Cube-lenker er brukt tidligere
+CUBE <- CUBE %>% mutate(brukt3 = NA_integer_)
+
+CUBE$brukt3[CUBE$ID_CUBE %in% K3$ID_CUBE] <- 3
+
+K <- bind_rows(K, K3)
+
+```
+
+Vi fikk koblet ÅDT til alle de `r n_distinct(K3_MOT$lenke_nr)` trafikklenkene med negativ metreringsretning. Tabellen under viser et eksempel på at 
+en trafikklenke fra $S1D1\ m0$ til $S2D1\ m428$ på K-veg 5780 har fått 
+koblet på to RTM-lenker. RTM-lenkene er splittet der strekningsnummeret går fra 1 til 2 
+og meter-verdien fra $m = 1111$ til $m = 0$.
+
+```{r message=FALSE}
+
+eksempel <- LENKER %>% 
+  filter(ID == "03613985-f784-40a5-8907-bb0e93925c89") %>% 
+  select(lenke_nr, FRA_REF, TIL_REF, med_metrering)
+
+eksempel2 <- K3 %>% 
+  filter(lenke_nr %in% eksempel$lenke_nr) 
+
+eks <- CUBE %>% 
+  filter(ID_CUBE %in% eksempel2$ID_CUBE) %>% 
+  select(ID_CUBE, FRA_REF, TIL_REF)
+
+left_join(eksempel2, eksempel) %>% select(lenke_nr, med_metrering, ID_CUBE, FRA_REF, TIL_REF) %>% left_join(.,eks, by = "ID_CUBE", suffix = c("", "_RTM")) %>% kable()
+
+```
+
+Hvordan trafikklenkene med match i trinn tre fordeler seg på de ulike kategoriene vises i Tabell \@ref(tab:kobling3-tabell-kategori) og for vegklasser i Tabell \@ref(tab:kobling3-tabell-vegklasse).
+
+```{r kobling3-tabell-kategori}
+
+LENKER %>% 
+  filter(lenke_nr %in% K3$lenke_nr) %>% 
+  count(KATEGORI) %>% 
+  arrange(desc(n)) %>% 
+  select(KATEGORI, `ANTALL LENKER` = n) %>% 
+  kable(caption = "Kategorisering av trafikklenkene som fikk påkoblet RTM-lenke i tredje trinn.")
+
+
+```
+
+```{r kobling3-tabell-vegklasse}
+
+LENKER %>% 
+  filter(lenke_nr %in% K3$lenke_nr) %>% 
+  count(FRA_VK) %>% 
+  arrange(desc(n)) %>% 
+  select(VEGKLASSE = FRA_VK, `ANTALL LENKER` = n) %>% 
+  kable(caption = "Vegklasse for trafikklenkene som fikk påkoblet RTM-lenke i tredje trinn.")
+
+
+```
+
+### Trafikklenker uten treff i RTM
+
+Gjennom steg en til tre beskrevet i de foregående avsnittene har det 
+blitt koblet RTM-lenker til `r round(sum(!is.na(LENKER$kobling))/nrow(LENKER)*100)` 
+prosent av trafikklenkene. 
+Det gjenstår å få treff for `r sum(is.na(LENKER$kobling))` trafikklenker. 
+Tabell \@ref(tab:rest-lenker) viser hvordan de fordeler seg på vegklasse.
+
+```{r rest-lenker}
+LENKER %>% 
+  filter(is.na(kobling)) %>% 
+  count(FRA_VK) %>% 
+  mutate(p = round(n/sum(is.na(LENKER$kobling))*100, digits = 2)) %>% 
+  select(VEGKLASSE = FRA_VK, ANTALL = n, PROSENT = p) %>% 
+  kable(caption = "Vegklasse for trafikklenker uten treff på RTM-lenke.")
+
+```
+
+Vi ser at det i hovedsak er kommunale veger der det ikke har blitt noe treff.
+Tabell \@ref(tab:rest-lenker-kategori) viser hvordan lenkene fordeler seg på kategori.
+
+```{r rest-lenker-kategori}
+LENKER %>% 
+  filter(is.na(kobling)) %>% 
+  count(KATEGORI) %>% 
+  mutate(p = round(n/sum(is.na(LENKER$kobling))*100, digits = 2)) %>% 
+  select(KATEGORI, ANTALL = n, PROSENT = p) %>% 
+  kable(caption = "Kategori for trafikklenker uten treff på RTM-lenke.")
+
+```
+
+De fleste lenkene er i kategorien samme vegstrekning og skulle i utgangspunktet vært enkle 
+å koble sammen. 
+
+At vi ikke har fått treff kan skyldes flere ting: 
+
+* RTM-lenke mangler ny vegsystemreferanse,
+* det er noe feil med vegsystemreferansen enten for trafikklenke eller RTM-lenke,
+* vegen fantes ikke i 2018.
+
+I gjennomgangen av vegnettsgrafen så vi at det var mange mindre kommunale veger som 
+ikke hang sammen med hovedkomponenten fordi lenker enten manglet eller det var noe rart med kryss-nodene eller retningen. 
+
+#### ERF-veger uten treff i steg 1-3
+
+```{r}
+
+ERF_missing <- LENKER %>% filter(is.na(kobling) & FRA_VK != "K")
+
+```
+
+I dette avsnittet fokuserer vi på ERF-vegene og får et mindre lenkesett å jobbe med. 
+Det er totalt `r n_distinct(ERF_missing$ID)` urettede trafikklenker. 
+Tabellen under viser hvor mange det er i hver kategori.
+
+```{r}
+ERF_missing %>% 
+  distinct(ID, KATEGORI) %>% 
+  count(KATEGORI) %>% 
+  kable()
+```
+
+Vi vet at en del av disse lenkene tilhører den nye Ryfast-forbindelsen, 
+som ikke finnes i 2018-nettverket. Disse får manglende ÅDT-verdi, med en kommentar om 
+hvorfor.
+
+```{r}
+
+# ERF_missing %>% 
+#   filter(med_metrering == 1) %>% 
+#   count(FRA_VK_VN_SD) %>% 
+#   arrange(desc(n)) %>% 
+#   head() %>% 
+#   kable()
+```
+
+**EIGANESTUNNELEN - E39 S100D1** 
+
+```{r message=FALSE}
+library(tmap)
+tmap_mode("view")
+
+e39 <- ERF_missing %>% filter(FRA_VK_VN_SD == "E39 S100D1") %>% select(lenke_nr, ID)
+
+tm_shape(filter(trafikklenker, ID %in% e39$ID)) +
+  tm_lines()
+# 
+# tm_shape(filter(trafikklenker, ID == "c8c61432-1821-4784-b4fb-5f23e458a11e")) +
+#   tm_lines()
+
+NYE_VEGER <- e39 %>% mutate(merknad = "Eiganestunnelen")
+
+# en rampe som ikke er i CUBE
+NYE_VEGER$merknad[NYE_VEGER$ID == "c8c61432-1821-4784-b4fb-5f23e458a11e"] <- "Ny rampe ved Stavanger"
+
+ERF_missing <- filter(ERF_missing, !(ID %in% NYE_VEGER$ID))
+
+```
+
+**HUNDVÅGTUNNELEN - R13 S1D1**
+
+```{r}
+
+r13 <- ERF_missing %>% filter(FRA_VK_VN_SD == "R13 S1D1") %>% select(lenke_nr, ID)
+
+tm_shape(filter(trafikklenker, ID %in% r13$ID)) +
+  tm_lines()
+
+NYE_VEGER2 <- r13 %>% mutate(merknad = "Hundvågtunnelen")
+
+NYE_VEGER <- bind_rows(NYE_VEGER, NYE_VEGER2)
+
+rm(NYE_VEGER2)
+
+ERF_missing <- filter(ERF_missing, !(ID %in% NYE_VEGER$ID))
+
+```
+
+**RYFYLKETUNNELEN - R13 S2D1**
+
+```{r}
+
+#S2
+r13 <- ERF_missing %>% filter(FRA_VK_VN_SD == "R13 S2D1") %>% select(lenke_nr, ID)
+
+tm_shape(filter(trafikklenker, ID %in% r13$ID)) +
+  tm_lines()
+
+NYE_VEGER2 <- r13 %>% mutate(merknad = "Ryfylketunnelen")
+
+NYE_VEGER <- bind_rows(NYE_VEGER, NYE_VEGER2)
+
+rm(NYE_VEGER2)
+
+ERF_missing <- filter(ERF_missing, !(ID %in% NYE_VEGER$ID))
+
+
+
+```
+
+**Kollektivfelt**
+
+Det er også noen kollektivfelt/bussveier med, disse anser vi som ikke viktige.
+
+```{r message=FALSE, warning=FALSE}
+
+kollektivfelt <- read_delim(here::here("data/kollektivfelt.csv"), ";", escape_double = FALSE, trim_ws = TRUE)
+
+stedfesting <- st_read(here::here("data/triona/Trafikklenker_20210317104831.gpkg"), layer = "Trafikklenker_stedfesting", quiet = T)
+
+stedfesting <- stedfesting %>% mutate(VEGLENKESEKVENSID = as.numeric(ELEMENT_ID))
+
+stedfesting <- filter(stedfesting, VEGLENKESEKVENSID %in% kollektivfelt$VEGLENKESEKVENSID)
+
+# match på veglenkesekvens og posisjon
+stedfesting <- left_join(stedfesting, kollektivfelt, 
+                         by = c("VEGLENKESEKVENSID" = "VEGLENKESEKVENSID", 
+                                "START_MEASURE" = "STARTPOSISJON", 
+                                "END_MEASURE" = "SLUTTPOSISJON"))
+
+id_kollektivfelt <- unique(stedfesting$FEATURE_OID)
+
+id_kollektivfelt <- id_kollektivfelt[id_kollektivfelt %in% ERF_missing$ID]
+
+tm_shape(filter(trafikklenker, ID %in% id_kollektivfelt)) +
+  tm_lines()
+
+koll <- ERF_missing %>% filter(ID %in% id_kollektivfelt) %>% select(ID, lenke_nr)
+
+NYE_VEGER2 <- koll %>% mutate(merknad = "Kollektivfelt")
+
+NYE_VEGER <- bind_rows(NYE_VEGER, NYE_VEGER2)
+
+rm(NYE_VEGER2)
+
+NYE_VEGER <- bind_rows(NYE_VEGER, 
+                       tibble(lenke_nr = c("20621", "20622"),
+                              ID = c("30d521d8-110d-45e7-a9c1-80e56a8438c6",                                                       "30d521d8-110d-45e7-a9c1-80e56a8438c6"), 
+                              merknad = c("Ny ferje fra Lauvvik", "Ny ferje fra Lauvvik")))
+
+ERF_missing <- filter(ERF_missing, !(ID %in% NYE_VEGER$ID))
+
+
+```
+
+
+Ved Ryfast-forbindelsen fant vi også en (bestillings-)fergeforbindelse, 
+denne finnes ikke i RTM-nettverket. 
+
+Tabellen under viser antall lenker som det stemmer at vi ikke får påkoblet noen ÅDT-verdi. 
+I alt utgjør dette `r nrow(NYE_VEGER)` rettede trafikklenker. Vi kunne omkodet et fergesamband til 
+Ryfylketunnelen, men det finnes ingen tilsvarende erstatning for de andre tunnelene 
+og det vil heller ikke gi riktig trafikkmengde. De manglende ÅDT-verdiene må 
+håndteres av den statistiske modelleringen og balanseringsalgoritmen.
+
+```{r}
+NYE_VEGER %>% 
+  count(merknad) %>% 
+  arrange(desc(n)) %>% 
+  kable()
+```
+
+Vi gir disse lenkene koblingskode 0. Tabellen under gir en oversikt over 
+ERF-lenker som har fått koblet til RTM-lenker i de ulike trinnene.
+
+```{r}
+
+LENKER$kobling[LENKER$lenke_nr %in% NYE_VEGER$lenke_nr] <- 0
+
+LENKER %>% 
+  filter(FRA_VK != "K") %>% 
+  count(kobling) %>% 
+  kable()
+
+ERF_missing <- LENKER %>% filter(is.na(kobling) & FRA_VK != "K")
+
+```
+
+ERF-lenkene som gjenstår fordeler seg på kategoriene våre som følger:
+
+```{r}
+ERF_missing %>% 
+  distinct(ID, KATEGORI) %>% 
+  count(KATEGORI) %>% 
+  kable()
+
+#Dette er en vei ned til en rasteplass: "49142c06-aaed-4371-a098-f469b5d2cd21"
+```
+
+Lenker fra kategoriene under ble undersøkt nærmere i QGIS:
+
+* feil med referanse (5),
+* samme veg, ulik strekning (3),
+* ulik veg- eller kryssdel (3).
+
+For fire av lenkene med feil referanse og alle med referanser på samme veg, 
+men ulik strekning 
+ble det funnet en korresponderende RTM-lenke og det ble laget en tabell over koblingene. 
+For de andre lenkene var det ingen naturlige koblinger. 
+
+```{r message=FALSE}
+tabell_manuell_kobling <- read_delim(here::here("tabell_manuell_kobling.csv"),
+                                     ";",
+                                      col_types = cols(lenke_nr = col_character()),
+                                     escape_double = FALSE,
+                                     trim_ws = TRUE)
+
+#kable(tabell_manuell_kobling)
+```
+
+
+```{r message=FALSE}
+
+K4 <- tabell_manuell_kobling %>% 
+  select(lenke_nr, ID, ID_CUBE)
+
+# Legg til ÅDT
+K4 <- left_join(K4, CUBE_RAW, by = "ID_CUBE")
+
+K4 <- K4 %>% 
+  select(lenke_nr, ID, ID_CUBE, AADT_ALLE, AADT_TUNGE, AADT_LETTE)
+
+K4 <- K4 %>% mutate(kobling = 4)
+
+LENKER$kobling[LENKER$lenke_nr %in% K4$lenke_nr] <- 4
+
+CUBE <- CUBE %>% mutate(brukt4 = NA_integer_)
+
+CUBE$brukt4[CUBE$ID_CUBE %in% K4$ID_CUBE] <- 4
+
+K <- bind_rows(K, K4)
+
+```
+
+Vi gir lenkene som er koblet ved hjelp av inspeksjon i QGIS koblingskode 4.
+
+```{r}
+
+#ERF_missing <- LENKER %>% filter(is.na(kobling) & FRA_VK != "K")
+
+#lenke_sjekk <- LENKER %>% filter(FRA_VK != "K" & is.na(kobling)) %>%  pull(lenke_nr)
+
+
+# tm_shape(filter(trafikklenker, lenke_nr %in% lenke_sjekk)) +
+#   tm_lines()
+```
+
+
+```{r}
+
+# # En del av lenkene på kartet over burde ha en ÅDT-verdi, særlig de lange.
+# # Vi forsøker derfor å finne treff basert på geometriene. 
+# 
+# # Les inn data som trengs for geometrisk kobling
+# 
+# kryss <- st_read(here::here(path_gpkg), layer = 'kryss', quiet = TRUE)
+# 
+# cube_lenker <- st_read(here::here("data/cube/CUBE_AADT.gpkg"), "cube_lenker", quiet = TRUE)
+# 
+# cube_noder <- st_read(here::here("data/cube/CUBE_AADT.gpkg"), "cube_noder", quiet = TRUE)
+# 
+# # Hent ut lenkene som skal kobles
+# 
+# ERF_lenker <- trafikklenker %>% filter(ID %in% ERF_missing$ID)
+# 
+# ERF_lenker <- st_buffer(ERF_lenker, 2)
+# 
+# # hvilke RTM-lenker er innenfor bufferen?
+# 
+# #overlapp <- st_covers(ERF_lenker, cube_lenker)
+# 
+# overlapp <- st_covered_by(cube_lenker, ERF_lenker)
+# 
+# ind <- lengths(overlapp) > 0
+# 
+# #ERF_lenker <- ERF_lenker[ind, ]
+# 
+# cube_lenker <- cube_lenker[ind, ]
+# 
+# overlapp <- overlapp[ind]
+# 
+# # Kobling = 5, geometrisk
+# 
+# K5 <- tibble(
+#   lenke_nr = ERF_lenker$lenke_nr,
+#   ID = ERF_lenker$ID,
+#   START_NODE_OID = ERF_lenker$START_NODE_OID,
+#   END_NODE_OID = ERF_lenker$END_NODE_OID,
+#   ID_CUBE = NA_real_,
+#   AADT_ALLE = NA_real_,
+#   AADT_TUNGE = NA_real_,
+#   AADT_LETTE = NA_real_) 
+# 
+# 
+# for(i in 1:nrow(K5)) {
+#   
+#   aadt <- cube_lenker[overlapp[[i]],]
+#   
+#   # velg lenken med samme retning som kjørelenken
+#   
+#   a <- filter(kryss, FEATURE_OID == K5$START_NODE_OID[i])
+#   b <- filter(kryss, FEATURE_OID == K5$END_NODE_OID[i])
+#   
+#   retning <- sign(st_coordinates(b) - st_coordinates(a))
+#   
+#   a_cube <- cube_noder[match(aadt$ANODE, cube_noder$HNR),]
+#   b_cube <- cube_noder[match(aadt$BNODE, cube_noder$HNR),]
+#   
+#   retning_cube <-
+#     sign(st_coordinates(b_cube) - st_coordinates(a_cube))
+#   
+#   r <- which(apply(retning_cube, 1, identical, retning[1, ]))
+#   
+#   aadt <- st_drop_geometry(aadt)
+#   
+#   if(length(r) == 1) {
+#     K5$ID_CUBE[i] <- as.numeric(aadt[r, "id"])
+#     K5$AADT_ALLE[i] <- aadt[r, "AADT_ALLE"]
+#     K5$AADT_TUNGE[i] <- aadt[r, "AADT_TUNGE"]
+#     K5$AADT_LETTE[i] <- aadt[r, "AADT_LETTE"]
+#     
+#   }
+#   
+# }
+# 
+# K5 <- K5 %>% 
+#   filter(!is.na(ID_CUBE)) %>% 
+#   select(-c(START_NODE_OID, END_NODE_OID)) %>% 
+#   mutate(kobling = 5)
+# 
+
+
+```
+
+### Kobling basert på kryssnode-koordinater
+
+```{r message=FALSE}
+
+# Les inn data som trengs for geometrisk kobling basert på kryss-nodene
+
+kryss <- st_read(here::here(path_gpkg), layer = 'kryss', quiet = TRUE)
+
+cube_lenker <- st_read(here::here("data/cube/CUBE_AADT.gpkg"), "cube_lenker", quiet = TRUE)
+
+cube_noder <- st_read(here::here("data/cube/CUBE_AADT.gpkg"), "cube_noder", quiet = TRUE)
+
+# trafikklenker som ikke har fått koblet til ÅDT
+
+lenker_mangler <- trafikklenker %>% filter(!(ID %in% K$ID))
+
+# Koordinater for kryss
+
+kryss_xy  <- st_coordinates(kryss)
+
+kryss_start <- tibble(
+  id_start = kryss$FEATURE_OID,
+  x_start = kryss_xy[, 1],
+  y_start = kryss_xy[, 2]
+)
+
+kryss_end <- tibble(
+  id_end = kryss$FEATURE_OID, 
+  x_end = kryss_xy[, 1], 
+  y_end = kryss_xy[, 2])
+
+# legg til koordinater for start
+lenker_mangler <- left_join(lenker_mangler, 
+                            kryss_start, 
+                            by = c("START_NODE_OID" = "id_start"))
+
+# legg til koordinater for end
+lenker_mangler <- left_join(lenker_mangler, 
+                            kryss_end, 
+                            by = c("END_NODE_OID" = "id_end"))
+
+# Koordinater for noder
+noder_xy <- st_coordinates(cube_noder)
+
+
+noder_start <- tibble(id_start = cube_noder$HNR, 
+                      x_start = noder_xy[, 1], 
+                      y_start = noder_xy[, 2])
+
+noder_end <- tibble(id_end = cube_noder$HNR, 
+                    x_end = noder_xy[, 1], 
+                    y_end = noder_xy[, 2])
+
+# Legg til koordinater for start
+cube_lenker <- left_join(cube_lenker, noder_start, by = c("ANODE" = "id_start"))
+
+# Legg til koordinater for end
+cube_lenker <- left_join(cube_lenker, noder_end, by = c("BNODE" = "id_end"))
+
+# Behold bare id-er og koordinater
+X <- lenker_mangler %>% 
+  st_drop_geometry() %>% 
+  select(lenke_nr, ID, x_start, y_start, x_end, y_end)
+
+
+Y <- cube_lenker %>% 
+  st_drop_geometry() %>% 
+  select(ID_CUBE = id, x_start, y_start, x_end, y_end, AADT_ALLE, AADT_TUNGE, AADT_LETTE)
+
+# Merge tabeller
+K5 <- left_join(X, Y)
+
+K5 <- filter(K5, !is.na(ID_CUBE))
+
+K5 <- K5 %>% mutate(ID_CUBE = as.numeric(ID_CUBE))
+
+K5 <- K5 %>% select(lenke_nr, ID, ID_CUBE, AADT_ALLE, AADT_TUNGE, AADT_LETTE)
+
+K5 <- K5 %>% mutate(kobling = 5)
+
+```
+
+
+```{r}
+LENKER$kobling[LENKER$lenke_nr %in% K5$lenke_nr] <- 5
+
+CUBE <- CUBE %>% mutate(brukt5 = NA_integer_)
+
+CUBE$brukt5[CUBE$ID_CUBE %in% K5$ID_CUBE] <- 5
+
+K <- bind_rows(K, K5)
+```
+
+```{r}
+# ERF_missing <- LENKER %>% filter(is.na(kobling) & FRA_VK != "K")
+# 
+# tm_shape(filter(trafikklenker, lenke_nr %in% ERF_missing$lenke_nr)) +
+#   tm_lines()
+```
+
+I siste koblingsførsøk, trinn fem, bruker vi koordinatene for kryssnodene i de to nettverkene og kobler sammen lenker som ikke allerede har en match. Det vil si lenker der start- og sluttnodene i RTM-nettverket er identiske med start- og sluttnode i vegnettsgrafen. 
+Grunnen til at vi gjør dette er at vi nå kan få med RTM-lenker der oppslag på vegsystemreferansen ikke hadde gitt noe treff.
+
+Vi fikk koblet til RTM-lenker for `r sum(LENKER$kobling == 5, na.rm = T)` nye trafikklenker. 
+Hvordan disse seg på de ulike kategoriene vises i Tabell \@ref(tab:kobling5-tabell-kategori) og for vegklasser i Tabell \@ref(tab:kobling5-tabell-vegklasse).
+
+```{r kobling5-tabell-kategori}
+
+LENKER %>% 
+  filter(lenke_nr %in% K5$lenke_nr) %>% 
+  count(KATEGORI) %>% 
+  arrange(desc(n)) %>% 
+  select(KATEGORI, `ANTALL LENKER` = n) %>% 
+  kable(caption = "Kategorisering av trafikklenkene som fikk påkoblet RTM-lenke i tredje trinn.")
+
+
+```
+
+```{r kobling5-tabell-vegklasse}
+
+LENKER %>% 
+  filter(lenke_nr %in% K5$lenke_nr) %>% 
+  count(FRA_VK) %>% 
+  arrange(desc(n)) %>% 
+  select(VEGKLASSE = FRA_VK, `ANTALL LENKER` = n) %>% 
+  kable(caption = "Vegklasse for trafikklenkene som fikk påkoblet RTM-lenke i tredje trinn.")
+
+
+```
+
+### Oppsummering
+
+```{r message=FALSE}
+K_oppsummert <- K %>% 
+  group_by(lenke_nr, ID, kobling) %>% 
+  summarise(# Alle
+            AADT_ALLE_MIN = min(AADT_ALLE), 
+            AADT_ALLE_MAX = max(AADT_ALLE),
+            AADT_ALLE_MEAN = mean(AADT_ALLE),
+            # Tunge
+            AADT_TUNGE_MIN = min(AADT_TUNGE), 
+            AADT_TUNGE_MAX = max(AADT_TUNGE),
+            AADT_TUNGE_MEAN = mean(AADT_TUNGE),
+            # Lette
+            AADT_LETTE_MIN = min(AADT_LETTE), 
+            AADT_LETTE_MAX = max(AADT_LETTE),
+            AADT_LETTE_MEAN = mean(AADT_LETTE)) %>% 
+  ungroup()
+
+AADT_tabell <- LENKER %>% 
+  select(lenke_nr, ID) %>% 
+  filter(!(lenke_nr %in% K_oppsummert$lenke_nr)) %>% 
+  mutate(
+    # Kobling
+    kobling = NA_real_,
+    # Alle
+    AADT_ALLE_MIN = NA_real_, 
+    AADT_ALLE_MAX = NA_real_,
+    AADT_ALLE_MEAN = NA_real_,
+    # Tunge
+    AADT_TUNGE_MIN = NA_real_, 
+    AADT_TUNGE_MAX = NA_real_,
+    AADT_TUNGE_MEAN = NA_real_,
+    # Lette
+    AADT_LETTE_MIN = NA_real_, 
+    AADT_LETTE_MAX = NA_real_,
+    AADT_LETTE_MEAN = NA_real_)
+
+AADT_tabell <- bind_rows(AADT_tabell, K_oppsummert)
+
+# Disse er OK at ikke har match
+AADT_tabell$kobling[AADT_tabell$lenke_nr %in% NYE_VEGER$lenke_nr] <- 0
+
+# Legg til merknad for nye veger
+AADT_tabell <- left_join(AADT_tabell, NYE_VEGER)
+
+AADT_tabell <- AADT_tabell %>% 
+  arrange(as.numeric(lenke_nr))
+
+
+#write_delim(AADT_tabell, "C:/Users/rii/Documents/Mine R prosjekter/aadt/data/region-vest/2021_04/trafikklenker_aadt_fra_RTM.csv", delim = ";")
+
+trafikklenker_aadt <- left_join(trafikklenker, AADT_tabell)
+
+#st_write(trafikklenker_aadt, here::here(path_gpkg), layer = 'lenker_med_aadt')
+
+```
+
+```{r}
+# stedfestingstabell
+#stedfesting <- st_read(here::here("data/triona/Trafikklenker_20210317104831.gpkg"), layer = "Trafikklenker_stedfesting", quiet = T)
+
+#st_write(stedfesting, here::here(path_gpkg), layer = 'trafikklenker_stedfesting')
+
+```
+
+Helt avslutningsvis fikset vi kobling ved hjelp av inspeksjon i QGIS for en håndfull lenker - to ferjesamband og noen lenker på E39 - disse ble lagt til med koblingskode 4. 
+Tabell \@ref(tab:oppsummering) viser antall trafikklenker som har fått påkoblet RTM-lenker (og nettutlagt ÅDT i de ulike trinnene). 
+
+```{r oppsummering}
+trafikklenker_aadt %>% 
+  st_drop_geometry() %>% 
+  count(kobling) %>% 
+  kable(caption = "Antall lenker med kobling i de ulike trinnene.")
+```
+
+Det har vært treff for `r round(sum(!is.na(trafikklenker_aadt$kobling)) / nrow(trafikklenker_aadt)*100)` prosent av alle trafikklenkene (inkludert de der koden er 0 fordi vegen ikke eksisterte i 2018).
+
+Tabell \@ref(tab:uten-match) viser vegkategori for trafikklenker uten match i RTM-nettverket. 
+Det er i all hovedsak kommunale veger. 
+
+```{r uten-match}
+trafikklenker_aadt %>% 
+  st_drop_geometry() %>% 
+  filter(is.na(kobling)) %>% 
+  count(ROADREF_CATEGORY) %>% 
+  kable(caption = "Vegklasse til lenker uten match i RTM-nettverket.")
+```
+
+ERF-lenker uten match er i hovedsak kryss-systemer der oppsplitting er annerledes i de to nettverkene og lenker som er mindre viktige (sideveier). Men det finnes også lenker der vi burde hatt treff, men der endringer i TNE-databasen fra 2018 til 2021 gjør at det ikke blir det likevel. Disse lenkene får missing ÅDT. 
+
+Merk at før vi valgte å koble via vegsystemreferanse prøvde vi å bruke veglenkesekvens id og posisjon fra stedfestingstabellen og å bruke GIS-operasjoner på geometriene. 
+Dette fungerte dårlig fordi stedfestingstabellen mangler retningsinformasjon, 
+og oppsplitting og avvik mellom nettverkene gjorde det vanskelig å bruke GIS (st_intersects, st_overlaps, etc.). Med metodikken vi har benyttet har vi ved hjelp av metreringsverdien kunnet sørge for at ÅDT i riktig retning kobles til trafikklenkene. 
+
+Nettutlagt ÅDT beregnes som minimums, maksimums og gjennomsnittverdier over alle RTM-lenker som er påkoblet aktuelle trafikklenke. 
+
+*Legge til kart med ÅDT på lenker?*
