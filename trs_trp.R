@@ -62,6 +62,8 @@ trs_with_trp_via_sensorconfig <- get_all_trs_with_trp_via_sensorconfig()
 # TRPs and lanes ----
 trp <- get_points()
 
+trp_latest_data <- get_trps_latest_data()
+
 trp_tidy <- trp %>%
   dplyr::distinct(trp_id, .keep_all = T) %>%
   dplyr::select(trp_id, name, traffic_type, registration_frequency,
@@ -70,7 +72,11 @@ trp_tidy <- trp %>%
   dplyr::mutate(name = stringr::str_to_title(name, locale = "no")) %>%
   dplyr::rowwise() %>%
   dplyr::mutate(lanes = toString(lane_numbers)) %>%
-  dplyr::select(-lane_numbers)
+  dplyr::select(-lane_numbers) %>%
+  dplyr::left_join(
+    trp_latest_data,
+    by = "trp_id"
+  )
 
 writexl::write_xlsx(trp_tidy, path = "trs_trp/punkter_med_feltnummer.xlsx")
 
@@ -640,6 +646,150 @@ trp_device_history <-
 
 saveRDS(trp_device_history,
         file = "trs_trp/trp_device_types.rds")
+
+trp_device_history <-
+  readRDS(
+    file = "trs_trp/trp_device_types.rds"
+    )
+
+# TRS with EMU ----
+recalculated_trs <-
+  read.csv2(
+    "H:/Programmering/R/byindeks/recalculated_trs.csv"
+  ) %>%
+  dplyr::mutate(
+    trs_id = as.character(trs_id)
+  )
+
+trs_with_emu <-
+  trp_device_history %>%
+  dplyr::filter(
+    device_type == "EMU"
+  ) %>%
+  tidyr::replace_na(
+    list(
+      valid_to = lubridate::today()
+    )
+  ) %>%
+  dplyr::mutate(
+    valid_from =
+      lubridate::floor_date(
+        valid_from,
+        unit = "day"
+      ),
+    valid_to =
+      lubridate::floor_date(
+        valid_to,
+        unit = "day"
+    ),
+    start = as.character(valid_from),
+    end = as.character(valid_to),
+    first_day_in_2021 =
+      dplyr::case_when(
+        start < "2021-01-01" ~ "2021-01-01",
+        start < "2022-01-01" ~ start,
+        TRUE ~ NA_character_
+      ),
+    last_day_in_2021 =
+      dplyr::case_when(
+        end > "2021-12-31" ~ "2021-12-31",
+        end > "2021-01-01" ~ end,
+        TRUE ~ NA_character_
+      ),
+    first_day_in_2021 = as.Date(first_day_in_2021),
+    last_day_in_2021 = as.Date(last_day_in_2021)
+  ) %>%
+  tidyr::replace_na(
+    list(
+      first_day_in_2021 = as.Date("2021-12-31"),
+      last_day_in_2021 = as.Date("2021-01-01")
+    )
+  ) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(
+    n_days =
+      length(
+        seq(
+          valid_from,
+          valid_to,
+          by = "day"
+        )
+      ),
+    n_days_2021 =
+      length(
+        seq(
+          first_day_in_2021,
+          last_day_in_2021,
+          by = "day"
+        )
+      ),
+    n_days_2021 =
+      replace(
+        n_days_2021,
+        last_day_in_2021 == "2021-01-01",
+        0
+      ),
+    n_days_2021 =
+      replace(
+        n_days_2021,
+        first_day_in_2021 == "2021-12-31",
+        0
+      )
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(
+    trs_id,
+    trp_id,
+    n_days,
+    n_days_2021
+  ) %>%
+  dplyr::group_by(
+    trs_id,
+    trp_id
+  ) %>%
+  dplyr::summarise(
+    n_days = sum(n_days),
+    n_days_2021 = sum(n_days_2021)
+  ) %>%
+  dplyr::group_by(
+    trs_id,
+    n_days,
+    n_days_2021
+  ) %>%
+  dplyr::summarise(
+    n_trp = n()
+  ) %>%
+  dplyr::left_join(
+    trs_info_all,
+    by = "trs_id"
+  ) %>%
+  dplyr::select(
+    geo_no,
+    county_name,
+    municipality_name,
+    trs_id,
+    name,
+    road_category,
+    road_reference,
+    status,
+    traffic_type,
+    registration_frequency,
+    n_days,
+    n_days_2021,
+    n_trp
+  ) %>%
+  dplyr::filter(
+    traffic_type == "VEHICLE"
+  ) %>%
+  dplyr::arrange(
+    geo_no,
+    desc(n_days_2021)
+  ) %>%
+  dplyr::left_join(
+    recalculated_trs,
+    by = "trs_id"
+  )
+
 
 # TRS and sensorconfig errors ----
 sensorconfig_errors <- get_all_trs_with_trp_via_sensorconfig() %>%

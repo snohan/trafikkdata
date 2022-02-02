@@ -32,3 +32,4 @@ vbv_data
 vehicle_registry_api_key.R
 nr_gpkg
 knowit
+*.geojson

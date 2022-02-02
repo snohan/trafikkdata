@@ -1,6 +1,7 @@
 # Create a geopackage-file containing directed links with aadt
 
-# Framgangsmåte for å lage vegnettsgraf, steg 1 i ÅDT-modulen
+# Framgangsmåte ----
+# Lag vegnettsgraf, steg 1 i ÅDT-modulen
 #
 # 1. Først isoleres hovedkomponenten i vegnettet gjennom en nettverksanalyse på
 #    samlingen av trafikklenker og kryss (NR-kode).
@@ -23,13 +24,30 @@
 # 6. Den nye vegnettsgrafen med tilhørende attributter sammenstilles til en GeoPackagefil.
 
 
-# Problemer
+# Problemer ----
 #
 # 1. TØI laget en liste med lenker som skulle fjernes. ID-ene er endret, så disse kan ikke
 #    fjernes slik de er angitt nå. Er dette fortsatt nødvendig? Finnes det andre lenker som burde plukkes vekk?
 #
 # 2. Grafen er veldig usammenhengende med sine over 2 000 komponenter.
 #    Vi burde sjekke alle løse vegnettsdeler - skulle de vært en del av hovedkomponenten?
+#    Det er tre komponenter som må kobles på.
+#
+# 3. Transportmodell-ÅDT er bare koblet på for Region Vest tidligere. Nå skulle vi gjort det for hele landet.
 
 
-# Isolate main component and make directed links ----
+# Tasks ----
+#
+# 1. Isolate main component and clean it DONE
+#
+# 2. Use just Region vest, i.e. Rogaland and Vestland
+#
+# 3. Make directed links
+#
+# 4. Add AADT
+
+
+
+
+
+
