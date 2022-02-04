@@ -598,6 +598,9 @@ writexl::write_xlsx(all_trs, path = "all_stations.xlsx")
 trs_info_all <- get_trs_info()
 writexl::write_xlsx(trs_info_all, path = "trs_trp/all_stations.xlsx")
 
+trs_info_all <-
+  readxl::read_xlsx(path = "trs_trp/all_stations.xlsx")
+
 # TRS history ----
 # History of commission, device:
 trs_history <- get_trs_history()
@@ -664,7 +667,9 @@ recalculated_trs <-
 trs_with_emu <-
   trp_device_history %>%
   dplyr::filter(
-    device_type == "EMU"
+    device_type == "EMU",
+    # Some trps are not public
+    trp_id %in% trp$trp_id
   ) %>%
   tidyr::replace_na(
     list(
@@ -790,6 +795,23 @@ trs_with_emu <-
     by = "trs_id"
   )
 
+writexl::write_xlsx(
+  trs_with_emu,
+  path = "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Spesialuttak/stasjoner_med_emu3.xlsx"
+)
+
+recalculated_trs <- trs_with_emu %>%
+  dplyr::filter(
+    recalculated == TRUE
+  )
+
+to_be_recalculated_trs <- trs_with_emu %>%
+  dplyr::filter(
+    recalculated != TRUE | is.na(recalculated)
+  )
+
+nrow(recalculated_trs) /
+  nrow(trs_with_emu) * 100
 
 # TRS and sensorconfig errors ----
 sensorconfig_errors <- get_all_trs_with_trp_via_sensorconfig() %>%
