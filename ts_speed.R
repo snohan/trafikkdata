@@ -123,16 +123,22 @@ writexl::write_xlsx(
   path = "ts/ts_trp.xlsx"
 )
 
-# TODO: speed limit history, but this is not complete in NVDB!
-# TODO: MDT by length - or just number of valid speed?
-# Check speed quality in Kibana (not available in the API) - looks ok
+ts_trp_aadt <-
+  readxl::read_excel(
+    path = "ts/ts_trp.xlsx"
+  )
 
+# TODO: speed limit history, but this is not complete in NVDB!
+# Check speed quality in Kibana (not available in the API) - looks ok
 
 # Read Kibana-exported CSVs ----
 read_a_file <- function(file_name) {
 
   readr::read_csv2(
     paste0("ts_data_2022/", file_name)
+  ) %>%
+  dplyr::mutate(
+    periode_start = as.character(periode_start)
   )
 
 }
@@ -147,7 +153,13 @@ speed_intervals <-
     ~ read_a_file(.)
   ) %>%
   dplyr::mutate(
-    periode_start = lubridate::dmy(periode_start),
+    # datoformatet er ulikt om nedlastingen er gjort via Edge eller Chrome,
+    # fordi Edge åpner det i Excel og da skjer det noe skjult!
+    periode_start =
+      lubridate::parse_date_time(
+        periode_start,
+        orders = c("dmy", "ymd")
+      ),
     year = lubridate::year(periode_start),
     month_name =
       lubridate::month(
@@ -156,8 +168,6 @@ speed_intervals <-
         abbr = TRUE
       ) %>%
       stringr::str_to_title(),
-    #lower_bound = stringr::str_extract(fartsintervall, "^\\d+") %>%
-    #  as.numeric(),
     upper_bound = stringr::str_extract(fartsintervall, "to \\d+") %>%
       stringr::str_sub(4, -1) %>%
       as.numeric()
@@ -167,7 +177,6 @@ speed_intervals <-
     year,
     month = month_name,
     n_vehicles = antall_med_godkjent_fart,
-    #lower_bound,
     upper_bound
   ) %>%
   dplyr::left_join(
@@ -230,7 +239,11 @@ means_and_percentiles <-
     ~ read_a_file(.)
   ) %>%
   dplyr::mutate(
-    periode_start = lubridate::dmy(periode_start),
+    periode_start =
+      lubridate::parse_date_time(
+        periode_start,
+        orders = c("dmy", "ymd")
+      ),
     year = lubridate::year(periode_start),
     month_name =
       lubridate::month(

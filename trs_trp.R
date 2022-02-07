@@ -26,7 +26,7 @@ distinct_trps <- trp %>%
 trp_stats_road_category <- distinct_trps %>%
   dplyr::group_by(
     traffic_type,
-    road_category,
+    #road_category,
     registration_frequency
   ) %>%
   dplyr::summarise(
@@ -807,7 +807,8 @@ recalculated_trs <- trs_with_emu %>%
 
 to_be_recalculated_trs <- trs_with_emu %>%
   dplyr::filter(
-    recalculated != TRUE | is.na(recalculated)
+    recalculated != TRUE | is.na(recalculated),
+    n_days_2021 > 180
   )
 
 nrow(recalculated_trs) /
