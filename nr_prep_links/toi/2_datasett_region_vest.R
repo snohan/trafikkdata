@@ -1,9 +1,9 @@
 # --------------------------------------------------------------------------- #
 #                                                                             #
-#    Filtrerer utviklingsområdet til Region Vest (Vestland+Rogaland)          #
+#    Filtrerer trafikklenkesettet til Region Vest (Vestland+Rogaland)         #
 #                                                                             #
 #    Trafikklenker er generert for hele Norge av Triona for SVV.              #
-#    Prosjkektet skal estimere ÅDT for Region Vest                            #
+#    Prosjektet skal estimere ÅDT for Region Vest                             #
 #    I dette scriptet filtreres datasettene på geografi                       #
 #                                                                             #
 #    Nytt datasett lagres i en ny gpkg-fil:                                   #
@@ -22,17 +22,25 @@ path_rv_gpkg <-
 
 # les inn trafikklenkene ------------------------------------------------------
 
-path_gpkg <- #'data/triona/Trafikklenker_20210317104831.gpkg'
-  'C:/Users/snohan/Desktop/Trafikklenker_20220116.gpkg'
+path_gpkg <-
+  'nr_gpkg/trafikklenker_undir_maincomp.gpkg'
+  #'C:/Users/snohan/Desktop/Trafikklenker_20220116.gpkg'
 
 
-#st_layers(path_gpkg)
+st_layers(path_gpkg)
+# OLD
 # Available layers:
 #                  layer_name  geometry_type features fields
 # 1                      test 3D Line String        0      0
 # 2                     Kryss       3D Point   193827      2
 # 3             TrafikkLenker 3D Line String   227318     28
 # 4 Trafikklenker_stedfesting             NA   752267      5
+
+# NEW
+# Available layers:
+#   layer_name                 geometry_type features fields
+# 1 nodes_main             3D Measured Point    24894      2
+# 2 edges_main 3D Measured Multi Line String    29978     22
 
 trafikklenker <-
   st_read(path_gpkg, layer = 'TrafikkLenker') %>%
@@ -41,16 +49,22 @@ trafikklenker <-
 kryss <- st_read(path_gpkg, layer = 'Kryss') %>%
   sf::st_zm()
 
-trafikklenker_stedfesting <- st_read(path_gpkg, layer = 'Trafikklenker_stedfesting')
+trafikklenker_stedfesting <-
+  st_read(
+    path_gpkg,
+    layer = 'Trafikklenker_stedfesting'
+  )
 
 # les inn fylkesdata ----------------------------------------------------------
 
 # Data om Vestland og Rogaland fylker er hentet herfra:
 # https://kartkatalog.geonorge.no/metadata/administrative-enheter-kommuner/041f1e6e-bdbc-4091-b48f-8a5990f3cc5b
 
-path_vestland <- 'nr_prep_links/toi/Basisdata_46_Vestland_25833_Kommuner_GEOJSON.geojson'
+path_vestland <-
+  'nr_prep_links/toi/Basisdata_46_Vestland_25833_Kommuner_GEOJSON.geojson'
 
-path_rogaland <-'nr_prep_links/toi/Basisdata_11_Rogaland_25833_Kommuner_GEOJSON.geojson'
+path_rogaland <-
+  'nr_prep_links/toi/Basisdata_11_Rogaland_25833_Kommuner_GEOJSON.geojson'
 
 st_layers(path_vestland)
 
@@ -134,7 +148,11 @@ kryss <- kryss[ind_kryss_2, ]
 
 st_write(trafikklenker, dsn = path_rv_gpkg, layer = 'TrafikkLenker')
 
-st_write(trafikklenker_stedfesting, dsn = path_rv_gpkg, layer = 'Trafikklenker_stedfesting')
+st_write(
+  trafikklenker_stedfesting,
+  dsn = path_rv_gpkg,
+  layer = 'Trafikklenker_stedfesting'
+)
 
 st_write(kryss, dsn = path_rv_gpkg, layer = 'Kryss')
 
