@@ -3,39 +3,39 @@
 # NRs framgangsmåte ----
 # Lag vegnettsgraf, steg 1 i ÅDT-modulen
 #
-# 1. Først isoleres hovedkomponenten i vegnettet gjennom en nettverksanalyse på
+# N1 Først isoleres hovedkomponenten i vegnettet gjennom en nettverksanalyse på
 #    samlingen av trafikklenker og kryss (NR-kode).
 #
-# 2. Deretter retningsdekomponeres lenkene i hovedkomponenten (TØI-kode). Dette
+# N2 Deretter retningsdekomponeres lenkene i hovedkomponenten (TØI-kode). Dette
 #    gir en sammenhengende vegnettsgraf med retningsoppløsning.
 #
-# 3. Fra vegnettsgrafen beregnes sentralitetsmålet betweenness centrality til bruk i den
+# N3 Fra vegnettsgrafen beregnes sentralitetsmålet betweenness centrality til bruk i den
 #    statistiske modellen (NR-kode). Sentralitetsverdier tilordnes hver enkelt lenke i
 #    den rettede grafen.
 #
-# 4. Preliminær ÅDT fra tilgjengelige trafikkregistreringspunkter (kontinuerlige og
+# N4 Preliminær ÅDT fra tilgjengelige trafikkregistreringspunkter (kontinuerlige og
 #    periodiske) kobles på sine respektive rettede lenker der hvor slike punkter finnes
 #    (Knowit-kode).
 #
-# 5. For å få med nettutlagt ÅDT fra transportmodellkjøringen for 2018, må det dessuten
+# N5 For å få med nettutlagt ÅDT fra transportmodellkjøringen for 2018, må det dessuten
 #    opprettes en kobling mellom den nye vegnettsgrafen og lenkene i vegnettsgrafen
 #    fra det inneværende prosjektet (ny kode).
 #    Senere versjoner kan benytte nettutlagt ÅDT fra denne første koblingen.
 #
-# 6. Den nye vegnettsgrafen med tilhørende attributter sammenstilles til en GeoPackagefil.
+# N6 Den nye vegnettsgrafen med tilhørende attributter sammenstilles til en GeoPackagefil.
 
 
 # Problemer Norge ----
 #
-# 1. TØI laget en liste med lenker som skulle fjernes. ID-ene er endret, så disse kan ikke
+# P1 TØI laget en liste med lenker som skulle fjernes. ID-ene er endret, så disse kan ikke
 #    fjernes slik de er angitt nå. Er dette fortsatt nødvendig?
 #    Finnes det andre lenker som burde plukkes vekk?
 #
-# 2. Grafen for hele Norge er veldig usammenhengende med sine over 2 000 komponenter.
+# P2 Grafen for hele Norge er veldig usammenhengende med sine over 2 000 komponenter.
 #    Vi burde sjekke alle løse vegnettsdeler - skulle de vært en del av hovedkomponenten?
 #    Det er tre komponenter som må kobles på.
 #
-# 3. Transportmodell-ÅDT er bare koblet på for Region Vest tidligere.
+# P3 Transportmodell-ÅDT er bare koblet på for Region Vest tidligere.
 #    Nå skulle vi gjort det for hele landet.
 
 
@@ -59,6 +59,9 @@
 # 5. Koble på ÅDT fra Trafikkdata-API.
 #
 # 6. Beregn sentralitetsparametere.
+#
+#      Kode hentet fra:
+#      prepros_grafanalyse_vegnett_rettet.r
 #
 # 7. Skriv til ny GPKG-fil.
 
@@ -85,7 +88,8 @@ file_remove_links_toi <-
   'nr_prep_links/nr/Data/ID_trafikklenker_fjernes.csv'
 
 
-# Read ----
+# 1. Undirected road net Norway ----
+## Read ----
 geopackage_layers <- sf::st_layers(geopackage_file)
 
 edges <-
@@ -111,7 +115,7 @@ road_net_info <-
   )
 
 
-# Clean ----
+## Clean ----
 ## Targeted data cleansing of individual traffic links and nodes
 links_remove_toi <-
   read.csv(
@@ -134,7 +138,7 @@ nodes <- data_cleansed$nodes
 edges <- data_cleansed$edges
 
 
-# Build undirected graph ----
+## Build undirected graph ----
 
 ## First, add indices for start and end nodes of each edge wrt nodes object
 edges$from <-
@@ -149,7 +153,7 @@ edges$to <-
     nodes$FEATURE_OID
   )
 
-## Build undirected graph object from nodes and spatially implicit edges (no geometry)
+# Build undirected graph object from nodes and spatially implicit edges
 net_undir <-
   sfnetworks::sfnetwork(
     nodes = nodes,
@@ -161,8 +165,8 @@ net_undir <-
   )
 
 
-# Graph components ----
-## Decompose graph and consider the distribution of nodes among the various components
+## Graph components ----
+# Decompose graph and consider the distribution of nodes among the various components
 
 ## Identify connected components
 net_undir %>%
@@ -191,11 +195,11 @@ net_all_but_main <-
   sfnetworks::as_sfnetwork()
 
 
-# Add geometry ----
+## Add geometry ----
 # Extract nodes and edges from components, and add geometries.
 
 
-## Main ----
+### Main ----
 nodes_main <- net_main %>%
   sfnetworks::activate("nodes") %>%
   st_as_sf()
@@ -225,7 +229,7 @@ road_net_info_main <-
   )
 
 
-## All but main  ----
+### All but main  ----
 nodes_all_but_main <-
   net_all_but_main %>%
   sfnetworks::activate("nodes") %>%
@@ -252,8 +256,8 @@ edges_all_but_main <-
 # No need for road net info for these
 
 
-# Write ----
-## Main ----
+## Write ----
+### Main ----
 file_main <-
   'nr_gpkg/trafikklenker_undir_norge_2.gpkg'
 
@@ -276,7 +280,7 @@ sf::st_write(
 )
 
 
-## All but main ----
+### All but main ----
 file_all_but_main <-
   'nr_gpkg/trafikklenker_undir_norge_all_but_main_2.gpkg'
 
@@ -295,7 +299,7 @@ sf::st_write(
 # Do not need road net info for these
 
 
-# Region vest ----
+# 2. Undirected road net Region vest ----
 # Polygoner for Vestland og Rogaland fylker er hentet herfra:
 # https://kartkatalog.geonorge.no/metadata/administrative-enheter-kommuner/041f1e6e-bdbc-4091-b48f-8a5990f3cc5b
 
@@ -393,9 +397,199 @@ sf::st_write(
   layer = 'road_net_info'
 )
 
+# Read back in
+edges_rv <-
+  sf::st_read(
+    file_rv,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"edges_rv\""
+  )
+
+nodes_rv <-
+  sf::st_read(
+    file_rv,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"nodes_rv\""
+  )
+
+road_net_info_rv <-
+  sf::st_read(
+    file_rv,
+    layer = 'road_net_info'
+  )
 
 
 
+# 3. Directed road net ----
+# Look at how many links with different directions
+edges_rv %>%
+  sf::st_set_geometry(NULL) %>%
+  dplyr::count(DIRECTION)
+
+# Links with direction = 0 are short connection links that must be removed
+edges_rv_direction_0 <-
+  edges_rv %>%
+  dplyr::filter(
+    DIRECTION == 0
+  ) %>%
+  sf::st_drop_geometry() %>%
+  dplyr::select(
+    ID,
+    from,
+    to,
+    START_NODE_OID,
+    END_NODE_OID
+  ) %>%
+  dplyr::left_join(
+    road_net_info_rv,
+    by = c("ID" = "FEATURE_OID")
+  )
+
+# Need to find the neighbouring link that is located on the far side of the
+# connection link seen from the end node of the wanted link topology.
+# Assuming this is identified by links on the same road net element,
+# and including other links connected to the same node.
+
+edges_rv_direction_0_neighbours_1 <-
+  edges_rv %>%
+  dplyr::filter(
+    START_NODE_OID %in% c(edges_rv_direction_0$START_NODE_OID,
+                          edges_rv_direction_0$END_NODE_OID)
+  ) %>%
+  sf::st_drop_geometry() %>%
+  dplyr::select(
+    ID,
+    from,
+    to,
+    START_NODE_OID,
+    END_NODE_OID
+  )
+
+edges_rv_direction_0_neighbours_2 <-
+  edges_rv %>%
+  dplyr::filter(
+    END_NODE_OID %in% c(edges_rv_direction_0$START_NODE_OID,
+                         edges_rv_direction_0$END_NODE_OID)
+  ) %>%
+  sf::st_drop_geometry() %>%
+  dplyr::select(
+    ID,
+    from,
+    to,
+    START_NODE_OID,
+    END_NODE_OID
+  )
+
+edges_rv_direction_0_neighbours <-
+  dplyr::bind_rows(
+    edges_rv_direction_0_neighbours_1,
+    edges_rv_direction_0_neighbours_2
+  ) %>%
+  dplyr::distinct() %>%
+  # Need to remove the 0-links as they are included again here
+  dplyr::filter(
+    !(ID %in% edges_rv_direction_0$ID)
+  ) %>%
+  dplyr::left_join(
+    road_net_info_rv,
+    by = c("ID" = "FEATURE_OID")
+  )
+
+# Need to identify the node-IDs which are going to be replaced
+# It is on the links that have a common node and where at least one of them are
+# on the same road net element.
+
+# For each zero-link, identify the neighbour-link on the same road net element
+edges_rv_direction_0_and_neighbour <-
+  edges_rv_direction_0 %>%
+  dplyr::left_join(
+    edges_rv_direction_0_neighbours,
+    by = "ELEMENT_ID",
+    suffix = c("_zero", "_neighbour")
+  )
+
+# If there is no match, the change must be done manually
+edges_rv_direction_0_and_neighbour_no_match <-
+  edges_rv_direction_0_and_neighbour %>%
+  dplyr::filter(
+    is.na(ID_neighbour)
+  )
+
+# The others can be done away with programmatically
+# Identify the node that is going to be swapped
+# (there might be more than one link having them)
+edges_rv_direction_0_and_neighbour_with_match <-
+  edges_rv_direction_0_and_neighbour %>%
+  dplyr::filter(
+    !is.na(ID_neighbour)
+  ) %>%
+  dplyr::mutate(
+    node_id_to_be_swapped =
+      dplyr::case_when(
+        START_NODE_OID_zero == START_NODE_OID_neighbour ~ START_NODE_OID_zero,
+        START_NODE_OID_zero == END_NODE_OID_neighbour ~ START_NODE_OID_zero,
+        END_NODE_OID_zero == START_NODE_OID_neighbour ~ END_NODE_OID_zero,
+        END_NODE_OID_zero == END_NODE_OID_neighbour ~ END_NODE_OID_zero
+      ),
+    node_id_new_value =
+      dplyr::case_when(
+        START_NODE_OID_zero != node_id_to_be_swapped ~ START_NODE_OID_zero,
+        TRUE ~ END_NODE_OID_zero
+      )
+  )
+
+# A named vector for recoding
+node_swaps <-
+  structure(
+    edges_rv_direction_0_and_neighbour_with_match$node_id_new_value,
+    names = edges_rv_direction_0_and_neighbour_with_match$node_id_to_be_swapped
+  )
+
+# Delete zero-links
+# Delete swapped nodes
+# Delete road net info for zero links
+
+edges_rv_clean <-
+  edges_rv %>%
+  dplyr::filter(
+    DIRECTION != 0
+  ) %>%
+  dplyr::mutate(
+    START_NODE_OID =
+      dplyr::recode(
+        START_NODE_OID,
+        !!!node_swaps
+      ),
+    END_NODE_OID =
+      dplyr::recode(
+        END_NODE_OID,
+        !!!node_swaps
+      )
+  )
+
+nodes_rv_clean <-
+  nodes_rv %>%
+  dplyr::filter(
+    !(FEATURE_OID %in% edges_rv_direction_0_and_neighbour_with_match$node_id_to_be_swapped)
+  )
+
+road_net_info_rv_clean <-
+  road_net_info_rv %>%
+  dplyr::filter(
+    !(FEATURE_OID %in% edges_rv_direction_0$ID)
+  )
+
+# 4. Transport model AADT ----
+
+
+# 5. Traffic registration ADT ----
+
+
+
+# 6. Graph centrality parameters ----
+
+
+# 7. Write final file ----
 
 
 
