@@ -54,6 +54,10 @@
 #
 # 3. Lag rettet graf.
 #
+#      Kode hentet fra:
+#      3_rettede_lenker_metrering.R
+#      4_rettede_lenker_trafikk.R
+#
 # 4. Koble på ÅDT fra transportmodell fra graf_dir_maincom_20210505.gpkg.
 #
 # 5. Koble på ÅDT fra Trafikkdata-API.
@@ -115,6 +119,10 @@ road_net_info <-
   )
 
 
+edges_without_geometry <-
+  edges %>%
+  sf::st_drop_geometry()
+
 ## Clean ----
 ## Targeted data cleansing of individual traffic links and nodes
 links_remove_toi <-
@@ -127,6 +135,8 @@ links_remove_toi <-
 # TODO: are these links still a problem, and are there others we should discover?
 # How can we remove problematic links automatically?
 
+# Removing cyclic paths, uncoupled nodes, problematic paths
+# Connecting uncoupled graph parts that should be part of main graph
 data_cleansed <-
   manipuler_trafikklenker_hardkodet(
     nn = nodes,
@@ -397,7 +407,7 @@ sf::st_write(
   layer = 'road_net_info'
 )
 
-# Read back in
+## Read back in ----
 edges_rv <-
   sf::st_read(
     file_rv,
@@ -426,7 +436,11 @@ edges_rv %>%
   sf::st_set_geometry(NULL) %>%
   dplyr::count(DIRECTION)
 
-# Links with direction = 0 are short connection links that must be removed
+## Removing links without direction ----
+# Links with direction = 0 are short connection links that must be removed,
+# but the remaining links must be reconnected
+
+# Zero-links, their nodes and road net element IDs
 edges_rv_direction_0 <-
   edges_rv %>%
   dplyr::filter(
@@ -445,11 +459,12 @@ edges_rv_direction_0 <-
     by = c("ID" = "FEATURE_OID")
   )
 
-# Need to find the neighbouring link that is located on the far side of the
-# connection link seen from the end node of the wanted link topology.
+# Need to find the neighbouring links that is located on the far side of the
+# zero-link seen from the end node of the wanted link topology.
 # Assuming this is identified by links on the same road net element,
 # and including other links connected to the same node.
 
+# Neighbours on the start node
 edges_rv_direction_0_neighbours_1 <-
   edges_rv %>%
   dplyr::filter(
@@ -465,6 +480,7 @@ edges_rv_direction_0_neighbours_1 <-
     END_NODE_OID
   )
 
+# Neighbours on the end node
 edges_rv_direction_0_neighbours_2 <-
   edges_rv %>%
   dplyr::filter(
@@ -480,13 +496,14 @@ edges_rv_direction_0_neighbours_2 <-
     END_NODE_OID
   )
 
+# All neighbours with road net info
 edges_rv_direction_0_neighbours <-
   dplyr::bind_rows(
     edges_rv_direction_0_neighbours_1,
     edges_rv_direction_0_neighbours_2
   ) %>%
   dplyr::distinct() %>%
-  # Need to remove the 0-links as they are included again here
+  # Need to remove the zero-links as they are included again here
   dplyr::filter(
     !(ID %in% edges_rv_direction_0$ID)
   ) %>%
@@ -496,10 +513,8 @@ edges_rv_direction_0_neighbours <-
   )
 
 # Need to identify the node-IDs which are going to be replaced
-# It is on the links that have a common node and where at least one of them are
-# on the same road net element.
-
-# For each zero-link, identify the neighbour-link on the same road net element
+# For each zero-link, identify the neighbouring link on the same
+# road net element
 edges_rv_direction_0_and_neighbour <-
   edges_rv_direction_0 %>%
   dplyr::left_join(
@@ -514,6 +529,12 @@ edges_rv_direction_0_and_neighbour_no_match <-
   dplyr::filter(
     is.na(ID_neighbour)
   )
+
+# Link ID 1014557512 must change its START_NODE_ID from 820818 to 2897991
+# and "to" node to 8698
+edges_rv$START_NODE_OID[edges_rv$ID == "1014557512"] <- 2897991
+edges_rv$to[edges_rv$ID == "1014557512"] <- 8698
+
 
 # The others can be done away with programmatically
 # Identify the node that is going to be swapped
@@ -545,10 +566,11 @@ node_swaps <-
     names = edges_rv_direction_0_and_neighbour_with_match$node_id_to_be_swapped
   )
 
-# Delete zero-links
+
 # Delete swapped nodes
 # Delete road net info for zero links
 
+# Delete zero-links and swap nodes to reconnect graph
 edges_rv_clean <-
   edges_rv %>%
   dplyr::filter(
@@ -570,7 +592,8 @@ edges_rv_clean <-
 nodes_rv_clean <-
   nodes_rv %>%
   dplyr::filter(
-    !(FEATURE_OID %in% edges_rv_direction_0_and_neighbour_with_match$node_id_to_be_swapped)
+    !(FEATURE_OID %in%
+        edges_rv_direction_0_and_neighbour_with_match$node_id_to_be_swapped)
   )
 
 road_net_info_rv_clean <-
@@ -578,6 +601,123 @@ road_net_info_rv_clean <-
   dplyr::filter(
     !(FEATURE_OID %in% edges_rv_direction_0$ID)
   )
+
+
+## Duplicating two way links ----
+# legg til metreringsretning-dummy
+edges_rv_dir <-
+  edges_rv_clean %>%
+  dplyr::mutate(
+    med_metrering = 1
+  )
+
+# dupliserer lenker med toveistrafikk
+trafikklenker_enveis <-
+  filter(edges_rv_dir, DIRECTION < 3)
+
+trafikklenker_toveis <-
+  filter(edges_rv_dir, DIRECTION == 3)
+
+trafikklenker_toveis_mot <- trafikklenker_toveis # lag en kopi
+
+identical(trafikklenker_toveis_mot, trafikklenker_toveis)
+# TRUE
+
+# snu retning
+trafikklenker_toveis_mot <- trafikklenker_toveis_mot %>%
+  mutate(
+    # snu start- og sluttnode
+    START_NODE_OID = trafikklenker_toveis$END_NODE_OID,
+    END_NODE_OID = trafikklenker_toveis$START_NODE_OID,
+    # angi at lenkeretning er mot metreringsretning ved å sette dummy = 0
+    med_metrering = 0,
+    # snu vegreferansen
+    ROADREF_START = trafikklenker_toveis$ROADREF_END,
+    ROADREF_END  = trafikklenker_toveis$ROADREF_START,
+    # snu from og to
+    from = trafikklenker_toveis$to,
+    to = trafikklenker_toveis$from
+  )
+
+identical(trafikklenker_toveis_mot, trafikklenker_toveis)
+# FALSE
+
+edges_rv_dir_complete <-
+  dplyr::bind_rows(
+    trafikklenker_enveis,
+    trafikklenker_toveis,
+    trafikklenker_toveis_mot
+  ) %>%
+  dplyr::arrange(ID)
+
+
+# enveislenker med kjøreretning mot lenkeretning (= metreringsretning)
+enveis <-
+  edges_rv_dir_complete %>%
+  dplyr::filter(DIRECTION == 2)
+
+# resten av lenkene
+ikke_enveis <-
+  edges_rv_dir_complete %>%
+  dplyr::filter(DIRECTION != 2)
+
+# snu retning
+enveis <- enveis %>%
+  mutate(
+    # snu start- og sluttnode
+    START_NODE_OID = enveis$END_NODE_OID,
+    END_NODE_OID = enveis$START_NODE_OID,
+    # angi at lenkeretning er mot metreringsretning ved å sette dummy = 0
+    med_metrering = 0,
+    # snu vegreferansen
+    ROADREF_START = enveis$ROADREF_END,
+    ROADREF_END  = enveis$ROADREF_START,
+    # snu from og to
+    from = enveis$to,
+    to = enveis$from
+  )
+
+# slå sammen lenker
+edges_rv_dir_complete_with_all_turned <-
+  dplyr::bind_rows(
+    ikke_enveis,
+    enveis
+  ) %>%
+  dplyr::arrange(ID) %>%
+  tibble::rownames_to_column(var = "lenke_nr")
+
+#rm(trafikklenker_enveis, trafikklenker_toveis, trafikklenker_toveis_mot)
+
+table(edges_rv_dir_complete_with_all_turned$med_metrering)
+
+
+## Write ----
+file_rv_dir <-
+  'nr_gpkg/trafikklenker_dir_rv.gpkg'
+
+sf::st_write(
+  nodes_rv_clean,
+  dsn = file_rv_dir,
+  layer = 'nodes_rv'
+)
+
+sf::st_write(
+  edges_rv_dir_complete_with_all_turned,
+  append = FALSE,
+  dsn = file_rv_dir,
+  layer = 'edges_rv'
+)
+
+sf::st_write(
+  road_net_info_rv_clean,
+  dsn = file_rv_dir,
+  layer = 'road_net_info'
+)
+
+
+
+
+
 
 # 4. Transport model AADT ----
 
