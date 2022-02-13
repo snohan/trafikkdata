@@ -279,6 +279,7 @@ TOPO gir klassifisering i følgende kjøretøyklasser:
   - 2: personbil
   - 3: personbil med henger, varebil med henger
   - 4: varebil
+  - 5: varebil med henger
   - 6: buss
   - 7: lastebil
   - 8: lastebil med henger
