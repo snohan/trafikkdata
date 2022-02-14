@@ -1,38 +1,43 @@
-# Create a geopackage-file containing directed links with aadt
+# Create a geopackage-file containing directed links with AADT
 
 # NRs framgangsmåte ----
 # Lag vegnettsgraf, steg 1 i ÅDT-modulen
 #
-# N1 Først isoleres hovedkomponenten i vegnettet gjennom en nettverksanalyse på
+# N1 Først isoleres hovedkomponenten i vegnettet
+#    gjennom en nettverksanalyse på
 #    samlingen av trafikklenker og kryss (NR-kode).
 #
-# N2 Deretter retningsdekomponeres lenkene i hovedkomponenten (TØI-kode). Dette
-#    gir en sammenhengende vegnettsgraf med retningsoppløsning.
+# N2 Deretter retningsdekomponeres lenkene i hovedkomponenten (TØI-kode).
+#    Dette gir en sammenhengende vegnettsgraf med retningsoppløsning.
 #
-# N3 Fra vegnettsgrafen beregnes sentralitetsmålet betweenness centrality til bruk i den
-#    statistiske modellen (NR-kode). Sentralitetsverdier tilordnes hver enkelt lenke i
-#    den rettede grafen.
+# N3 Fra vegnettsgrafen beregnes sentralitetsmålet betweenness centrality
+#    til bruk i den statistiske modellen (NR-kode).
+#    Sentralitetsverdier tilordnes hver enkelt lenke i den rettede grafen.
 #
-# N4 Preliminær ÅDT fra tilgjengelige trafikkregistreringspunkter (kontinuerlige og
-#    periodiske) kobles på sine respektive rettede lenker der hvor slike punkter finnes
-#    (Knowit-kode).
+# N4 Preliminær ÅDT fra tilgjengelige trafikkregistreringspunkter
+#    (kontinuerlige og periodiske) kobles på sine respektive rettede lenker
+#    der hvor slike punkter finnes (Knowit-kode).
 #
-# N5 For å få med nettutlagt ÅDT fra transportmodellkjøringen for 2018, må det dessuten
-#    opprettes en kobling mellom den nye vegnettsgrafen og lenkene i vegnettsgrafen
-#    fra det inneværende prosjektet (ny kode).
+# N5 For å få med nettutlagt ÅDT fra transportmodellkjøringen for 2018,
+#    må det dessuten opprettes en kobling mellom den nye vegnettsgrafen
+#    og lenkene i vegnettsgrafen fra det inneværende prosjektet (ny kode).
 #    Senere versjoner kan benytte nettutlagt ÅDT fra denne første koblingen.
 #
-# N6 Den nye vegnettsgrafen med tilhørende attributter sammenstilles til en GeoPackagefil.
+# N6 Den nye vegnettsgrafen med tilhørende attributter sammenstilles
+#    til en GeoPackagefil.
 
 
 # Problemer Norge ----
 #
-# P1 TØI laget en liste med lenker som skulle fjernes. ID-ene er endret, så disse kan ikke
+# P1 TØI laget en liste med lenker som skulle fjernes.
+#    ID-ene er endret, så disse kan ikke
 #    fjernes slik de er angitt nå. Er dette fortsatt nødvendig?
 #    Finnes det andre lenker som burde plukkes vekk?
 #
-# P2 Grafen for hele Norge er veldig usammenhengende med sine over 2 000 komponenter.
-#    Vi burde sjekke alle løse vegnettsdeler - skulle de vært en del av hovedkomponenten?
+# P2 Grafen for hele Norge er veldig usammenhengende med sine over
+#    2 000 komponenter.
+#    Vi burde sjekke alle løse vegnettsdeler -
+#    skulle de vært en del av hovedkomponenten?
 #    Det er tre komponenter som må kobles på.
 #
 # P3 Transportmodell-ÅDT er bare koblet på for Region Vest tidligere.
@@ -430,6 +435,7 @@ road_net_info_rv <-
 
 
 
+
 # 3. Directed road net ----
 # Look at how many links with different directions
 edges_rv %>%
@@ -715,15 +721,195 @@ sf::st_write(
 )
 
 
+## Read back in ----
+edges_dir_rv <-
+  sf::st_read(
+    file_rv_dir,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"edges_rv\""
+  )
 
+nodes_dir_rv <-
+  sf::st_read(
+    file_rv_dir,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"nodes_rv\""
+  )
+
+road_net_info_dir_rv <-
+  sf::st_read(
+    file_rv_dir,
+    layer = 'road_net_info'
+  )
 
 
 
 # 4. Transport model AADT ----
 
 
-# 5. Traffic registration ADT ----
+## Read ----
+# Using the values already connected to road net in former part of the project.
+former_transport_model_enhanced_gpkg <-
+  'nr_gpkg/graf_dir_maincomp_20210505.gpkg'
 
+#sf::st_layers(former_transport_model_enhanced_gpkg)
+edges_dir_rv_former <-
+  sf::st_read(
+    former_transport_model_enhanced_gpkg,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"edges_main_dir\""
+  )
+
+edges_dir_rv_former_small <-
+  edges_dir_rv_former %>%
+  dplyr::select(
+    ID,
+    med_metrering,
+    ROADREF_START,
+    ROADREF_END,
+    MUNICIPALITY,
+    AADT_ALLE_MIN,
+    AADT_ALLE_MAX,
+    AADT_ALLE_MEAN
+  )
+
+#look_at_former <- head(edges_dir_rv_former)
+
+
+## Matching geometry ----
+# Use just neceasry columns here
+# Join transport model columns back on edges after joining on geometry
+# and aggregating AADT values if overlap with more than one link
+edges_dir_rv_small <-
+  edges_dir_rv %>%
+  dplyr::select(
+    lenke_nr,
+    ROADREF_START,
+    ROADREF_END,
+    med_metrering
+  )
+
+# Problem: links that share just a point on their common node is joined on
+# geometry.
+# Check to see if many links cover different roads or if this can be used as
+# a filter for removing just point overlap.
+# compare_start_and_end_road_no <-
+#   edges_dir_rv %>%
+#   sf::st_drop_geometry() %>%
+#   dplyr::select(
+#     ID,
+#     ROADREF_START,
+#     ROADREF_END
+#   ) %>%
+#   dplyr::mutate(
+#     start = stringr::str_extract(ROADREF_START, "[:upper:]{1}V[:digit:]*"),
+#     end = stringr::str_extract(ROADREF_END, "[:upper:]{1}V[:digit:]*"),
+#     same_road = start == end
+#   ) %>%
+#   dplyr::filter(
+#     same_road == FALSE
+#   )
+# 19 have different road at start and end. This is just 0.2 %. Ok to ignore.
+
+edges_with_overlapping_geometry <-
+  edges_dir_rv_small %>%
+  sf::st_join(edges_dir_rv_former_small) %>%
+  dplyr::filter(
+    med_metrering.x == med_metrering.y
+  ) %>%
+  # Problem: links that share just a point on their common node is joined
+  # Solution: keep only links that start on the same road
+  dplyr::mutate(
+    start.x1 =
+      stringr::str_extract(
+        ROADREF_START.x,
+        "[:upper:]{1}V[:digit:]*"
+      ) %>%
+      stringr::str_replace(
+        "V",
+        ""
+      ),
+    end.x =
+      stringr::str_extract(
+        ROADREF_END.x,
+        "[:upper:]{1}V[:digit:]*"
+      ) %>%
+      stringr::str_replace(
+        "V",
+        ""
+      ),
+    start.x =
+      dplyr::case_when(
+        is.na(start.x1) ~ end.x,
+        TRUE ~ start.x1
+      ),
+    start.y = stringr::str_extract(ROADREF_START.y, "^[:upper:]{1}[:digit:]*"),
+  ) %>%
+  dplyr::filter(
+    start.x == start.y
+  ) %>%
+  dplyr::select(
+    lenke_nr,
+    med_metrering = med_metrering.x,
+    starts_with("AADT")
+  ) %>%
+  sf::st_drop_geometry() %>%
+  # Set 0 values to NA to avoid them messing up the aggregations
+  dplyr::mutate(
+    dplyr::across(
+      .cols = starts_with("AADT"),
+      .fns = ~ dplyr::na_if(., 0)
+    )
+  ) %>%
+  dplyr::group_by(lenke_nr) %>%
+  dplyr::summarise(
+    AADT_ALLE_MIN = base::min(AADT_ALLE_MIN, na.rm = TRUE),
+    AADT_ALLE_MAX = base::max(AADT_ALLE_MAX, na.rm = TRUE),
+    AADT_ALLE_MEAN = base::mean(AADT_ALLE_MEAN, na.rm = TRUE)
+  ) %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = starts_with("AADT"),
+      .fns = ~ dplyr::na_if(., Inf)
+    ),
+    dplyr::across(
+      .cols = starts_with("AADT"),
+      .fns = ~ dplyr::na_if(., -Inf)
+    ),
+    dplyr::across(
+      .cols = starts_with("AADT"),
+      .fns = ~ ifelse(is.nan(.), NA, .)
+    )
+  )
+
+#length(unique(edges_with_overlapping_geometry$lenke_nr))
+
+# join back
+edges_dir_rv_tm <-
+  edges_dir_rv %>%
+  dplyr::left_join(
+    edges_with_overlapping_geometry,
+    by = "lenke_nr"
+  )
+
+# look_at_edges_dir_rv_tm <-
+#   edges_dir_rv_tm %>%
+#   sf::st_drop_geometry()
+
+
+# 5. Traffic registration ADT ----
+# How is it to be saved in GPKG?
+# In its own layer, with link ID and med_metrering as keys
+aadt_dir_rv_former <-
+  sf::st_read(
+    former_transport_model_enhanced_gpkg,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"aadt\""
+  )
+
+# TODO: get all AADT per direction and three classes in RV
+# TODO: both continuous and periodic (factor curve values) (not radar)
+# TODO: connect them to correct link and direction by using road link info
 
 
 # 6. Graph centrality parameters ----
