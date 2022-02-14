@@ -742,7 +742,9 @@ road_net_info_dir_rv <-
     layer = 'road_net_info'
   )
 
-
+look_at_edges <-
+  edges_dir_rv %>%
+  sf::st_drop_geometry()
 
 # 4. Transport model AADT ----
 
@@ -910,6 +912,155 @@ aadt_dir_rv_former <-
 # TODO: get all AADT per direction and three classes in RV
 # TODO: both continuous and periodic (factor curve values) (not radar)
 # TODO: connect them to correct link and direction by using road link info
+
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+
+## TRPs ----
+trp <- get_points()
+
+distinct_trps <- trp %>%
+  split_road_system_reference() %>%
+  dplyr::select(
+    trp_id,
+    traffic_type,
+    county_name,
+    registration_frequency,
+    road_network_link,
+    road_network_position
+  ) %>%
+  dplyr::distinct(trp_id, .keep_all = T)
+
+trp_id_and_road_link <-
+  distinct_trps %>%
+  dplyr::select(
+    trp_id,
+    road_network_link,
+    road_network_position,
+    registration_frequency
+  ) %>%
+  dplyr::mutate(
+    road_network_link = as.character(road_network_link)
+  )
+
+
+## TRP on traffic link ----
+# Resulting table must have
+# traffic link ID
+# med_metrering
+# trp_id
+
+link_id_and_trp_id <-
+  road_net_info_dir_rv %>%
+  dplyr::left_join(
+    trp_id_and_road_link,
+    by = c("ELEMENT_ID" = "road_network_link")
+  ) %>%
+  dplyr::mutate(
+    on_link =
+      road_network_position > START_MEASURE &
+      road_network_position < END_MEASURE
+  ) %>%
+  dplyr::filter(
+    on_link == TRUE
+  ) %>%
+  dplyr::select(
+    ID = FEATURE_OID,
+    trp_id,
+    registration_frequency
+  )
+# TODO: deal with multiple trps on same link
+# 1. Remove all periodic from links that have a continuous
+
+
+
+## TRP heading ----
+trp_direction <-
+  get_trps_with_direction() %>%
+  dplyr::select(
+    trp_id,
+    from_according_to_metering,
+    to_according_to_metering
+  ) %>%
+  dplyr::distinct()
+
+trp_with_metering <-
+  trp_direction %>%
+  dplyr::select(
+    trp_id,
+    heading = to_according_to_metering
+  ) %>%
+  dplyr::mutate(
+    med_metrering = 1
+  )
+
+trp_against_metering <-
+  trp_direction %>%
+  dplyr::select(
+    trp_id,
+    heading = from_according_to_metering
+  ) %>%
+  dplyr::mutate(
+    med_metrering = 0
+  )
+
+trp_heading <-
+  dplyr::bind_rows(
+    trp_with_metering,
+    trp_against_metering
+  ) %>%
+  dplyr::arrange(
+    trp_id
+  )
+
+
+
+
+## Continuous ----
+trp_rv_continuous <-
+  distinct_trps %>%
+  dplyr::filter(
+    county_name %in% c("Rogaland", "Vestland"),
+    traffic_type == "VEHICLE",
+    registration_frequency == "CONTINUOUS" # include periodic here?
+  )
+
+aadt_rv_continuous <-
+  get_aadt_by_direction_for_trp_list(
+    trp_rv_continuous$trp_id[1:5]
+  ) %>%
+  dplyr::filter(
+    year > 2018
+  )
+
+trp_rv_continuous_aadt <-
+  trp_rv_continuous %>%
+  dplyr::left_join(
+    trp_heading,
+    by = "trp_id"
+  ) %>%
+  dplyr::left_join(
+    aadt_rv_continuous,
+    by = c("trp_id", "heading")
+  ) %>%
+  dplyr::filter(
+    !is.na(year)
+  ) %>%
+  dplyr::select(
+    trp_id,
+    road_network_link,
+    road_network_position,
+    med_metrering,
+    year,
+    adt,
+    standard_deviation,
+    coverage
+  )
+
+
+## Periodic ----
+# Just include these among continuous?
+# That is anyway the way to go when factor curve AADTs are in the API.
 
 
 # 6. Graph centrality parameters ----
