@@ -814,6 +814,170 @@ to_be_recalculated_trs <- trs_with_emu %>%
 nrow(recalculated_trs) /
   nrow(trs_with_emu) * 100
 
+
+# TRP with EMU3 ----
+trp_info <- trp %>%
+  split_road_system_reference() %>%
+  dplyr::select(
+    trp_id,
+    name,
+    traffic_type,
+    road_category_and_number,
+    county_name,
+    municipality_name,
+    registration_frequency,
+    operational_status
+  ) %>%
+  dplyr::distinct(trp_id, .keep_all = T)
+
+trp_with_emu <-
+  trp_device_history %>%
+  dplyr::filter(
+    device_type == "EMU",
+    # Some trps are not public
+    trp_id %in% trp$trp_id
+  ) %>%
+  tidyr::replace_na(
+    list(
+      valid_to = lubridate::today()
+    )
+  ) %>%
+  dplyr::mutate(
+    valid_from =
+      lubridate::floor_date(
+        valid_from,
+        unit = "day"
+      ),
+    valid_to =
+      lubridate::floor_date(
+        valid_to,
+        unit = "day"
+      ),
+    start = as.character(valid_from),
+    end = as.character(valid_to),
+    first_day_in_2022 =
+      dplyr::case_when(
+        start < "2022-01-01" ~ "2022-01-01",
+        start < as.character(lubridate::today()) ~ start,
+        TRUE ~ NA_character_
+      ),
+    last_day_in_2022 =
+      dplyr::case_when(
+        end > as.character(lubridate::today()) ~
+          as.character(lubridate::today()),
+        end > "2022-01-01" ~ end,
+        TRUE ~ NA_character_
+      ),
+    first_day_in_2022 = as.Date(first_day_in_2022),
+    last_day_in_2022 = as.Date(last_day_in_2022)
+  ) %>%
+  tidyr::replace_na(
+    list(
+      first_day_in_2022 = as.Date(lubridate::today()),
+      last_day_in_2022 = as.Date("2022-01-01")
+    )
+  ) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(
+    n_days =
+      length(
+        seq(
+          valid_from,
+          valid_to,
+          by = "day"
+        )
+      ),
+    n_days_2022 =
+      length(
+        seq(
+          first_day_in_2022,
+          last_day_in_2022,
+          by = "day"
+        )
+      ),
+    n_days_2022 =
+      replace(
+        n_days_2022,
+        last_day_in_2022 == "2022-01-01",
+        0
+      ),
+    n_days_2022 =
+      replace(
+        n_days_2022,
+        first_day_in_2022 == as.character(lubridate::today()),
+        0
+      )
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(
+    trs_id,
+    trp_id,
+    n_days,
+    n_days_2022
+  ) %>%
+  dplyr::group_by(
+    trs_id,
+    trp_id
+  ) %>%
+  dplyr::summarise(
+    n_days = sum(n_days),
+    n_days_2022 = sum(n_days_2022)
+  ) %>%
+  dplyr::left_join(
+    trp_info,
+    by = "trp_id"
+  ) %>%
+  dplyr::filter(
+    traffic_type == "VEHICLE",
+    registration_frequency == "CONTINUOUS",
+    n_days_2022 > 10
+  ) %>%
+  dplyr::arrange(
+    county_name
+  )
+
+
+dt <-
+  get_dt_for_trp_list(
+    trp_with_emu$trp_id,
+    "2022-01-01T00:00:00+01:00",
+    "2022-02-14T00:00:00+01:00"
+  ) %>%
+  dplyr::select(
+    trp_id = point_id,
+    date = from,
+    volume = total_volume,
+    coverage
+  )
+
+dt_emu3 <-
+  dt %>%
+  dplyr::left_join(
+    trp_with_emu,
+    by = "trp_id"
+  ) %>%
+  dplyr::select(
+    county_name,
+    municipality_name,
+    trs_id,
+    trp_id,
+    name,
+    road_category_and_number,
+    date,
+    volume,
+    coverage
+  )
+
+dt_emu3 %>%
+  dplyr::mutate(
+    date = as.character(date)
+  ) %>%
+  writexl::write_xlsx(
+    path =
+    "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Spesialuttak/trp_med_emu3_dt_2022.xlsx"
+  )
+
+
 # TRS and sensorconfig errors ----
 sensorconfig_errors <- get_all_trs_with_trp_via_sensorconfig() %>%
   dplyr::filter(purrr::map_lgl(errors, ~!rlang::is_empty(.x)))

@@ -7,17 +7,39 @@ source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
 # TRP info from Traffic Data API
 # Dec. 21: the mobile trps are not here yet, must use TRP API
-points_metadata <- get_points() %>%
-  dplyr::select(trp_id, name, road_reference, county_geono, county_name, municipality_name,
-                road_link_position, lat, lon) %>%
+points_metadata <-
+  get_points() %>%
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    county_geono,
+    county_name,
+    municipality_name,
+    road_link_position,
+    lat,
+    lon
+  ) %>%
   dplyr::distinct(trp_id, .keep_all = T) %>%
   dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
 
 # Permanent sensors 2020 ----
 # Fetched from file made in trs_trp.R
-periodic_inductive <- read.csv2("periodiske_registreringer_faste_sensorer_2020.csv") %>%
-  dplyr::select(trp_id, traffic_type = trafficType, status, registration_frequency, road_link_position,
-                lat, lon, commission_interval, commission_length_in_days)
+periodic_inductive <-
+  read.csv2(
+    "periodiske_registreringer_faste_sensorer_2020.csv"
+  ) %>%
+  dplyr::select(
+    trp_id,
+    traffic_type = trafficType,
+    status,
+    registration_frequency,
+    road_link_position,
+    lat,
+    lon,
+    commission_interval,
+    commission_length_in_days
+  )
 
 periodic_inductive_trp_ids <- periodic_inductive %>%
   dplyr::select(trp_id) %>%

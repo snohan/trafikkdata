@@ -902,12 +902,17 @@ edges_dir_rv_tm <-
 # 5. Traffic registration ADT ----
 # How is it to be saved in GPKG?
 # In its own layer, with link ID and med_metrering as keys
-aadt_dir_rv_former <-
-  sf::st_read(
-    former_transport_model_enhanced_gpkg,
-    # as_tibble = TRUE,
-    query = "SELECT * FROM \"aadt\""
-  )
+# aadt_dir_rv_former <-
+#   sf::st_read(
+#     former_transport_model_enhanced_gpkg,
+#     # as_tibble = TRUE,
+#     query = "SELECT * FROM \"aadt\""
+#   )
+#names(aadt_dir_rv_former)
+# "FEATURE_OID"    "aadt_prelim"    "aadt_prelim_sd"
+# "direction"      "size" vehicle_class      "year"
+# "type" registration_frequency
+
 
 # TODO: get all AADT per direction and three classes in RV
 # TODO: both continuous and periodic (factor curve values) (not radar)
@@ -969,8 +974,7 @@ link_id_and_trp_id <-
     trp_id,
     registration_frequency
   )
-# TODO: deal with multiple trps on same link
-# 1. Remove all periodic from links that have a continuous
+# ok with multiple trps on same link
 
 
 
@@ -1022,16 +1026,55 @@ trp_rv_continuous <-
   dplyr::filter(
     county_name %in% c("Rogaland", "Vestland"),
     traffic_type == "VEHICLE",
-    registration_frequency == "CONTINUOUS" # include periodic here?
+    registration_frequency == "PERIODIC"
+      #"CONTINUOUS" # include periodic here?
   )
 
 aadt_rv_continuous <-
   get_aadt_by_direction_for_trp_list(
-    trp_rv_continuous$trp_id[1:5]
+    trp_rv_continuous$trp_id
   ) %>%
   dplyr::filter(
-    year > 2018
+    year > 2013
   )
+
+aadt_by_factor_curve <-
+  readr::read_csv2(
+    "periodic_data/periodic_aadt_by_factor_curve.csv"
+  ) %>%
+  dplyr::select(
+    trp_id = traffic_registration_point_id,
+    year,
+    adt_factor_curve = adt,
+    curve
+  )
+
+# TODO: use factor curve aadt divided by 2 when it is available
+
+periodic_aadt_compare_factor_curve_and_naive <-
+  aadt_rv_continuous %>%
+  dplyr::left_join(
+    aadt_by_factor_curve,
+    by = c("trp_id", "year")
+  ) %>%
+  dplyr::mutate(
+    adt_factor_curve_halfed = floor(adt_factor_curve / 2),
+    adt_diff = adt - adt_factor_curve_halfed
+  ) %>%
+  dplyr::select(
+    trp_id,
+    heading,
+    year,
+    adt,
+    sd = standard_deviation,
+    adt_factor_curve_halfed,
+    adt_diff
+  ) %>%
+  dplyr::filter(
+    !is.na(adt_factor_curve_halfed)
+  )
+
+
 
 trp_rv_continuous_aadt <-
   trp_rv_continuous %>%
