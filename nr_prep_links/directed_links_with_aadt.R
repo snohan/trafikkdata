@@ -914,7 +914,8 @@ edges_dir_rv_tm <-
 # "type" registration_frequency
 
 
-# TODO: get all AADT per direction and three classes in RV
+# TODO: AADT per direction in RV
+# TODO: AADT per direction and three classes in RV
 # TODO: both continuous and periodic (factor curve values) (not radar)
 # TODO: connect them to correct link and direction by using road link info
 
@@ -977,7 +978,6 @@ link_id_and_trp_id <-
 # ok with multiple trps on same link
 
 
-
 ## TRP heading ----
 trp_direction <-
   get_trps_with_direction() %>%
@@ -1018,26 +1018,28 @@ trp_heading <-
   )
 
 
-
-
-## Continuous ----
-trp_rv_continuous <-
+## AADT ----
+trp_rv <-
   distinct_trps %>%
   dplyr::filter(
     county_name %in% c("Rogaland", "Vestland"),
-    traffic_type == "VEHICLE",
-    registration_frequency == "PERIODIC"
-      #"CONTINUOUS" # include periodic here?
+    traffic_type == "VEHICLE"
   )
 
-aadt_rv_continuous <-
+aadt_rv <-
   get_aadt_by_direction_for_trp_list(
-    trp_rv_continuous$trp_id
+    trp_rv$trp_id
   ) %>%
   dplyr::filter(
     year > 2013
   )
 
+saveRDS(
+  aadt_rv,
+  file = "nr_prep_links/aadt_rv.rds"
+)
+
+# Per Feb 2022 factor curve AADTs aren't in the API, fetched from Kibana:
 aadt_by_factor_curve <-
   readr::read_csv2(
     "periodic_data/periodic_aadt_by_factor_curve.csv"
@@ -1047,12 +1049,14 @@ aadt_by_factor_curve <-
     year,
     adt_factor_curve = adt,
     curve
+  ) %>%
+  dplyr::filter(
+    year < 2022
   )
 
-# TODO: use factor curve aadt divided by 2 when it is available
-
+# using factor curve aadt divided by 2 when it is available
 periodic_aadt_compare_factor_curve_and_naive <-
-  aadt_rv_continuous %>%
+  aadt_rv %>%
   dplyr::left_join(
     aadt_by_factor_curve,
     by = c("trp_id", "year")
@@ -1066,44 +1070,78 @@ periodic_aadt_compare_factor_curve_and_naive <-
     heading,
     year,
     adt,
-    sd = standard_deviation,
+    standard_deviation,
     adt_factor_curve_halfed,
     adt_diff
   ) %>%
   dplyr::filter(
     !is.na(adt_factor_curve_halfed)
+  ) %>%
+  dplyr::select(
+    -adt,
+    -adt_diff,
+    adt = adt_factor_curve_halfed
   )
 
+aadt_rv_tidy <-
+  aadt_rv %>%
+  dplyr::filter(
+    total.coverage.percentage > 50 |
+      is.na(total.coverage.percentage),
+    adt > 10
+  ) %>%
+  dplyr::select(
+    trp_id,
+    heading,
+    year,
+    adt,
+    standard_deviation
+  ) %>%
+  dplyr::anti_join(
+    periodic_aadt_compare_factor_curve_and_naive,
+    by = c("trp_id", "year")
+  ) %>%
+  dplyr::bind_rows(
+    periodic_aadt_compare_factor_curve_and_naive
+  )
 
-
-trp_rv_continuous_aadt <-
-  trp_rv_continuous %>%
+traffic_link_id_and_aadt_rv <-
+  link_id_and_trp_id %>%
   dplyr::left_join(
     trp_heading,
     by = "trp_id"
   ) %>%
   dplyr::left_join(
-    aadt_rv_continuous,
+    aadt_rv_tidy,
     by = c("trp_id", "heading")
   ) %>%
   dplyr::filter(
     !is.na(year)
   ) %>%
   dplyr::select(
-    trp_id,
-    road_network_link,
-    road_network_position,
-    med_metrering,
+    FEATURE_OID = ID,
+    aadt_prelim = adt,
+    aadt_prelim_sd = standard_deviation,
+    direction = med_metrering,
     year,
-    adt,
-    standard_deviation,
-    coverage
+    type = registration_frequency
+  ) %>%
+  dplyr::mutate(
+    size = "ALL",
+    type =
+      dplyr::case_when(
+        type == "CONTINUOUS" ~ "K",
+        type == "PERIODIC" ~ "P"
+      )
   )
 
 
-## Periodic ----
-# Just include these among continuous?
-# That is anyway the way to go when factor curve AADTs are in the API.
+## Write ----
+sf::st_write(
+  traffic_link_id_and_aadt_rv,
+  dsn = file_rv_dir,
+  layer = 'aadt'
+)
 
 
 # 6. Graph centrality parameters ----
