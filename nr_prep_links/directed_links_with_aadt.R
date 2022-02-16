@@ -746,6 +746,7 @@ look_at_edges <-
   edges_dir_rv %>%
   sf::st_drop_geometry()
 
+
 # 4. Transport model AADT ----
 
 
@@ -914,10 +915,10 @@ edges_dir_rv_tm <-
 # "type" registration_frequency
 
 
-# TODO: AADT per direction in RV
+# AADT per direction in RV
 # TODO: AADT per direction and three classes in RV
-# TODO: both continuous and periodic (factor curve values) (not radar)
-# TODO: connect them to correct link and direction by using road link info
+# both continuous and periodic (factor curve values) (not radar)
+# connect them to correct link and direction by using road link info
 
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
@@ -1026,18 +1027,23 @@ trp_rv <-
     traffic_type == "VEHICLE"
   )
 
-aadt_rv <-
-  get_aadt_by_direction_for_trp_list(
-    trp_rv$trp_id
-  ) %>%
-  dplyr::filter(
-    year > 2013
-  )
+# aadt_rv <-
+#   get_aadt_by_direction_for_trp_list(
+#     trp_rv$trp_id
+#   ) %>%
+#   dplyr::filter(
+#     year > 2013
+#   )
+#
+# saveRDS(
+#   aadt_rv,
+#   file = "nr_prep_links/aadt_rv.rds"
+# )
 
-saveRDS(
-  aadt_rv,
-  file = "nr_prep_links/aadt_rv.rds"
-)
+aadt_rv <-
+  readRDS(
+    file = "nr_prep_links/aadt_rv.rds"
+  )
 
 # Per Feb 2022 factor curve AADTs aren't in the API, fetched from Kibana:
 aadt_by_factor_curve <-
@@ -1136,20 +1142,128 @@ traffic_link_id_and_aadt_rv <-
   )
 
 
-## Write ----
-sf::st_write(
-  traffic_link_id_and_aadt_rv,
-  dsn = file_rv_dir,
-  layer = 'aadt'
-)
-
-
 # 6. Graph centrality parameters ----
+source("nr_prep_links/nr/prepros_manipuler_vegnett_rettet_hardkodet.r")
+
+## Targeted data cleansing ----
+# Adds ferry speed
+# travel time (normalized)
+# link lenght (normalized)
+# removes aadt in unreal directions
+# TODO: aadt cleasning probably already dealt with above?
+# TODO: no alteration of the nodes here?
+data_cleansed <-
+  manipuler_vegnett_rettet_hardkodet(
+    nodes,
+    edges,
+    adt_links
+  )
+
+nodes <- data_cleansed$nodes
+edges <- data_cleansed$edges
+adt_links <- data_cleansed$adt
+
+
+## Build directed graph object ----
+# First, add indices for start and end nodes of each edge wrt nodes object
+# TODO: already present?
+edges$from <- match(edges$START_NODE_OID,nodes$FEATURE_OID)
+edges$to <- match(edges$END_NODE_OID,nodes$FEATURE_OID)
+
+# Build directed graph object from nodes and spatially implicit edges
+net_RV_dir <-
+  sfnetworks::sfnetwork(
+    nodes=nodes,
+    edges=edges,
+    directed=TRUE,
+    node_key="FEATURE_OID",
+    edges_as_lines=FALSE,
+    force=FALSE
+  )
+
+# Verify that directed graph contains one single component
+net_RV_dir %>% count_components(mode="weak")
+
+cc <- net_RV_dir %>% components(mode="weak")
+
+rev(table(cc$csize))
+
+
+## Compute edge betweenness centrality ----
+net_main_bc <-
+  net_RV_dir %>%
+  activate("edges") %>%
+  mutate(
+    #bc_noweights = centrality_edge_betweenness(weights=NULL,directed=TRUE,cutoff=NULL),
+    bc_MD =
+      centrality_edge_betweenness(
+        weights=MD,
+        directed=TRUE,
+        cutoff=NULL),
+    bc_Tt_5 =
+      centrality_edge_betweenness(
+        weights=Tt_5,
+        directed=TRUE,
+        cutoff=NULL),
+    bc_Tt_10 =
+      centrality_edge_betweenness(
+        weights=Tt_10,
+        directed=TRUE,
+        cutoff=NULL),
+    bc_Tt_15 =
+      centrality_edge_betweenness(
+        weights=Tt_15,
+        directed=TRUE,
+        cutoff=NULL))
+# bc_MDnorm_weights = centrality_edge_betweenness(weights=MD_norm,directed=TRUE,cutoff=NULL),
+# bc_Ttnorm_weights = centrality_edge_betweenness(weights=Tt_norm,directed=TRUE,cutoff=NULL),
+# bc_MDTt_weights = centrality_edge_betweenness(weights=MD_norm*Tt_norm,directed=TRUE,cutoff=NULL),
+# bc_MDplusTt_weights = centrality_edge_betweenness(weights=MD_norm+Tt_norm,directed=TRUE,cutoff=NULL))
+
+
+# Add geometries to edges ----
+nodes_main <- net_main_bc %>%
+  activate("nodes") %>%
+  st_as_sf()
+
+edges_main <- net_main_bc %>%
+  activate("edges") %>%
+  as_tibble()
+
+## Transfer geometries from original edges object based on matching IDs
+idx <- match(as.character(edges_main$ID),as.character(edges$ID))
+edges_main <- st_set_geometry(edges_main,edges$geom[idx])
+
+
 
 
 # 7. Write final file ----
+final_file_rv_dir <-
+  'nr_gpkg/trafikklenker_dir_rv_2021.gpkg'
 
+sf::st_write(
+  nodes_rv_clean,
+  dsn = final_file_rv_dir,
+  layer = 'nodes'
+)
 
+sf::st_write(
+  edges_rv_dir_complete_with_all_turned,
+  append = FALSE,
+  dsn = final_file_rv_dir,
+  layer = 'edges'
+)
 
+sf::st_write(
+  road_net_info_rv_clean,
+  dsn = final_file_rv_dir,
+  layer = 'road_net_info'
+)
+
+sf::st_write(
+  traffic_link_id_and_aadt_rv,
+  dsn = final_file_rv_dir,
+  layer = 'aadt'
+)
 
 
