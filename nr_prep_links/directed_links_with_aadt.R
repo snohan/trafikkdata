@@ -749,7 +749,6 @@ look_at_edges <-
 
 # 4. Transport model AADT ----
 
-
 ## Read ----
 # Using the values already connected to road net in former part of the project.
 former_transport_model_enhanced_gpkg <-
@@ -1094,7 +1093,7 @@ aadt_rv_tidy <-
   dplyr::filter(
     total.coverage.percentage > 50 |
       is.na(total.coverage.percentage),
-    adt > 10
+    adt > 25
   ) %>%
   dplyr::select(
     trp_id,
@@ -1146,39 +1145,104 @@ traffic_link_id_and_aadt_rv <-
 source("nr_prep_links/nr/prepros_manipuler_vegnett_rettet_hardkodet.r")
 
 ## Targeted data cleansing ----
-# Adds ferry speed
+# Adds columns to edges:
+# ferry speed
 # travel time (normalized)
-# link lenght (normalized)
-# removes aadt in unreal directions
-# TODO: aadt cleasning probably already dealt with above?
-# TODO: no alteration of the nodes here?
-data_cleansed <-
-  manipuler_vegnett_rettet_hardkodet(
-    nodes,
-    edges,
-    adt_links
+# link length (normalized)
+# aadt cleasning already dealt with above
+# no alteration of the nodes here
+
+edges <-
+  edges_dir_rv_tm %>%
+  dplyr::mutate(
+    ferry_speed_5 = MAKS_SPEED,
+    ferry_speed_10 = MAKS_SPEED,
+    ferry_speed_15 = MAKS_SPEED,
+    pred_lane = MIN_LANE,
+    MD = as.numeric(sf::st_length(geom))/1e3
   )
 
-nodes <- data_cleansed$nodes
-edges <- data_cleansed$edges
-adt_links <- data_cleansed$adt
+#head(edges)
+
+## Euclidean lengths of each traffic link
+#     Two measures:
+#       i) absolute metric distance [km]
+#      ii) normalized to [0,1] using longest path as normalizing factor
+
+max.path <- max(edges$MD)
+
+edges <-
+  edges %>%
+  dplyr::mutate(
+    MD_norm = MD/max.path
+  )
+
+
+## Identify traffic links with missing MIN/MAKS_SPEED (assumed ferry ledges)
+#    - Assign alternative plausibly low speeds
+#      to account for waiting times on top of the passage itself
+#    - For later use with centrality calculations
+idx <-
+  unique(
+    c(which(is.na(edges$MIN_SPEED)),
+      which(is.na(edges$MAKS_SPEED))
+    )
+  )
+# none
+
+# ee$ferry_speed_5[idx] <- 5
+# ee$ferry_speed_10[idx] <- 10
+# ee$ferry_speed_15[idx] <- 15
+
+
+## Assign (minimum) travel time to each traffic link
+#     Two measures:
+#       i) absolute travel time in minutes assuming travel speed=MAKS_SPEED
+#      ii) normalized to [0,1] using longest travel time as normalizing factor
+edges <-
+  edges %>%
+  dplyr::mutate(
+    Tt_5 = MD/ferry_speed_5*60,
+    Tt_10 = MD/ferry_speed_10*60,
+    Tt_15 = MD/ferry_speed_15*60
+  )
+
+max.time <- max(edges$Tt_10)
+
+edges <-
+  edges %>%
+  dplyr::mutate(
+    Tt_norm = Tt_10/max.time
+  )
+
+
+# HERE!
 
 
 ## Build directed graph object ----
 # First, add indices for start and end nodes of each edge wrt nodes object
-# TODO: already present?
-edges$from <- match(edges$START_NODE_OID,nodes$FEATURE_OID)
-edges$to <- match(edges$END_NODE_OID,nodes$FEATURE_OID)
+edges$from <-
+  base::match(
+    edges$START_NODE_OID,
+    nodes_dir_rv$FEATURE_OID
+  )
+
+edges$to <-
+  base::match(
+    edges$END_NODE_OID,
+    nodes_dir_rv$FEATURE_OID
+  )
 
 # Build directed graph object from nodes and spatially implicit edges
+# The edges must contain columns 'from' and 'to'
 net_RV_dir <-
   sfnetworks::sfnetwork(
-    nodes=nodes,
-    edges=edges,
-    directed=TRUE,
-    node_key="FEATURE_OID",
-    edges_as_lines=FALSE,
-    force=FALSE
+    nodes = nodes_dir_rv,
+    edges = edges,
+    directed = TRUE,
+    node_key = "FEATURE_OID",
+    edges_as_lines = FALSE,
+    force = FALSE
   )
 
 # Verify that directed graph contains one single component
@@ -1222,9 +1286,9 @@ net_main_bc <-
 
 
 # Add geometries to edges ----
-nodes_main <- net_main_bc %>%
-  activate("nodes") %>%
-  st_as_sf()
+# nodes_main <- net_main_bc %>%
+#   activate("nodes") %>%
+#   st_as_sf()
 
 edges_main <- net_main_bc %>%
   activate("edges") %>%
@@ -1242,23 +1306,22 @@ final_file_rv_dir <-
   'nr_gpkg/trafikklenker_dir_rv_2021.gpkg'
 
 sf::st_write(
-  nodes_rv_clean,
+  nodes_dir_rv,
   dsn = final_file_rv_dir,
   layer = 'nodes'
 )
 
 sf::st_write(
-  edges_rv_dir_complete_with_all_turned,
-  append = FALSE,
+  edges_main,
   dsn = final_file_rv_dir,
   layer = 'edges'
 )
 
-sf::st_write(
-  road_net_info_rv_clean,
-  dsn = final_file_rv_dir,
-  layer = 'road_net_info'
-)
+# sf::st_write(
+#   road_net_info_rv_clean,
+#   dsn = final_file_rv_dir,
+#   layer = 'road_net_info'
+# )
 
 sf::st_write(
   traffic_link_id_and_aadt_rv,
