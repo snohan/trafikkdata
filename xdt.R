@@ -10,9 +10,13 @@ source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 trp <- get_points()
 
 trp_distinct <- trp %>%
-  dplyr::filter(!is.na(validFrom)) %>%
-  dplyr::filter(traffic_type == "VEHICLE") %>%
-  dplyr::filter(!str_detect(road_reference, "KD")) %>%
+  dplyr::filter(
+    !is.na(validFrom),
+    validTo >= "2021-09-01" | is.na(validTo),
+    traffic_type == "VEHICLE",
+    !str_detect(road_reference, "KD"),
+    registration_frequency == "CONTINUOUS"
+  ) %>%
   dplyr::group_by(trp_id) %>%
   dplyr::slice(which.min(validFrom))
 
@@ -132,3 +136,47 @@ low_aadt <- trp_with_aadt %>%
   dplyr::filter(year == 2019,
                 coverage > 90,
                 adt <= 500)
+
+
+# SDT ----
+sdt_2021 <-
+  get_sdt_for_trp_list(
+    trp_distinct$trp_id,
+    "2021"
+  )
+
+saveRDS(
+  sdt_2021,
+  "spesialbestillinger/sdt_2021.rds"
+)
+
+trp_sdt_2021 <-
+  sdt_2021 %>%
+  dplyr::filter(
+    season == "SUMMER",
+    coverage > 50
+  ) %>%
+  dplyr::left_join(
+    trp_distinct,
+    by = "trp_id"
+  ) %>%
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    county_name,
+    municipality_name,
+    season,
+    year,
+    coverage,
+    sdt
+  ) %>%
+  dplyr::arrange(
+    county_name,
+    road_reference
+  )
+
+writexl::write_xlsx(
+  trp_sdt_2021,
+  path = "spesialbestillinger/sommerdogntrafikk_2021.xlsx"
+)

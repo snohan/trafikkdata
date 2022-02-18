@@ -815,7 +815,7 @@ nrow(recalculated_trs) /
   nrow(trs_with_emu) * 100
 
 
-# TRP with EMU3 ----
+# TRP with EMU3 or LM ----
 trp_info <- trp %>%
   split_road_system_reference() %>%
   dplyr::select(
@@ -830,10 +830,10 @@ trp_info <- trp %>%
   ) %>%
   dplyr::distinct(trp_id, .keep_all = T)
 
-trp_with_emu <-
+trp_with_lm <-
   trp_device_history %>%
   dplyr::filter(
-    device_type == "EMU",
+    device_type == "LOOP_MONITOR",
     # Some trps are not public
     trp_id %in% trp$trp_id
   ) %>%
@@ -939,9 +939,9 @@ trp_with_emu <-
 
 dt <-
   get_dt_for_trp_list(
-    trp_with_emu$trp_id,
+    trp_with_lm$trp_id,
     "2022-01-01T00:00:00+01:00",
-    "2022-02-14T00:00:00+01:00"
+    "2022-02-01T00:00:00+01:00"
   ) %>%
   dplyr::select(
     trp_id = point_id,
@@ -950,10 +950,10 @@ dt <-
     coverage
   )
 
-dt_emu3 <-
+dt_lm <-
   dt %>%
   dplyr::left_join(
-    trp_with_emu,
+    trp_with_lm,
     by = "trp_id"
   ) %>%
   dplyr::select(
@@ -968,13 +968,13 @@ dt_emu3 <-
     coverage
   )
 
-dt_emu3 %>%
+dt_lm %>%
   dplyr::mutate(
     date = as.character(date)
   ) %>%
   writexl::write_xlsx(
     path =
-    "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Spesialuttak/trp_med_emu3_dt_2022.xlsx"
+    "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Spesialuttak/trp_med_lm_dt_2022.xlsx"
   )
 
 
