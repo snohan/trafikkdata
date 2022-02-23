@@ -1,4 +1,4 @@
-# Create a geopackage-file containing directed links with AADT
+# Create a geopackage file containing directed links with AADT
 
 # NRs framgangsmåte ----
 # Lag vegnettsgraf, steg 1 i ÅDT-modulen
@@ -85,6 +85,7 @@ library(ggplot2)
 library(DBI)
 library(RSQLite)
 library(tmap)
+library(tictoc)
 
 source("nr_prep_links/nr/prepros_manipuler_trafikklenker_hardkodet.r")
 
@@ -123,10 +124,10 @@ road_net_info <-
     layer = 'Trafikklenker_stedfesting'
   )
 
-
 edges_without_geometry <-
   edges %>%
   sf::st_drop_geometry()
+
 
 ## Clean ----
 ## Targeted data cleansing of individual traffic links and nodes
@@ -136,9 +137,11 @@ links_remove_toi <-
     stringsAsFactors = FALSE
   )
 
-# The link IDs have changed in the original Triona file, so this won't have any effect
-# TODO: are these links still a problem, and are there others we should discover?
-# How can we remove problematic links automatically?
+# The link IDs have changed in the original Triona file,
+# so this won't have any effect
+# TODO: Are these links still a problem?
+# TODO: Are there others we should remove?
+# TODO: Remove problematic links automatically?
 
 # Removing cyclic paths, uncoupled nodes, problematic paths
 # Connecting uncoupled graph parts that should be part of main graph
@@ -154,8 +157,7 @@ edges <- data_cleansed$edges
 
 
 ## Build undirected graph ----
-
-## First, add indices for start and end nodes of each edge wrt nodes object
+# Add indices for start and end nodes of each edge wrt nodes object
 edges$from <-
   base::match(
     edges$START_NODE_OID,
@@ -181,9 +183,10 @@ net_undir <-
 
 
 ## Graph components ----
-# Decompose graph and consider the distribution of nodes among the various components
+# Decompose graph and consider the distribution of nodes
+# among the various components
 
-## Identify connected components
+# Identify connected components
 net_undir %>%
   igraph::count_components(mode="weak")
 
@@ -214,7 +217,7 @@ net_all_but_main <-
 # Extract nodes and edges from components, and add geometries.
 
 
-### Main ----
+### Main component ----
 nodes_main <- net_main %>%
   sfnetworks::activate("nodes") %>%
   st_as_sf()
@@ -272,7 +275,7 @@ edges_all_but_main <-
 
 
 ## Write ----
-### Main ----
+### Main component ----
 file_main <-
   'nr_gpkg/trafikklenker_undir_norge_2.gpkg'
 
@@ -324,7 +327,7 @@ path_vestland <-
 path_rogaland <-
   'nr_prep_links/Basisdata_11_Rogaland_25833_Kommuner_GEOJSON.geojson'
 
-sf::st_layers(path_vestland)
+#sf::st_layers(path_vestland)
 
 vestland <-
   sf::st_read(
@@ -338,11 +341,11 @@ rogaland <-
     layer = 'administrative_enheter.kommune'
   )
 
-region_vest <-
+region_vest_kommuner <-
   dplyr::bind_rows(vestland, rogaland)
 
 region_vest <-
-  region_vest %>%
+  region_vest_kommuner %>%
   sf::st_union()
 
 # Overlapping edges
@@ -389,6 +392,11 @@ nodes_rv_connected <-
 nodes_rv <- nodes_main[nodes_rv_connected, ]
 
 
+## Urban area ratio ----
+# TODO: add urban ratio here as the duplication of two way links
+# will not affect this ratio
+
+
 ## Write ----
 # TODO: functonize write to gpkg
 file_rv <-
@@ -432,8 +440,6 @@ road_net_info_rv <-
     file_rv,
     layer = 'road_net_info'
   )
-
-
 
 
 # 3. Directed road net ----
@@ -845,7 +851,11 @@ edges_with_overlapping_geometry <-
         is.na(start.x1) ~ end.x,
         TRUE ~ start.x1
       ),
-    start.y = stringr::str_extract(ROADREF_START.y, "^[:upper:]{1}[:digit:]*"),
+    start.y =
+      stringr::str_extract(
+        ROADREF_START.y,
+        "^[:upper:]{1}[:digit:]*"
+      )
   ) %>%
   dplyr::filter(
     start.x == start.y
@@ -1216,9 +1226,6 @@ edges <-
   )
 
 
-# HERE!
-
-
 ## Build directed graph object ----
 # First, add indices for start and end nodes of each edge wrt nodes object
 edges$from <-
@@ -1299,8 +1306,6 @@ idx <- match(as.character(edges_main$ID),as.character(edges$ID))
 edges_main <- st_set_geometry(edges_main,edges$geom[idx])
 
 
-
-
 # 7. Write final file ----
 final_file_rv_dir <-
   'nr_gpkg/trafikklenker_dir_rv_2021.gpkg'
@@ -1328,5 +1333,167 @@ sf::st_write(
   dsn = final_file_rv_dir,
   layer = 'aadt'
 )
+
+
+# 8. Urban area ratio ----
+# TODO: move this part to directed graph when
+# starting from the very beginning again
+
+# Using urban areas defined by SSB https://www.ssb.no/natur-og-miljo/geodata
+urban_areas_norway <-
+  sf::st_read(
+    "nr_gpkg/tettsted2021/tettsted2021.shp"
+  ) %>%
+  sf::st_set_crs(25833)
+#st_crs(region_vest) == st_crs(urban_areas_norway)
+
+urban_areas_rv <-
+  urban_areas_norway[st_intersects(
+    urban_areas_norway,
+    region_vest) %>% lengths > 0,] %>%
+  dplyr::select(
+    TETTNR
+  )
+
+#head(urban_areas_rv)
+
+# Write urban areas to file and check in ArcGIS
+sf::st_write(
+  urban_areas_rv,
+  dsn = "nr_gpkg/urban_areas_rv.gpkg",
+  layer = 'urban_areas_rv'
+)
+# OK!
+
+# The edges
+edges_dir_rv <-
+  sf::st_read(
+    final_file_rv_dir,
+    query = "SELECT * FROM \"edges\""
+  )
+names(edges_dir_rv)
+
+edge_id_and_total_length <-
+  edges_dir_rv %>%
+  dplyr::select(
+    lenke_nr,
+    total_length = MD
+  ) %>%
+  sf::st_drop_geometry()
+
+# Reduce processing time by first filtering links
+# keeping just those which overlap urban areas
+edge_ids <-
+  edges_dir_rv %>%
+  dplyr::select(
+    lenke_nr
+  )
+
+edges_with_some_urban_part <-
+  edge_ids[st_intersects(
+    edge_ids,
+    urban_areas_rv) %>% lengths > 0,]
+
+# Making all urban areas one multipolygon
+urban_areas_rv_unified <-
+  sf::st_union(
+    urban_areas_rv
+  )
+
+tictoc::tic()
+edges_non_urban_part <-
+  edges_with_some_urban_part %>%
+  sf::st_difference(
+    urban_areas_rv_unified
+  )
+tictoc::toc()
+# Time spent: 815 s
+# Still takes too much time
+# Reduce by first finding which urban areas each link intersects with,
+# and then find st_difference for just those?
+# TODO: Do not include those which are completely within an urban area
+
+# Calculate non urban length
+edges_non_urban_part_ratio <-
+  edges_non_urban_part %>%
+  dplyr::mutate(
+    non_urban_length = as.numeric(sf::st_length(geom)) / 1e3
+  ) %>%
+  sf::st_drop_geometry() %>%
+  dplyr::inner_join(
+    edge_id_and_total_length,
+    by = "lenke_nr"
+  ) %>%
+  dplyr::mutate(
+    urban_ratio = non_urban_length / total_length
+  ) %>%
+  dplyr::select(
+    lenke_nr,
+    urban_ratio
+  )
+
+edges_completely_inside_urban_areas <-
+  edges_with_some_urban_part %>%
+  sf::st_drop_geometry() %>%
+  dplyr::filter(
+    !(lenke_nr %in% edges_non_urban_part$lenke_nr)
+  ) %>%
+  dplyr::mutate(
+    urban_ratio = 1
+  )
+
+edges_completely_outside_urban_areas <-
+  edge_ids %>%
+  sf::st_drop_geometry() %>%
+  dplyr::filter(
+    !(lenke_nr %in% edges_with_some_urban_part$lenke_nr)
+  ) %>%
+  dplyr::mutate(
+    urban_ratio = 0
+  )
+
+
+edge_ids_and_urban_ratio <-
+  dplyr::bind_rows(
+    edges_non_urban_part_ratio,
+    edges_completely_inside_urban_areas,
+    edges_completely_outside_urban_areas
+  ) %>%
+  dplyr::rename(
+    T_andel = urban_ratio
+  )
+
+## Join back with edges ----
+edges_dir_rv_urban_ratio <-
+  edges_dir_rv %>%
+  dplyr::left_join(
+    edge_ids_and_urban_ratio,
+    by = "lenke_nr"
+  )
+
+## Write ----
+sf::st_write(
+  edges_dir_rv_urban_ratio,
+  append = FALSE,
+  dsn = final_file_rv_dir,
+  layer = 'edges'
+)
+
+
+# 9. Municipality ----
+source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
+
+sola <-
+  hent_kommune_v3(1124)
+
+edges_sola <-
+  edges_dir_rv_urban_ratio[st_intersects(
+    edges_dir_rv_urban_ratio,
+    sola) %>% lengths > 0,]
+
+# Nodes
+
+# AADT
+
 
 
