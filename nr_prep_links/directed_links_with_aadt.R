@@ -1481,19 +1481,65 @@ sf::st_write(
 
 
 # 9. Municipality ----
+
+## Read back in ----
+final_file_rv_dir <-
+  'nr_gpkg/trafikklenker_dir_rv_2021.gpkg'
+
+edges_rv <-
+  sf::st_read(
+    final_file_rv_dir,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"edges\""
+  )
+
+nodes_rv <-
+  sf::st_read(
+    final_file_rv_dir,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"nodes\""
+  )
+
+aadt_rv <-
+  sf::st_read(
+    final_file_rv_dir,
+    query = "SELECT * FROM \"aadt\""
+  )
+
+
 source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 
 sola <-
   hent_kommune_v3(1124)
 
 edges_sola <-
-  edges_dir_rv_urban_ratio[st_intersects(
-    edges_dir_rv_urban_ratio,
+  edges_rv[st_intersects(
+    edges_rv,
     sola) %>% lengths > 0,]
 
-# Nodes
 
-# AADT
+## Write ----
+final_file_sola <-
+  'nr_gpkg/trafikklenker_sola_2021.gpkg'
+
+sf::st_write(
+  nodes_rv,
+  dsn = final_file_sola,
+  layer = 'nodes'
+)
+
+sf::st_write(
+  edges_sola,
+  dsn = final_file_sola,
+  layer = 'edges'
+)
+
+sf::st_write(
+  aadt_rv,
+  dsn = final_file_sola,
+  layer = 'aadt'
+)
+
 
 
 
