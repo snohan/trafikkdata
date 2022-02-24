@@ -46,9 +46,6 @@ distinct_trps <- trp %>%
 ts_chosen_trps <-
   readr::read_csv2(
     "ts/ts_chosen_trp_id.csv"
-  ) %>%
-  dplyr::slice(
-    45:47
   )
 
 ts_trp <-
@@ -81,7 +78,7 @@ aadts <-
 aadts_chosen <-
   aadts %>%
   dplyr::filter(
-    year %in% c(2020, 2021)
+    year %in% c(2019, 2020, 2021)
   )
 
 aadts_chosen_2021 <-
@@ -123,7 +120,7 @@ ts_trp_aadt <-
 
 writexl::write_xlsx(
   ts_trp_aadt,
-  path = "ts/ts_trp_2.xlsx"
+  path = "ts/ts_trp.xlsx"
 )
 
 # Read back in
@@ -139,7 +136,7 @@ ts_trp_aadt <-
 read_a_file <- function(file_name) {
 
   readr::read_csv2(
-    paste0("ts_data_2022_2/", file_name)
+    paste0("ts_data_2019/", file_name)
   ) %>%
   dplyr::mutate(
     periode_start = as.character(periode_start)
@@ -151,7 +148,7 @@ read_a_file <- function(file_name) {
 # Prepare speed intervals ----
 speed_intervals <-
   list.files(
-    "ts_data_2022_2",
+    "ts_data_2019",
     pattern = "^Fartsintervaller*") %>%
   purrr::map_df(
     ~ read_a_file(.)
@@ -237,7 +234,7 @@ speed_intervals <-
 # Prepare means and percentiles ----
 means_and_percentiles <-
   list.files(
-    "ts_data_2022_2",
+    "ts_data_2019",
     pattern = "^Snitt*") %>%
   purrr::map_df(
     ~ read_a_file(.)
@@ -319,7 +316,7 @@ trp_speed_info <-
 
 writexl::write_xlsx(
   trp_speed_info,
-  path = "ts/trp_speed_monthly_2.xlsx"
+  path = "ts/trp_speed_monthly_2019.xlsx"
 )
 
 
