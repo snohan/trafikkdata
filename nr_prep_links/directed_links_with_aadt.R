@@ -961,7 +961,7 @@ trp_id_and_road_link <-
 
 
 ## TRP on traffic link ----
-# Resulting table must have
+# Resulting table must have:
 # traffic link ID
 # med_metrering
 # trp_id
@@ -975,7 +975,9 @@ link_id_and_trp_id <-
   dplyr::mutate(
     on_link =
       road_network_position > START_MEASURE &
-      road_network_position < END_MEASURE
+      road_network_position < END_MEASURE |
+      road_network_position < START_MEASURE &
+      road_network_position > END_MEASURE
   ) %>%
   dplyr::filter(
     on_link == TRUE
@@ -1118,6 +1120,10 @@ aadt_rv_tidy <-
   ) %>%
   dplyr::bind_rows(
     periodic_aadt_compare_factor_curve_and_naive
+  ) %>%
+  # remove errors
+  dplyr::filter(
+    !(trp_id == "51214V805707" & adt < 1000)
   )
 
 traffic_link_id_and_aadt_rv <-
@@ -1134,6 +1140,7 @@ traffic_link_id_and_aadt_rv <-
     !is.na(year)
   ) %>%
   dplyr::select(
+    #trp_id,
     FEATURE_OID = ID,
     aadt_prelim = adt,
     aadt_prelim_sd = standard_deviation,
@@ -1149,6 +1156,58 @@ traffic_link_id_and_aadt_rv <-
         type == "PERIODIC" ~ "P"
       )
   )
+
+# aadts_without_match <-
+#   aadt_rv_tidy %>%
+#   dplyr::filter(
+#     !(trp_id %in% traffic_link_id_and_aadt_rv$trp_id)
+#   ) %>%
+#   dplyr::select(
+#     trp_id
+#   ) %>%
+#   dplyr::distinct()
+#
+# links_with_more_than_one_trp_aadt <-
+#   traffic_link_id_and_aadt_rv %>%
+#   dplyr::select(
+#     trp_id,
+#     FEATURE_OID
+#   ) %>%
+#   dplyr::distinct() %>%
+#   dplyr::group_by(
+#     FEATURE_OID
+#   ) %>%
+#   dplyr::summarise(
+#     n_trp = n()
+#   ) %>%
+#   dplyr::filter(
+#     n_trp > 1
+#   )
+#
+# multiple_aadt <-
+#   traffic_link_id_and_aadt_rv %>%
+#   dplyr::filter(
+#     FEATURE_OID %in% links_with_more_than_one_trp_aadt$FEATURE_OID
+#   )
+#
+# links_with_duplicate_headings <-
+#   aadt_rv_tidy %>%
+#   dplyr::select(
+#     trp_id,
+#     heading,
+#     year
+#   ) %>%
+#   dplyr::group_by(
+#     trp_id,
+#     heading,
+#     year
+#   ) %>%
+#   dplyr::summarise(
+#     n_aadt = n()
+#   ) %>%
+#   dplyr::filter(
+#     n_aadt > 1
+#   )
 
 
 # 6. Graph centrality parameters ----
@@ -1330,6 +1389,7 @@ sf::st_write(
 
 sf::st_write(
   traffic_link_id_and_aadt_rv,
+  append = FALSE,
   dsn = final_file_rv_dir,
   layer = 'aadt'
 )
@@ -1535,7 +1595,9 @@ sf::st_write(
 )
 
 sf::st_write(
-  aadt_rv,
+  #aadt_rv,
+  traffic_link_id_and_aadt_rv,
+  append = FALSE,
   dsn = final_file_sola,
   layer = 'aadt'
 )
