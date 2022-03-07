@@ -91,7 +91,8 @@ source("nr_prep_links/nr/prepros_manipuler_trafikklenker_hardkodet.r")
 
 ## The Triona file
 geopackage_file <-
-  'C:/Users/snohan/Desktop/Trafikklenker_20220116.gpkg'
+  #'C:/Users/snohan/Desktop/Trafikklenker_20220116.gpkg'
+  'C:/Users/snohan/Desktop/Trafikklenker_20220302.gpkg'
 
 # Trafikklenker som skal fjernes iht til TØIs kartlegging
 file_remove_links_toi <-
@@ -100,7 +101,7 @@ file_remove_links_toi <-
 
 # 1. Undirected road net Norway ----
 ## Read ----
-geopackage_layers <- sf::st_layers(geopackage_file)
+#geopackage_layers <- sf::st_layers(geopackage_file)
 
 edges <-
   sf::st_read(
@@ -124,9 +125,9 @@ road_net_info <-
     layer = 'Trafikklenker_stedfesting'
   )
 
-edges_without_geometry <-
-  edges %>%
-  sf::st_drop_geometry()
+# edges_without_geometry <-
+#   edges %>%
+#   sf::st_drop_geometry()
 
 
 ## Clean ----
@@ -216,7 +217,6 @@ net_all_but_main <-
 ## Add geometry ----
 # Extract nodes and edges from components, and add geometries.
 
-
 ### Main component ----
 nodes_main <- net_main %>%
   sfnetworks::activate("nodes") %>%
@@ -277,7 +277,7 @@ edges_all_but_main <-
 ## Write ----
 ### Main component ----
 file_main <-
-  'nr_gpkg/trafikklenker_undir_norge_2.gpkg'
+  'nr_gpkg/trafikklenker_undir_norge_3.gpkg'
 
 sf::st_write(
   nodes_main,
@@ -300,7 +300,7 @@ sf::st_write(
 
 ### All but main ----
 file_all_but_main <-
-  'nr_gpkg/trafikklenker_undir_norge_all_but_main_2.gpkg'
+  'nr_gpkg/trafikklenker_undir_norge_all_but_main_3.gpkg'
 
 sf::st_write(
   nodes_all_but_main,
@@ -601,14 +601,14 @@ edges_rv_clean <-
       )
   )
 
-nodes_rv_clean <-
+nodes_dir_rv <-
   nodes_rv %>%
   dplyr::filter(
     !(FEATURE_OID %in%
         edges_rv_direction_0_and_neighbour_with_match$node_id_to_be_swapped)
   )
 
-road_net_info_rv_clean <-
+road_net_info_dir_rv <-
   road_net_info_rv %>%
   dplyr::filter(
     !(FEATURE_OID %in% edges_rv_direction_0$ID)
@@ -708,7 +708,7 @@ file_rv_dir <-
   'nr_gpkg/trafikklenker_dir_rv.gpkg'
 
 sf::st_write(
-  nodes_rv_clean,
+  nodes_dir_rv,
   dsn = file_rv_dir,
   layer = 'nodes_rv'
 )
@@ -721,7 +721,7 @@ sf::st_write(
 )
 
 sf::st_write(
-  road_net_info_rv_clean,
+  road_net_info_dir_rv,
   dsn = file_rv_dir,
   layer = 'road_net_info'
 )
@@ -781,6 +781,7 @@ edges_dir_rv_former_small <-
     AADT_ALLE_MEAN
   )
 
+rm(edges_dir_rv_former)
 #look_at_former <- head(edges_dir_rv_former)
 
 
@@ -789,7 +790,8 @@ edges_dir_rv_former_small <-
 # Join transport model columns back on edges after joining on geometry
 # and aggregating AADT values if overlap with more than one link
 edges_dir_rv_small <-
-  edges_dir_rv %>%
+  #edges_dir_rv %>%
+  edges_rv_dir_complete_with_all_turned %>%
   dplyr::select(
     lenke_nr,
     ROADREF_START,
@@ -898,7 +900,8 @@ edges_with_overlapping_geometry <-
 
 # join back
 edges_dir_rv_tm <-
-  edges_dir_rv %>%
+  #edges_dir_rv %>%
+  edges_rv_dir_complete_with_all_turned %>%
   dplyr::left_join(
     edges_with_overlapping_geometry,
     by = "lenke_nr"
@@ -1228,7 +1231,7 @@ edges <-
     ferry_speed_10 = MAKS_SPEED,
     ferry_speed_15 = MAKS_SPEED,
     pred_lane = MIN_LANE,
-    MD = as.numeric(sf::st_length(geom))/1e3
+    MD = as.numeric(sf::st_length(geometry))/1e3
   )
 
 #head(edges)
@@ -1362,12 +1365,12 @@ edges_main <- net_main_bc %>%
 
 ## Transfer geometries from original edges object based on matching IDs
 idx <- match(as.character(edges_main$ID),as.character(edges$ID))
-edges_main <- st_set_geometry(edges_main,edges$geom[idx])
+edges_main <- st_set_geometry(edges_main,edges$geometry[idx])
 
 
 # 7. Write final file ----
 final_file_rv_dir <-
-  'nr_gpkg/trafikklenker_dir_rv_2021.gpkg'
+  'nr_gpkg/trafikklenker_dir_rv_2021_2.gpkg'
 
 sf::st_write(
   nodes_dir_rv,
@@ -1418,19 +1421,20 @@ urban_areas_rv <-
 #head(urban_areas_rv)
 
 # Write urban areas to file and check in ArcGIS
-sf::st_write(
-  urban_areas_rv,
-  dsn = "nr_gpkg/urban_areas_rv.gpkg",
-  layer = 'urban_areas_rv'
-)
+# sf::st_write(
+#   urban_areas_rv,
+#   dsn = "nr_gpkg/urban_areas_rv.gpkg",
+#   layer = 'urban_areas_rv'
+# )
 # OK!
 
 # The edges
 edges_dir_rv <-
-  sf::st_read(
-    final_file_rv_dir,
-    query = "SELECT * FROM \"edges\""
-  )
+  edges_main
+  # sf::st_read(
+  #   final_file_rv_dir,
+  #   query = "SELECT * FROM \"edges\""
+  # )
 names(edges_dir_rv)
 
 edge_id_and_total_length <-
@@ -1467,7 +1471,7 @@ edges_non_urban_part <-
     urban_areas_rv_unified
   )
 tictoc::toc()
-# Time spent: 815 s
+# Time spent: 815 s, 837 s
 # Still takes too much time
 # Reduce by first finding which urban areas each link intersects with,
 # and then find st_difference for just those?
@@ -1477,7 +1481,7 @@ tictoc::toc()
 edges_non_urban_part_ratio <-
   edges_non_urban_part %>%
   dplyr::mutate(
-    non_urban_length = as.numeric(sf::st_length(geom)) / 1e3
+    non_urban_length = as.numeric(sf::st_length(geometry)) / 1e3
   ) %>%
   sf::st_drop_geometry() %>%
   dplyr::inner_join(
@@ -1547,18 +1551,20 @@ final_file_rv_dir <-
   'nr_gpkg/trafikklenker_dir_rv_2021.gpkg'
 
 edges_rv <-
-  sf::st_read(
-    final_file_rv_dir,
-    # as_tibble = TRUE,
-    query = "SELECT * FROM \"edges\""
-  )
+  edges_dir_rv_urban_ratio
+  # sf::st_read(
+  #   final_file_rv_dir,
+  #   # as_tibble = TRUE,
+  #   query = "SELECT * FROM \"edges\""
+  # )
 
 nodes_rv <-
-  sf::st_read(
-    final_file_rv_dir,
-    # as_tibble = TRUE,
-    query = "SELECT * FROM \"nodes\""
-  )
+  nodes_dir_rv
+  # sf::st_read(
+  #   final_file_rv_dir,
+  #   # as_tibble = TRUE,
+  #   query = "SELECT * FROM \"nodes\""
+  # )
 
 aadt_rv <-
   sf::st_read(
