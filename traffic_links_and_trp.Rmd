@@ -92,6 +92,9 @@ points <- get_points() %>%
   dplyr::distinct(trp_id, .keep_all = T) %>%
   dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
 
+trp_latest_data <-
+  get_trps_latest_data()
+
 points_metadata <- points %>%
   dplyr::filter(
     traffic_type == "VEHICLE",
@@ -121,6 +124,13 @@ points_metadata <- points %>%
   ungroup() %>% 
   dplyr::select(
     -lane_numbers
+  ) %>% 
+  dplyr::left_join(
+    trp_latest_data,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    latest_data_by_year = lubridate::year(latest_data_by_hour)
   )
 
 # Special request
@@ -154,7 +164,8 @@ points_metadata <- points %>%
 ```
 
 ```{r traffic_links_from_gpkg, include=FALSE}
-geopackage_file <- "trafikklenker/Trafikklenker_20220116.gpkg"
+geopackage_file <- 
+  "trafikklenker/Trafikklenker_20220302.gpkg"
 
 # To see layers in gpkg file
 #layers <- sf::st_layers(geopackage_file)
@@ -180,13 +191,16 @@ trafikklenker_stedfesting_selected <-
 
 
 ```{r data_prep_nvdb}
-trps_on_links <- traffic_link_positions %>%
+trps_on_links <- 
+  trafikklenker_stedfesting_selected %>%
   dplyr::left_join(
     points_metadata,
     by = c("veglenkesekvensid" = "road_network_link")
   ) %>% 
   dplyr::mutate(
-    on_link = road_network_position > startposisjon & road_network_position < sluttposisjon,
+    on_link = 
+      road_network_position > startposisjon & 
+      road_network_position < sluttposisjon,
     length_m = round(length_m)
   ) %>% 
   dplyr::rowwise() %>% 
@@ -275,7 +289,9 @@ trps_on_links <-
     by = c("ELEMENT_ID" = "road_network_link")
   ) %>% 
   dplyr::mutate(
-    on_link = road_network_position > START_MEASURE & road_network_position < END_MEASURE,
+    on_link = 
+      road_network_position > START_MEASURE & 
+      road_network_position < END_MEASURE,
     on_link = dplyr::if_else(is.na(on_link), FALSE, on_link),
     on_link = dplyr::if_else(on_link == FALSE, 0, 1)
   ) %>% 
@@ -301,7 +317,7 @@ trps_on_links <-
 # HA den på C slik at ikke nettutfall stopper skrivingen,
 # og kanskje det går raskere
 #new_gpkg_file <- "trafikklenker/Trafikklenker_triona_med_trp.gpkg"
-new_gpkg_file <- "C:/Users/snohan/Desktop/Trafikklenker_triona_med_trp_2.gpkg"
+new_gpkg_file <- "C:/Users/snohan/Desktop/Trafikklenker_triona_med_trp_4.gpkg"
 
 # trps_on_links %>%
 #   sf::write_sf(
@@ -320,7 +336,7 @@ points_metadata %>%
     new_gpkg_file,
     layer = "TRP",
     quiet = FALSE,
-    append = TRUE
+    append = FALSE
   )
 
 trafikklenker <-
@@ -369,7 +385,7 @@ trafikklenker_og_n_trp %>%
 #     query = "SELECT * FROM TrafikkLenker_med_n_trp LIMIT 3"
 #   )
 
-layers <- sf::st_layers(new_gpkg_file)
+#layers <- sf::st_layers(new_gpkg_file)
 
 # Remove old link table to reduce file size (but no reduction?)
 #DBI::dbSendQuery(databasekobling, "DROP TABLE TrafikkLenker;")
