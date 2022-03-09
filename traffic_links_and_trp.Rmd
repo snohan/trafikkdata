@@ -104,6 +104,7 @@ points_metadata <- points %>%
     trp_id, 
     name, 
     registration_frequency,
+    operational_status,
     #road_category_and_number,
     road_reference,
     lane_numbers,
@@ -181,12 +182,12 @@ trafikklenker_stedfesting_selected <-
     query = query_position
   )
 
-# trafikklenker <-
-#   sf::st_read(
-#     geopackage_file,
-#     as_tibble = TRUE,
-#     query = "SELECT * FROM \"TrafikkLenker\" LIMIT 2"
-#   )
+trafikklenker <-
+  sf::st_read(
+    geopackage_file,
+    as_tibble = TRUE,
+    query = "SELECT * FROM \"TrafikkLenker\""
+  )
 ```
 
 
@@ -306,6 +307,49 @@ trps_on_links <-
     n_trp = sum(on_link)
   )
 
+# connect trp and links, filter by operational staus == OPERATIONAL
+# add operational status in trp table
+trp_operational <-
+  points_metadata %>% 
+  dplyr::filter(
+    operational_status == "OPERATIONAL"
+  ) %>% 
+  dplyr::select(
+    trp_id,
+    road_network_position,
+    road_network_link,
+    name,
+    operational_status,
+    lanes,
+    latest_data_by_year
+  )
+
+trps_operational_and_link <- 
+  trafikklenker_stedfesting_selected %>%
+  dplyr::left_join(
+    trp_operational,
+    by = c("ELEMENT_ID" = "road_network_link")
+  ) %>% 
+  dplyr::mutate(
+    on_link = 
+      road_network_position > START_MEASURE & 
+      road_network_position < END_MEASURE,
+    on_link = dplyr::if_else(is.na(on_link), FALSE, on_link),
+    on_link = dplyr::if_else(on_link == FALSE, 0, 1)
+  ) %>% 
+  dplyr::filter(
+    on_link == TRUE
+  ) %>% 
+  dplyr::select(
+    FEATURE_OID,
+    trp_id,
+    name,
+    operational_status,
+    lanes,
+    latest_data_by_year
+  )
+
+
 # Make a copy of the original GPKG
 # Keep only the TrafikkLenker layer
 # Add a a column with n trps to this layer
@@ -317,7 +361,7 @@ trps_on_links <-
 # HA den på C slik at ikke nettutfall stopper skrivingen,
 # og kanskje det går raskere
 #new_gpkg_file <- "trafikklenker/Trafikklenker_triona_med_trp.gpkg"
-new_gpkg_file <- "C:/Users/snohan/Desktop/Trafikklenker_triona_med_trp_4.gpkg"
+new_gpkg_file <- "C:/Users/snohan/Desktop/Trafikklenker_triona_med_trp_5.gpkg"
 
 # trps_on_links %>%
 #   sf::write_sf(
@@ -339,17 +383,21 @@ points_metadata %>%
     append = FALSE
   )
 
-trafikklenker <-
-  sf::st_read(
-    new_gpkg_file,
-    as_tibble = TRUE,
-    query = "SELECT * FROM \"TrafikkLenker\""
-  )
+# trafikklenker <-
+#   sf::st_read(
+#     new_gpkg_file,
+#     as_tibble = TRUE,
+#     query = "SELECT * FROM \"TrafikkLenker\""
+#   )
 
 trafikklenker_og_n_trp <-
   trafikklenker %>% 
   dplyr::left_join(
     trps_on_links,
+    by = c("ID" = "FEATURE_OID")
+  ) %>% 
+  dplyr::left_join(
+    trps_operational_and_link,
     by = c("ID" = "FEATURE_OID")
   )
 
