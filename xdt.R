@@ -43,6 +43,90 @@ mdt_all <- mdt_2020 %>%
 #                                        digits = 0))
 
 
+# MDT Trøndelag PD ----
+trp_data_span <-
+  get_trp_data_time_span()
+
+trp_info <-
+  trp %>%
+  dplyr::group_by(trp_id) %>%
+  dplyr::slice(
+    which.min(validFrom)
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::left_join(
+    trp_data_span,
+    by = "trp_id"
+  ) %>%
+  dplyr::filter(
+    first_data_with_quality_metrics < "2017-01-01",
+    latest_daily_traffic >= "2022-01-01",
+    county_no == 50,
+    traffic_type == "VEHICLE",
+    !str_detect(road_reference, "KD"),
+    registration_frequency == "CONTINUOUS"
+  ) %>%
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    municipality_name,
+    first_data,
+    first_data_with_quality_metrics,
+    latest_daily_traffic
+  )
+
+trps_chosen <-
+  c(
+    "15862V72153",
+    "09480V72828",
+    "40308V72241",
+    "40541V72295",
+    "40729V578598",
+    "81077V72158",
+    "14220V578146",
+    "46610V578105",
+    "48910V72822",
+    "77685V578099",
+    "99657V578673"
+  )
+
+mdts <-
+  dplyr::bind_rows(
+    get_mdt_for_trp_list(trps_chosen, "2017"),
+    get_mdt_for_trp_list(trps_chosen, "2018"),
+    get_mdt_for_trp_list(trps_chosen, "2019"),
+    get_mdt_for_trp_list(trps_chosen, "2020"),
+    get_mdt_for_trp_list(trps_chosen, "2021")
+  )
+
+trp_and_mdt <-
+  mdts %>%
+  dplyr::left_join(
+    trp_info,
+    by = "trp_id"
+  ) %>%
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    municipality_name,
+    year,
+    month,
+    mdt
+  ) %>%
+  dplyr::filter(
+    !is.na(name)
+  ) %>%
+  dplyr::arrange(
+    name
+  )
+
+writexl::write_xlsx(
+  trp_and_mdt,
+  "spesialbestillinger/utvalgte_mdt_trondelag.xlsx"
+)
+
 # device_type ####
 trp_device <- get_trs_device() %>%
   dplyr::select(trp_id, trs_id, deviceType)

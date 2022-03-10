@@ -31,6 +31,7 @@ ts_data
 trs_query.txt
 trs_trp
 vbv_data
+vbv_vehicle_registry
 vehicle_registry_api_key.R
 nr_gpkg
 knowit

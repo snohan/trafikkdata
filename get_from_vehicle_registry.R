@@ -11,7 +11,7 @@ source("vehicle_registry_api_key.R") # Cannot pe public - personal access key
 
 # Queries ----
 
-#vehicle_registration_number <- "VH81912"
+#vehicle_registration_number <- "DN11184"
 get_vehicle_data <- function(vehicle_registration_number) {
 
   # vehicle_registration_number STRING
@@ -40,19 +40,31 @@ get_vehicle_data <- function(vehicle_registration_number) {
     purrr::pluck("kjoretoydataListe") %>%
     tibble::as_tibble()
 
-  vehicle_info <- parsed %>%
-    tidyr::unnest_wider(
-      godkjenning.tekniskGodkjenning.tekniskeData.generelt.merke
-    ) %>%
-    dplyr::select(
-      vehicle_id = kjoretoyId.kjennemerke,
-      manufacturer = merke,
-      model = godkjenning.tekniskGodkjenning.tekniskeData.generelt.handelsbetegnelse,
-      class_name = godkjenning.tekniskGodkjenning.kjoretoyklassifisering.tekniskKode.kodeNavn,
-      class_code = godkjenning.tekniskGodkjenning.kjoretoyklassifisering.tekniskKode.kodeVerdi,
-      length = godkjenning.tekniskGodkjenning.tekniskeData.dimensjoner.lengde,
-      axles = godkjenning.tekniskGodkjenning.tekniskeData.akslinger.antallAksler
-    )
+  if(nrow(parsed) == 0 | ncol(parsed) < 2) {
+    vehicle_info = data.frame()
+  } else {
+    vehicle_info <- parsed %>%
+      tidyr::unnest_wider(
+        godkjenning.tekniskGodkjenning.tekniskeData.generelt.merke
+      ) %>%
+      dplyr::select(
+        vehicle_id = kjoretoyId.kjennemerke,
+        manufacturer = merke,
+        model = godkjenning.tekniskGodkjenning.tekniskeData.generelt.handelsbetegnelse,
+        class_name = godkjenning.tekniskGodkjenning.kjoretoyklassifisering.tekniskKode.kodeNavn,
+        class_code = godkjenning.tekniskGodkjenning.kjoretoyklassifisering.tekniskKode.kodeVerdi,
+        length = godkjenning.tekniskGodkjenning.tekniskeData.dimensjoner.lengde,
+        axles = godkjenning.tekniskGodkjenning.tekniskeData.akslinger.antallAksler
+      ) %>%
+      dplyr::mutate(
+        vehicle_id =
+          stringr::str_replace_all(
+            vehicle_id,
+            " ",
+            ""
+          )
+      )
+  }
 }
 
 
