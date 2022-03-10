@@ -2,6 +2,7 @@
 
 library(tidyverse)
 library(jsonlite)
+library(writexl)
 
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
@@ -180,3 +181,147 @@ writexl::write_xlsx(
   trp_sdt_2021,
   path = "spesialbestillinger/sommerdogntrafikk_2021.xlsx"
 )
+
+
+# Average hour of day ----
+trp_latest_data <-
+  get_trps_latest_data()
+
+trp_distinct <- trp %>%
+  dplyr::filter(
+    !is.na(validFrom),
+    #validTo >= "2021-09-01" | is.na(validTo),
+    traffic_type == "VEHICLE",
+    !str_detect(road_reference, "KD"),
+    registration_frequency == "CONTINUOUS",
+    county_name == "Trøndelag"
+  ) %>%
+  dplyr::group_by(trp_id) %>%
+  dplyr::slice(
+    which.min(validFrom)
+  ) %>%
+  dplyr::left_join(
+    trp_latest_data,
+    by = "trp_id"
+  ) %>%
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    county_name,
+    municipality_name,
+    latest_data_by_hour
+  )
+
+
+average_hourly <-
+  get_trp_average_hour_of_day_traffic_for_all_day_types_for_trp_list(
+    c(
+      "01559V249583",
+      "06438V2413672",
+      "09480V72828",
+      "06970V72811"
+    ),
+    2021
+  ) %>%
+  dplyr::filter(
+    day_type == "ALL"
+  ) %>%
+  dplyr::inner_join(
+    trp_distinct,
+    by = "trp_id"
+  ) %>%
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    county_name,
+    municipality_name,
+    year,
+    coverage,
+    start_of_hour,
+    average_hour_of_day_traffic,
+    average_hour_of_day_traffic_relative
+  )
+
+
+melhus_n <-
+  dplyr::bind_rows(
+    get_trp_average_hour_of_day_traffic_for_all_day_types_for_trp_list(
+      c(
+        "15862V72153"
+      ),
+      2017
+    ),
+    get_trp_average_hour_of_day_traffic_for_all_day_types_for_trp_list(
+      c(
+        "15862V72153"
+      ),
+      2018
+    ),
+    get_trp_average_hour_of_day_traffic_for_all_day_types_for_trp_list(
+      c(
+        "15862V72153"
+      ),
+      2019
+    ),
+    get_trp_average_hour_of_day_traffic_for_all_day_types_for_trp_list(
+      c(
+        "15862V72153"
+      ),
+      2020
+    ),
+    get_trp_average_hour_of_day_traffic_for_all_day_types_for_trp_list(
+      c(
+        "15862V72153"
+      ),
+      2021
+    )
+  ) %>%
+  dplyr::filter(
+    day_type == "ALL"
+  ) %>%
+  dplyr::inner_join(
+    trp_distinct,
+    by = "trp_id"
+  ) %>%
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    county_name,
+    municipality_name,
+    year,
+    coverage,
+    start_of_hour,
+    average_hour_of_day_traffic,
+    average_hour_of_day_traffic_relative
+  )
+
+writexl::write_xlsx(
+  melhus_n,
+  path = "spesialbestillinger/melhus_n.xlsx"
+)
+
+melhus_n %>%
+  dplyr::mutate(
+    year = factor(year)
+  ) %>%
+  ggplot2::ggplot(
+    aes(
+      x = start_of_hour,
+      y = average_hour_of_day_traffic_relative,
+      color = year
+    )
+  ) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  theme_bw() +
+  theme(panel.grid.minor.x = element_blank()) +
+  labs(
+    x = "Klokketimestart",
+    y = "Relativ andel trafikk (%) \n",
+    caption = "Data: Statens vegvesen, fylkeskommunene og kommunene") +
+  ggtitle("Relativ fordeling av klokketimetrafikk per år",
+          subtitle = "Ev 6 Melhus nord") +
+  theme(legend.position = "bottom")
