@@ -92,7 +92,7 @@ source("nr_prep_links/nr/prepros_manipuler_trafikklenker_hardkodet.r")
 ## The Triona file
 geopackage_file <-
   #'C:/Users/snohan/Desktop/Trafikklenker_20220116.gpkg'
-  'C:/Users/snohan/Desktop/Trafikklenker_20220302.gpkg'
+  'C:/Users/snohan/Desktop/Trafikklenker_20220315.gpkg'
 
 # Trafikklenker som skal fjernes iht til TØIs kartlegging
 file_remove_links_toi <-
@@ -277,7 +277,7 @@ edges_all_but_main <-
 ## Write ----
 ### Main component ----
 file_main <-
-  'nr_gpkg/trafikklenker_undir_norge_3.gpkg'
+  'nr_gpkg/trafikklenker_undir_norge.gpkg'
 
 sf::st_write(
   nodes_main,
@@ -300,7 +300,7 @@ sf::st_write(
 
 ### All but main ----
 file_all_but_main <-
-  'nr_gpkg/trafikklenker_undir_norge_all_but_main_3.gpkg'
+  'nr_gpkg/trafikklenker_undir_norge_all_but_main.gpkg'
 
 sf::st_write(
   nodes_all_but_main,
@@ -704,53 +704,53 @@ table(edges_rv_dir_complete_with_all_turned$med_metrering)
 
 
 ## Write ----
-file_rv_dir <-
-  'nr_gpkg/trafikklenker_dir_rv.gpkg'
-
-sf::st_write(
-  nodes_dir_rv,
-  dsn = file_rv_dir,
-  layer = 'nodes_rv'
-)
-
-sf::st_write(
-  edges_rv_dir_complete_with_all_turned,
-  append = FALSE,
-  dsn = file_rv_dir,
-  layer = 'edges_rv'
-)
-
-sf::st_write(
-  road_net_info_dir_rv,
-  dsn = file_rv_dir,
-  layer = 'road_net_info'
-)
+# file_rv_dir <-
+#   'nr_gpkg/trafikklenker_dir_rv.gpkg'
+#
+# sf::st_write(
+#   nodes_dir_rv,
+#   dsn = file_rv_dir,
+#   layer = 'nodes_rv'
+# )
+#
+# sf::st_write(
+#   edges_rv_dir_complete_with_all_turned,
+#   append = FALSE,
+#   dsn = file_rv_dir,
+#   layer = 'edges_rv'
+# )
+#
+# sf::st_write(
+#   road_net_info_dir_rv,
+#   dsn = file_rv_dir,
+#   layer = 'road_net_info'
+# )
 
 
 ## Read back in ----
-edges_dir_rv <-
-  sf::st_read(
-    file_rv_dir,
-    # as_tibble = TRUE,
-    query = "SELECT * FROM \"edges_rv\""
-  )
-
-nodes_dir_rv <-
-  sf::st_read(
-    file_rv_dir,
-    # as_tibble = TRUE,
-    query = "SELECT * FROM \"nodes_rv\""
-  )
-
-road_net_info_dir_rv <-
-  sf::st_read(
-    file_rv_dir,
-    layer = 'road_net_info'
-  )
-
-look_at_edges <-
-  edges_dir_rv %>%
-  sf::st_drop_geometry()
+# edges_dir_rv <-
+#   sf::st_read(
+#     file_rv_dir,
+#     # as_tibble = TRUE,
+#     query = "SELECT * FROM \"edges_rv\""
+#   )
+#
+# nodes_dir_rv <-
+#   sf::st_read(
+#     file_rv_dir,
+#     # as_tibble = TRUE,
+#     query = "SELECT * FROM \"nodes_rv\""
+#   )
+#
+# road_net_info_dir_rv <-
+#   sf::st_read(
+#     file_rv_dir,
+#     layer = 'road_net_info'
+#   )
+#
+# look_at_edges <-
+#   edges_dir_rv %>%
+#   sf::st_drop_geometry()
 
 
 # 4. Transport model AADT ----
@@ -1214,8 +1214,6 @@ traffic_link_id_and_aadt_rv <-
 
 
 # 6. Graph centrality parameters ----
-source("nr_prep_links/nr/prepros_manipuler_vegnett_rettet_hardkodet.r")
-
 ## Targeted data cleansing ----
 # Adds columns to edges:
 # ferry speed
@@ -1254,17 +1252,18 @@ edges <-
 #    - Assign alternative plausibly low speeds
 #      to account for waiting times on top of the passage itself
 #    - For later use with centrality calculations
-idx <-
-  unique(
-    c(which(is.na(edges$MIN_SPEED)),
-      which(is.na(edges$MAKS_SPEED))
-    )
-  )
-# none
+idx <- is.na(edges$MAKS_SPEED) | edges$MAKS_SPEED==0
+edges$ferry_speed_5[idx] <- 5
+edges$ferry_speed_10[idx] <- 10
+edges$ferry_speed_15[idx] <- 15
 
-# ee$ferry_speed_5[idx] <- 5
-# ee$ferry_speed_10[idx] <- 10
-# ee$ferry_speed_15[idx] <- 15
+# Valid factor levels: 30,40,50,60,70,80,90
+idx <- edges$ferry_speed_5 < 30
+edges$ferry_speed_5[idx] <- 30
+idx <- edges$ferry_speed_10 < 30
+edges$ferry_speed_10[idx] <- 30
+idx <- edges$ferry_speed_15 < 30
+edges$ferry_speed_15[idx] <- 30
 
 
 ## Assign (minimum) travel time to each traffic link
@@ -1286,6 +1285,30 @@ edges <-
   dplyr::mutate(
     Tt_norm = Tt_10/max.time
   )
+
+
+## MIN_VEGKL_9338
+#  Traffic links data Region vest 2021:
+#  No traffic count stations alongside links in categories 6,7,8,9;
+#  those are thus included in category 5 to enable prediction from the model
+#   - Valid factor levels all categories: 0,1,2,3,4,5
+#   - ROADREF_CATEGORY == 'E' or 'R': Map levels 4,5(,6) to level 3
+idx <- edges$MIN_VEGKL_9338 %in% c(6:9)
+edges$MIN_VEGKL_9338[idx] <- 5
+
+idx <- edges$ROADREF_CATEGORY %in% c('E','R') & edges$MIN_VEGKL_9338 >= 4
+edges$MIN_VEGKL_9338[idx] <- 3
+
+
+## pred_lane
+#  Traffic links data Region vest 2021:
+#  No traffic count stations alongside links with more than 6 lanes;
+#  such links are thus included in category 6 to enable
+#  prediction from the model
+#   - Valid factor levels: 1:6
+idx <- edges$pred_lane > 6
+edges$pred_lane[idx] <- 6
+
 
 
 ## Build directed graph object ----
@@ -1370,7 +1393,7 @@ edges_main <- st_set_geometry(edges_main,edges$geometry[idx])
 
 # 7. Write final file ----
 final_file_rv_dir <-
-  'nr_gpkg/trafikklenker_dir_rv_2021_2.gpkg'
+  'nr_gpkg/trafikklenker_dir_rv_2021_4.gpkg'
 
 sf::st_write(
   nodes_dir_rv,
@@ -1471,7 +1494,7 @@ edges_non_urban_part <-
     urban_areas_rv_unified
   )
 tictoc::toc()
-# Time spent: 815 s, 837 s
+# Time spent: 815 s, 837 s, 734 s
 # Still takes too much time
 # Reduce by first finding which urban areas each link intersects with,
 # and then find st_difference for just those?

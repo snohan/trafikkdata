@@ -823,96 +823,100 @@ trp_info <- trp %>%
     name,
     traffic_type,
     road_category_and_number,
+    intersection_part_number,
     county_name,
     municipality_name,
     registration_frequency,
-    operational_status
+    operational_status,
+    lane_numbers,
+    lat,
+    lon
   ) %>%
   dplyr::distinct(trp_id, .keep_all = T)
+
+interval_2021 <- lubridate::interval("2021-01-01", "2022-01-01")
+interval_2022 <- lubridate::interval("2022-01-01", "2023-01-01")
 
 trp_with_lm <-
   trp_device_history %>%
   dplyr::filter(
     device_type == "LOOP_MONITOR",
-    # Some trps are not public
+    #device_type == "EMU",
+    # Some trps are not public:
     trp_id %in% trp$trp_id
   ) %>%
+  # All operational TRPs are valid to at least today:
   tidyr::replace_na(
     list(
       valid_to = lubridate::today()
     )
   ) %>%
   dplyr::mutate(
-    valid_from =
-      lubridate::floor_date(
+    dplyr::across(
+      .cols = c(valid_from, valid_to),
+      .fns = ~ lubridate::floor_date(
+        .x,
+        unit = "day"
+      )
+    ),
+    commission_interval =
+      lubridate::interval(
         valid_from,
-        unit = "day"
+        valid_to
       ),
-    valid_to =
-      lubridate::floor_date(
-        valid_to,
-        unit = "day"
+    commission_days =
+      lubridate::as.duration(
+        commission_interval
+      ) %>%
+      as.numeric("days") %>%
+      round()
+  ) %>%
+  # Only interested in possibly complete days:
+  dplyr::filter(
+    commission_days > 2
+  ) %>%
+  dplyr::mutate(
+    valid_from = valid_from + lubridate::days(1),
+    valid_to = valid_to - lubridate::days(1),
+    complete_days_interval =
+      lubridate::interval(
+        valid_from,
+        valid_to
       ),
-    start = as.character(valid_from),
-    end = as.character(valid_to),
-    first_day_in_2022 =
-      dplyr::case_when(
-        start < "2022-01-01" ~ "2022-01-01",
-        start < as.character(lubridate::today()) ~ start,
-        TRUE ~ NA_character_
-      ),
-    last_day_in_2022 =
-      dplyr::case_when(
-        end > as.character(lubridate::today()) ~
-          as.character(lubridate::today()),
-        end > "2022-01-01" ~ end,
-        TRUE ~ NA_character_
-      ),
-    first_day_in_2022 = as.Date(first_day_in_2022),
-    last_day_in_2022 = as.Date(last_day_in_2022)
+    complete_days =
+      lubridate::as.duration(
+        complete_days_interval
+      ) %>%
+      as.numeric("days") %>%
+      round(),
+    n_days_2021 =
+      lubridate::intersect(
+        complete_days_interval,
+        interval_2021
+      ) %>%
+      lubridate::as.duration() %>%
+      as.numeric("days") %>%
+      round(),
+    n_days_2022 =
+      lubridate::intersect(
+        complete_days_interval,
+        interval_2022
+      ) %>%
+      lubridate::as.duration() %>%
+      as.numeric("days") %>%
+      round()
   ) %>%
   tidyr::replace_na(
     list(
-      first_day_in_2022 = as.Date(lubridate::today()),
-      last_day_in_2022 = as.Date("2022-01-01")
+      n_days_2021 = 0,
+      n_days_2022 = 0
     )
   ) %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(
-    n_days =
-      length(
-        seq(
-          valid_from,
-          valid_to,
-          by = "day"
-        )
-      ),
-    n_days_2022 =
-      length(
-        seq(
-          first_day_in_2022,
-          last_day_in_2022,
-          by = "day"
-        )
-      ),
-    n_days_2022 =
-      replace(
-        n_days_2022,
-        last_day_in_2022 == "2022-01-01",
-        0
-      ),
-    n_days_2022 =
-      replace(
-        n_days_2022,
-        first_day_in_2022 == as.character(lubridate::today()),
-        0
-      )
-  ) %>%
-  dplyr::ungroup() %>%
   dplyr::select(
     trs_id,
     trp_id,
-    n_days,
+    complete_days,
+    n_days_2021,
     n_days_2022
   ) %>%
   dplyr::group_by(
@@ -920,7 +924,8 @@ trp_with_lm <-
     trp_id
   ) %>%
   dplyr::summarise(
-    n_days = sum(n_days),
+    complete_days = sum(complete_days),
+    n_days_2021 = sum(n_days_2021),
     n_days_2022 = sum(n_days_2022)
   ) %>%
   dplyr::left_join(
@@ -930,18 +935,46 @@ trp_with_lm <-
   dplyr::filter(
     traffic_type == "VEHICLE",
     registration_frequency == "CONTINUOUS",
-    n_days_2022 > 10
+    is.na(intersection_part_number),
+    #n_days_2022 > 70,
+    n_days_2021 == 365
+  ) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(
+    just_lanes_1_2 = identical(lane_numbers, c(1:2))
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(
+    just_lanes_1_2 == TRUE
   ) %>%
   dplyr::arrange(
-    county_name
+    county_name,
+    trs_id
+  ) %>%
+  dplyr::select(
+    trs_id,
+    trp_id,
+    name,
+    county_name,
+    municipality_name,
+    road_category_and_number,
+    complete_days,
+    n_days_2021,
+    n_days_2022,
+    lat,
+    lon
   )
 
+trp_with_lm %>%
+  saveRDS(
+    file = "trp_LM_possible_standard_population.RDS"
+  )
 
 dt <-
   get_dt_for_trp_list(
     trp_with_lm$trp_id,
-    "2022-01-01T00:00:00+01:00",
-    "2022-02-01T00:00:00+01:00"
+    "2022-03-11T00:00:00+01:00",
+    "2022-03-17T00:00:00+01:00"
   ) %>%
   dplyr::select(
     trp_id = point_id,
@@ -974,7 +1007,7 @@ dt_lm %>%
   ) %>%
   writexl::write_xlsx(
     path =
-    "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Spesialuttak/trp_med_lm_dt_2022.xlsx"
+    "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Spesialuttak/trp_med_emu3_dt_2022-3.xlsx"
   )
 
 

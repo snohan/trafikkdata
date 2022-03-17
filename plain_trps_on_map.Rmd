@@ -1,0 +1,63 @@
+---
+title: "Trafikkregistreringspunkt"
+output: html_notebook
+---
+
+```{r setup, include = FALSE, echo = FALSE, warning=FALSE, message=FALSE}
+# Packages are loaded through sourcing rmd_setup.R
+source("rmd_setup.R")
+
+# Traffic Data API calls to get points metadata and aadt
+#source("get_from_trafficdata_api.R")
+#source("split_road_system_reference.R")
+library(DT)
+library(htmltools)
+```
+
+```{r get_data, include=FALSE}
+# All TRPs from Traffic Data API
+
+trps_to_be_mapped <-
+  readRDS(
+    file = "trp_LM_possible_standard_population.RDS"
+  ) %>% 
+  dplyr::mutate(
+    label_text = 
+      paste0(
+        trp_id, "<br/>",
+        name, ", ",
+        road_category_and_number, "<br/>"
+      ),
+    label_text = lapply(label_text, htmltools::HTML)
+  )
+```
+
+```{r map}
+trps_to_be_mapped %>%
+  leaflet(
+    width = "100%",
+    height = 700,
+    options =
+      leafletOptions(
+        crs = nvdb_crs,
+        zoomControl = F
+      )
+  ) %>%
+  addTiles(
+    urlTemplate = nvdb_map_url,
+    attribution = nvdb_map_attribution
+  ) %>%
+  addCircleMarkers(
+    lng = ~lon,
+    lat = ~lat,
+    radius = 6,
+    stroke = T,
+    weight = 2,
+    color = "#444f55",
+    opacity = 0.8,
+    fill = T,
+    fillOpacity = 0.8,
+    label = ~label_text
+  ) 
+```
+
