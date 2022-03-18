@@ -98,31 +98,48 @@ make_length_classes <- function(vbv_raw_df) {
   # vbv_raw_df must have column 'length'
 
   vbv_length_classified <- vbv_raw_df %>%
-    dplyr::mutate(length_class_2 =
-                    dplyr::case_when(
-                      length < 5.6 ~ "[..,5.6)",
-                      length >= 5.6 ~ "[5.6,..)"
-                      ),
-                  length_class_2 = factor(length_class_2,
-                                          levels = c("[..,5.6)",
-                                                     "[5.6,..)")),
-                  length_class_full =
-                    dplyr::case_when(
-                      length < 5.6 ~ "[..,5.6)",
-                      length < 7.6 ~ "[5.6,7.6)",
-                      length < 12.5 ~ "[7.6,12.5)",
-                      length < 16 ~ "[12.5,16)",
-                      length < 24 ~ "[16,24)",
-                      length >= 24 ~ "[24,..)",
-                    ),
-                  length_class_full = factor(length_class_full,
-                                             levels = c("[..,5.6)",
-                                                        "[5.6,7.6)",
-                                                        "[7.6,12.5)",
-                                                        "[12.5,16)",
-                                                        "[16,24)",
-                                                        "[24,..)"))
-                  )
+    dplyr::mutate(
+      length_class_2 =
+        dplyr::case_when(
+          length < 5.6 ~ "[..,5.6)",
+          length >= 5.6 ~ "[5.6,..)"
+          ),
+      length_class_2 =
+        factor(
+          length_class_2,
+          levels = c("[..,5.6)", "[5.6,..)")),
+      length_class_2_7.6 =
+        dplyr::case_when(
+          length < 7.6 ~ "[..,7.6)",
+          length >= 7.6 ~ "[7.6,..)"
+        ),
+      length_class_2_7.6 =
+        factor(
+          length_class_2_7.6,
+          levels = c("[..,7.6)", "[7.6,..)")),
+      length_class_full =
+        dplyr::case_when(
+          length < 5.6 ~ "[..,5.6)",
+          length < 7.6 ~ "[5.6,7.6)",
+          length < 12.5 ~ "[7.6,12.5)",
+          length < 16 ~ "[12.5,16)",
+          length < 24 ~ "[16,24)",
+          length >= 24 ~ "[24,..)",
+        ),
+      length_class_full =
+        factor(
+          length_class_full,
+          levels =
+            c(
+              "[..,5.6)",
+              "[5.6,7.6)",
+              "[7.6,12.5)",
+              "[12.5,16)",
+              "[16,24)",
+              "[24,..)"
+            )
+        )
+      )
 }
 
 lane_order <- c("felt 7", "felt 5", "felt 3", "felt 1",

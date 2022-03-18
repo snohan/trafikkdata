@@ -1,0 +1,663 @@
+---
+title: "Standard kjøretøypopulasjoner"
+output: html_notebook
+---
+
+```{r setup, include = FALSE, echo = FALSE, warning=FALSE, message=FALSE}
+# Packages are loaded through sourcing rmd_setup.R
+source("H:/Programmering/R/byindeks/rmd_setup.R")
+
+# Traffic Data API calls to get points metadata and aadt
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+#source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
+source("trafficdata_functions.R")
+
+library(DT)
+library(htmltools)
+one <- 1
+```
+
+
+```{r trp}
+trp <- get_points()
+
+distinct_trps <- trp %>%
+  split_road_system_reference() %>%
+  dplyr::select(
+    trp_id,
+    name,
+    road_category,
+    road_category_and_number,
+    road_reference,
+    county_name,
+    municipality_name,
+    registration_frequency,
+    operational_status,
+    lane_numbers
+  ) %>%
+  dplyr::distinct(
+    trp_id,
+    .keep_all = T
+  ) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(
+    lanes = sort(lane_numbers) %>%
+      paste(collapse = ", ")
+  ) %>%
+  ungroup() %>%
+  dplyr::select(
+    -lane_numbers
+  )
+```
+
+
+```{r data}
+# Read Kibana-exported CSVs ----
+folder <- "standard_pop/"
+
+read_a_file <- function(file_name) {
+
+  readr::read_csv2(
+    paste0(folder, file_name)
+  ) #%>%
+  #dplyr::mutate(
+  #  periode_start = as.character(periode_start)
+  #)
+
+}
+
+raw_data <-
+  list.files(
+    folder
+  ) %>%
+  purrr::map_df(
+    ~ read_a_file(.)
+  )
+```
+
+
+```{r aadt}
+trp_ids_used <-
+  unique(raw_data$traffic_registration_point_id)
+
+trps_used <- 
+  distinct_trps %>% 
+  dplyr::filter(
+    trp_id %in% trp_ids_used
+  )
+
+aadt <-
+  get_aadt_for_trp_list(
+    trps_used$trp_id
+  ) %>% 
+  dplyr::filter(
+    year == 2021
+  ) %>% 
+  dplyr::select(
+    trp_id,
+    adt,
+    coverage,
+    year
+  )
+
+trp_aadt <-
+  trps_used %>% 
+  dplyr::left_join(
+    aadt,
+    by = "trp_id"
+  ) %>% 
+  dplyr::select(
+    trp_id,
+    name,
+    road_category_and_number,
+    county_name,
+    adt,
+    coverage,
+    year
+  )
+```
+
+
+# Trafikkregistreringspunkter
+Datagrunnlaget for beregning av standard kjøretøypopulasjon er registrerte data for enkeltkjøretøy fra trafikkregistreringspunkter med følgende krav:
+
+  - data for hele 2021 med 100 % dekningsgrad
+  - god flyt i trafikken
+  - veldig lav andel korte lengder og lav fart
+  - to felt
+  
+Tabellen nedenfor viser hvilke trafikkregistreringspunkter data er hentet fra.
+
+```{r table}
+trp_aadt %>%
+  dplyr::select(
+    Punktid = trp_id,
+    Punkt = name,
+    Vegnr. = road_category_and_number,
+    Fylke = county_name,
+    ÅDT = adt,
+    Dekningsgrad = coverage,
+    År = year
+  ) %>% 
+  DT::datatable(
+    filter = "top",
+    options = 
+      list(
+        dom = "Blfrtip",
+        pageLength = 25,
+        lengthMenu = c(25, 50, 100),
+        autoWidth = TRUE
+      )
+  )
+```
+
+
+
+```{r prepare_data}
+enriched_data <-
+  raw_data %>% 
+  dplyr::select(
+    trp_id = traffic_registration_point_id,
+    length,
+    vehicle_type_raw,
+    valid_length,
+    valid_classification
+  ) %>% 
+  make_norsikt_classes() %>% 
+  make_length_classes()
+
+n_vehicles_classified <-
+  enriched_data %>% 
+  dplyr::filter(
+    norsikt_l2 != "OMV",
+    valid_classification == TRUE
+  ) %>% 
+  dplyr::group_by(
+    trp_id
+  ) %>% 
+  dplyr::summarise(
+    n_classified = n()
+  )
+
+n_vehicles_classified_all <-
+  enriched_data %>% 
+  dplyr::filter(
+    norsikt_l2 != "OMV",
+    valid_classification == TRUE
+  ) %>% 
+  dplyr::summarise(
+    n_classified = n()
+  )
+
+n_vehicles_length_classified <-
+  enriched_data %>% 
+  dplyr::filter(
+    valid_length == TRUE
+  ) %>% 
+  dplyr::group_by(
+    trp_id
+  ) %>% 
+  dplyr::summarise(
+    n_length_classified = n()
+  )
+```
+
+```{r prepare_class}
+n_norsikt_l2_trp <-
+  enriched_data %>% 
+  dplyr::filter(
+    norsikt_l2 != "OMV",
+    valid_classification == TRUE
+  ) %>% 
+  dplyr::group_by(
+    trp_id,
+    norsikt_l2
+  ) %>% 
+  dplyr::summarise(
+    n_norsikt_l2 = n()
+  ) %>% 
+  dplyr::left_join(
+    n_vehicles_classified,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    ratio = n_norsikt_l2 / n_classified
+  ) %>% 
+  dplyr::left_join(
+    trps_used,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    trp_name_and_road = 
+      paste0(
+        name,
+        ", ",
+        road_category_and_number
+      )
+  )
+
+n_norsikt_l2_all <-
+  enriched_data %>% 
+  dplyr::filter(
+    norsikt_l2 != "OMV",
+    valid_classification == TRUE
+  ) %>% 
+  dplyr::group_by(
+    norsikt_l2
+  ) %>% 
+  dplyr::summarise(
+    n_norsikt_l2 = n()
+  ) %>% 
+  dplyr::mutate(
+    ratio = n_norsikt_l2 / n_vehicles_classified_all$n_classified,
+    trp_name_and_road = "Samlet"
+  ) %>% 
+  dplyr::select(
+    class = norsikt_l2,
+    ratio,
+    trp_name_and_road
+  )
+
+standard_population_norsikt_l2 <-
+  n_norsikt_l2_trp %>% 
+  dplyr::select(
+    class = norsikt_l2,
+    ratio,
+    trp_name_and_road
+  ) %>% 
+  dplyr::bind_rows(
+    n_norsikt_l2_all
+  )
+
+# 3 ----
+
+n_norsikt_l3_trp <-
+  enriched_data %>% 
+  dplyr::filter(
+    norsikt_l2 != "OMV",
+    valid_classification == TRUE
+  ) %>% 
+  dplyr::group_by(
+    trp_id,
+    norsikt_l3
+  ) %>% 
+  dplyr::summarise(
+    n_norsikt_l3 = n()
+  ) %>% 
+  dplyr::left_join(
+    n_vehicles_classified,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    ratio = n_norsikt_l3 / n_classified
+  ) %>% 
+  dplyr::left_join(
+    trps_used,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    trp_name_and_road = 
+      paste0(
+        name,
+        ", ",
+        road_category_and_number
+      )
+  )
+
+n_norsikt_l4_trp <-
+  enriched_data %>% 
+  dplyr::filter(
+    norsikt_l2 != "OMV",
+    valid_classification == TRUE
+  ) %>% 
+  dplyr::group_by(
+    trp_id,
+    norsikt_l4h
+  ) %>% 
+  dplyr::summarise(
+    n_norsikt_l4h = n()
+  ) %>% 
+  dplyr::left_join(
+    n_vehicles_classified,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    ratio = n_norsikt_l4h / n_classified
+  ) %>% 
+  dplyr::left_join(
+    trps_used,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    trp_name_and_road = 
+      paste0(
+        name,
+        ", ",
+        road_category_and_number
+      )
+  )
+```
+
+
+
+```{r prepare_length}
+n_length_2_trp <-
+  enriched_data %>% 
+  dplyr::filter(
+    valid_length == TRUE
+  ) %>% 
+  dplyr::group_by(
+    trp_id,
+    length_class_2
+  ) %>% 
+  dplyr::summarise(
+    n_length_class_2 = n()
+  ) %>% 
+  dplyr::left_join(
+    n_vehicles_length_classified,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    ratio = n_length_class_2 / n_length_classified
+  ) %>% 
+  dplyr::left_join(
+    trps_used,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    trp_name_and_road = 
+      paste0(
+        name,
+        ", ",
+        road_category_and_number
+      )
+  )
+
+n_length_2_7.6_trp <-
+  enriched_data %>% 
+  dplyr::filter(
+    valid_length == TRUE
+  ) %>% 
+  dplyr::group_by(
+    trp_id,
+    length_class_2_7.6
+  ) %>% 
+  dplyr::summarise(
+    n_length_class_2_7.6 = n()
+  ) %>% 
+  dplyr::left_join(
+    n_vehicles_length_classified,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    ratio = n_length_class_2_7.6 / n_length_classified
+  ) %>% 
+  dplyr::left_join(
+    trps_used,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    trp_name_and_road = 
+      paste0(
+        name,
+        ", ",
+        road_category_and_number
+      )
+  )
+
+n_length_class_full <-
+  enriched_data %>% 
+  dplyr::filter(
+    valid_length == TRUE
+  ) %>% 
+  dplyr::group_by(
+    trp_id,
+    length_class_full
+  ) %>% 
+  dplyr::summarise(
+    n_length_class_full = n()
+  ) %>% 
+  dplyr::left_join(
+    n_vehicles_length_classified,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    ratio = n_length_class_full / n_length_classified
+  ) %>% 
+  dplyr::left_join(
+    trps_used,
+    by = "trp_id"
+  ) %>% 
+  dplyr::mutate(
+    trp_name_and_road = 
+      paste0(
+        name,
+        ", ",
+        road_category_and_number
+      )
+  )
+```
+
+
+```{r plot_function}
+plot_standard_population <- 
+  function(standard_population_df, subtitle_text) {
+  
+  standard_population_df %>%   
+    ggplot(
+      aes(
+       x = class, 
+       y = ratio,
+       color = trp_name_and_road
+       )
+      ) +
+    geom_point() +
+    theme_bw() +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      axis.title.y = element_text(
+        margin = margin(t = 0, r = 15, b = 0, l = 0)),
+      axis.title.x = element_text(
+        margin = margin(t = 15, r = 0, b = 0, l = 0))
+    ) +
+    labs(
+      x = "Klasse",
+      y = "Andel",
+      color = "Punktid"
+    ) +
+    ggtitle(
+      "Andel kjøretøy fordelt på klasser",
+      subtitle = subtitle_text
+    )
+}
+```
+
+
+# NorSIKT nivå 2
+
+```{r plot_norsikt_l2}
+plot_standard_population(
+  standard_population_norsikt_l2,
+  "NorSIKT nivå 2"
+)
+```
+
+
+
+# NorSIKT nivå 3
+
+```{r plot_norsikt_l3}
+ggplot(n_norsikt_l3_trp,
+       aes(
+         x = norsikt_l3, 
+         y = ratio,
+         color = trp_name_and_road
+         )
+       ) +
+  geom_point() +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.title.y = element_text(
+      margin = margin(t = 0, r = 15, b = 0, l = 0)),
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0))
+  ) +
+  labs(
+    x = "Klasse",
+    y = "Andel",
+    color = "Punktid"
+  ) +
+  ggtitle(
+    "Andel kjøretøy fordelt på kjøretøyklasser",
+    subtitle = "NorSIKT nivå 3"
+  )
+```
+
+
+# NorSIKT nivå 4
+
+```{r plot_norsikt_l4}
+ggplot(n_norsikt_l4_trp,
+       aes(
+         x = norsikt_l4h, 
+         y = ratio,
+         color = trp_name_and_road
+         )
+       ) +
+  geom_point() +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90),
+    axis.title.y = element_text(
+      margin = margin(t = 0, r = 15, b = 0, l = 0)),
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0))
+  ) +
+  labs(
+    x = "Klasse",
+    y = "Andel",
+    color = "Punktid"
+  ) +
+  ggtitle(
+    "Andel kjøretøy fordelt på kjøretøyklasser",
+    subtitle = "NorSIKT nivå 4 tilpasset"
+  )
+```
+
+
+
+
+# To lengdeklasser (5,6 m)
+
+```{r plot_length_2}
+ggplot(n_length_2_trp,
+       aes(
+         x = length_class_2, 
+         y = ratio,
+         color = trp_name_and_road
+         )
+       ) +
+  geom_point() +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90),
+    axis.title.y = element_text(
+      margin = margin(t = 0, r = 15, b = 0, l = 0)),
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0))
+  ) +
+  labs(
+    x = "Klasse",
+    y = "Andel",
+    color = "Punktid"
+  ) +
+  ggtitle(
+    "Andel kjøretøy fordelt på lengdeklasser",
+    subtitle = "Lengdeklasser (5,6 m)"
+  )
+```
+
+
+# To lengdeklasser (7,6 m)
+
+```{r plot_length_2_7.6}
+ggplot(n_length_2_7.6_trp,
+       aes(
+         x = length_class_2_7.6, 
+         y = ratio,
+         color = trp_name_and_road
+         )
+       ) +
+  geom_point() +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90),
+    axis.title.y = element_text(
+      margin = margin(t = 0, r = 15, b = 0, l = 0)),
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0))
+  ) +
+  labs(
+    x = "Klasse",
+    y = "Andel",
+    color = "Punktid"
+  ) +
+  ggtitle(
+    "Andel kjøretøy fordelt på lengdeklasser",
+    subtitle = "Lengdeklasser (7,6 m)"
+  )
+```
+
+
+# Seks lengdeklasser
+
+```{r plot_length_full}
+ggplot(n_length_class_full,
+       aes(
+         x = length_class_full, 
+         y = ratio,
+         color = trp_name_and_road
+         )
+       ) +
+  geom_point() +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90),
+    axis.title.y = element_text(
+      margin = margin(t = 0, r = 15, b = 0, l = 0)),
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0))
+  ) +
+  labs(
+    x = "Klasse",
+    y = "Andel",
+    color = "Punktid"
+  ) +
+  ggtitle(
+    "Andel kjøretøy fordelt på lengdeklasser",
+    subtitle = "Seks lengdeklasser"
+  )
+```
+
+
+
+
+
