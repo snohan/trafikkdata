@@ -1064,10 +1064,14 @@ aadt_by_factor_curve <-
   readr::read_csv2(
     "periodic_data/periodic_aadt_by_factor_curve.csv"
   ) %>%
+  dplyr::mutate(
+    se_mean = (confidence_interval.upper - confidence_interval.lower) / 4
+  ) %>%
   dplyr::select(
     trp_id = traffic_registration_point_id,
     year,
     adt_factor_curve = adt,
+    se_mean,
     curve
   ) %>%
   dplyr::filter(
@@ -1091,6 +1095,7 @@ periodic_aadt_compare_factor_curve_and_naive <-
     year,
     adt,
     standard_deviation,
+    se_mean = se_mean.y,
     adt_factor_curve_halfed,
     adt_diff
   ) %>%
@@ -1115,7 +1120,8 @@ aadt_rv_tidy <-
     heading,
     year,
     adt,
-    standard_deviation
+    standard_deviation,
+    se_mean
   ) %>%
   dplyr::anti_join(
     periodic_aadt_compare_factor_curve_and_naive,
@@ -1146,7 +1152,8 @@ traffic_link_id_and_aadt_rv <-
     #trp_id,
     FEATURE_OID = ID,
     aadt_prelim = adt,
-    aadt_prelim_sd = standard_deviation,
+    #aadt_prelim_sd = standard_deviation,
+    aadt_prelim_sd = se_mean,
     direction = med_metrering,
     year,
     type = registration_frequency
@@ -1229,7 +1236,7 @@ edges <-
     ferry_speed_10 = MAKS_SPEED,
     ferry_speed_15 = MAKS_SPEED,
     pred_lane = MIN_LANE,
-    MD = as.numeric(sf::st_length(geometry))/1e3
+    MD = as.numeric(sf::st_length(geom))/1e3
   )
 
 #head(edges)
@@ -1388,12 +1395,12 @@ edges_main <- net_main_bc %>%
 
 ## Transfer geometries from original edges object based on matching IDs
 idx <- match(as.character(edges_main$ID),as.character(edges$ID))
-edges_main <- st_set_geometry(edges_main,edges$geometry[idx])
+edges_main <- st_set_geometry(edges_main,edges$geom[idx])
 
 
 # 7. Write final file ----
 final_file_rv_dir <-
-  'nr_gpkg/trafikklenker_dir_rv_2021_4.gpkg'
+  'nr_gpkg/trafikklenker_dir_rv_2021_5.gpkg'
 
 sf::st_write(
   nodes_dir_rv,
@@ -1494,7 +1501,7 @@ edges_non_urban_part <-
     urban_areas_rv_unified
   )
 tictoc::toc()
-# Time spent: 815 s, 837 s, 734 s
+# Time spent: 815 s, 837 s, 734 s, 787 s
 # Still takes too much time
 # Reduce by first finding which urban areas each link intersects with,
 # and then find st_difference for just those?
@@ -1571,7 +1578,7 @@ sf::st_write(
 
 ## Read back in ----
 final_file_rv_dir <-
-  'nr_gpkg/trafikklenker_dir_rv_2021.gpkg'
+  'nr_gpkg/trafikklenker_dir_rv_2021_5.gpkg'
 
 edges_rv <-
   edges_dir_rv_urban_ratio
@@ -1630,7 +1637,4 @@ sf::st_write(
   dsn = final_file_sola,
   layer = 'aadt'
 )
-
-
-
 
