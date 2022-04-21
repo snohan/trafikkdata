@@ -10,9 +10,6 @@ source("trafficdata_functions.R")
 folder_raw <- "standard_pop/"
 folder_sum <- "standard_pop_sums/"
 
-# TODO: add:
-# Torsvika
-
 read_a_file <- function(file_name, folder_name) {
 
   readr::read_csv2(
@@ -194,6 +191,7 @@ distinct_trps <- trp %>%
     road_category,
     road_category_and_number,
     road_reference,
+    county_geono,
     county_name,
     municipality_name,
     registration_frequency,
@@ -227,7 +225,7 @@ vbv_data_files <-
   ) %>%
   stringr::str_sort()
 
-read_vbv_and_save_summary(vbv_data_files[13])
+read_vbv_and_save_summary(vbv_data_files[25])
 
 
 # 3. Reading saved RDS ----
@@ -283,6 +281,7 @@ trp_aadt <-
     trp_id,
     name,
     road_category_and_number,
+    county_geono,
     county_name,
     adt,
     coverage,
@@ -467,110 +466,3 @@ standard_pop_length_class <-
 
 saveRDS(standard_pop_length_class,
         file = "standard_pop_length_class.rds")
-
-
-
-
-
-## Two length classes around 5.6 m----
-n_length_2_trp <-
-  enriched_data %>%
-  dplyr::filter(
-    valid_length == TRUE
-  ) %>%
-  dplyr::group_by(
-    trp_id,
-    length_class_2
-  ) %>%
-  dplyr::summarise(
-    n_length_class_2 = n()
-  ) %>%
-  dplyr::left_join(
-    n_vehicles_length_classified,
-    by = "trp_id"
-  ) %>%
-  dplyr::mutate(
-    ratio = n_length_class_2 / n_length_classified
-  ) %>%
-  dplyr::left_join(
-    trps_used,
-    by = "trp_id"
-  ) %>%
-  dplyr::mutate(
-    trp_name_and_road =
-      paste0(
-        name,
-        ", ",
-        road_category_and_number
-      )
-  )
-
-
-## Two length classes around 7.6 m----
-n_length_2_7.6_trp <-
-  enriched_data %>%
-  dplyr::filter(
-    valid_length == TRUE
-  ) %>%
-  dplyr::group_by(
-    trp_id,
-    length_class_2_7.6
-  ) %>%
-  dplyr::summarise(
-    n_length_class_2_7.6 = n()
-  ) %>%
-  dplyr::left_join(
-    n_vehicles_length_classified,
-    by = "trp_id"
-  ) %>%
-  dplyr::mutate(
-    ratio = n_length_class_2_7.6 / n_length_classified
-  ) %>%
-  dplyr::left_join(
-    trps_used,
-    by = "trp_id"
-  ) %>%
-  dplyr::mutate(
-    trp_name_and_road =
-      paste0(
-        name,
-        ", ",
-        road_category_and_number
-      )
-  )
-
-## All length classes ----
-n_length_class_full <-
-  enriched_data %>%
-  dplyr::filter(
-    valid_length == TRUE
-  ) %>%
-  dplyr::group_by(
-    trp_id,
-    length_class_full
-  ) %>%
-  dplyr::summarise(
-    n_length_class_full = n()
-  ) %>%
-  dplyr::left_join(
-    n_vehicles_length_classified,
-    by = "trp_id"
-  ) %>%
-  dplyr::mutate(
-    ratio = n_length_class_full / n_length_classified
-  ) %>%
-  dplyr::left_join(
-    trps_used,
-    by = "trp_id"
-  ) %>%
-  dplyr::mutate(
-    trp_name_and_road =
-      paste0(
-        name,
-        ", ",
-        road_category_and_number
-      )
-  )
-
-
-# 5. Write to file ----

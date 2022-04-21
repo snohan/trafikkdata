@@ -1,21 +1,26 @@
 ---
 title: "Standard kjøretøypopulasjoner"
-output: html_notebook
+output: 
+  html_document:
+    css: svv.css
+    number_sections: true
+    toc: true
+    toc_float: 
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 2
+fig_width: 5
 ---
 
 ```{r setup, include = FALSE, echo = FALSE, warning=FALSE, message=FALSE}
 # Packages are loaded through sourcing rmd_setup.R
 source("H:/Programmering/R/byindeks/rmd_setup.R")
 
-# Traffic Data API calls to get points metadata and aadt
-source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
-source("H:/Programmering/R/byindeks/split_road_system_reference.R")
-#source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
-source("trafficdata_functions.R")
-
 library(DT)
 library(htmltools)
-one <- 1
+library(gt)
+
+svv_background_color <- "#F5F5F5"
 ```
 
 
@@ -41,8 +46,14 @@ Datagrunnlaget for beregning av standard kjøretøypopulasjon er registrerte dat
   
 Tabellen nedenfor viser hvilke trafikkregistreringspunkter data er hentet fra.
 
+<br>
+
 ```{r table}
 standard_pop_trp_aadt %>%
+  dplyr::arrange(
+    county_geono,
+    road_category_and_number
+  ) %>% 
   dplyr::select(
     Punktid = trp_id,
     Punkt = name,
@@ -95,7 +106,11 @@ plot_standard_population <-
       axis.text.x = 
         element_text(
           angle = 90, vjust = 0.5, hjust = 1
-        )
+        ),
+      plot.background = element_rect(fill = svv_background_color),
+      panel.background = element_rect(fill = svv_background_color),
+      legend.background = element_rect(fill = svv_background_color),
+      legend.key = element_blank()
     ) +
     labs(
       x = "Klasse",
@@ -122,6 +137,8 @@ populations_class %>%
   )
 ```
 
+<br>
+
 ```{r table_norsikt_l2}
 populations_class %>% 
   dplyr::filter(
@@ -132,9 +149,11 @@ populations_class %>%
     class,
     ratio
   ) %>% 
-  knitr::kable(
-    digits = 4,
-    caption = "NorSIKT nivå 2"
+  gt::gt() %>% 
+  gt::fmt_number(
+    columns = ratio,
+    decimals = 4,
+    dec_mark = ","
   )
 ```
 
@@ -151,6 +170,8 @@ populations_class %>%
   )
 ```
 
+<br>
+
 ```{r table_norsikt_l3}
 populations_class %>% 
   dplyr::filter(
@@ -161,9 +182,11 @@ populations_class %>%
     class,
     ratio
   ) %>% 
-  knitr::kable(
-    digits = 4,
-    caption = "NorSIKT nivå 3"
+  gt::gt() %>% 
+  gt::fmt_number(
+    columns = ratio,
+    decimals = 4,
+    dec_mark = ","
   )
 ```
 
@@ -180,6 +203,8 @@ populations_class %>%
   )
 ```
 
+<br>
+
 ```{r table_norsikt_l4}
 populations_class %>% 
   dplyr::filter(
@@ -190,9 +215,11 @@ populations_class %>%
     class,
     ratio
   ) %>% 
-  knitr::kable(
-    digits = 4,
-    caption = "NorSIKT nivå 4"
+  gt::gt() %>% 
+  gt::fmt_number(
+    columns = ratio,
+    decimals = 4,
+    dec_mark = ","
   )
 ```
 
@@ -209,6 +236,7 @@ populations_length_class %>%
   )
 ```
 
+<br>
 
 ```{r table_length_2}
 populations_length_class %>% 
@@ -220,9 +248,11 @@ populations_length_class %>%
     class,
     ratio
   ) %>% 
-  knitr::kable(
-    digits = 4,
-    caption = "To lengdeklasser (5,6 m)"
+  gt::gt() %>% 
+  gt::fmt_number(
+    columns = ratio,
+    decimals = 4,
+    dec_mark = ","
   )
 ```
 
@@ -239,6 +269,7 @@ populations_length_class %>%
   )
 ```
 
+<br>
 
 ```{r table_length_2_7.6}
 populations_length_class %>% 
@@ -250,9 +281,11 @@ populations_length_class %>%
     class,
     ratio
   ) %>% 
-  knitr::kable(
-    digits = 4,
-    caption = "To lengdeklasser (7,6 m)"
+  gt::gt() %>% 
+  gt::fmt_number(
+    columns = ratio,
+    decimals = 4,
+    dec_mark = ","
   )
 ```
 
@@ -269,6 +302,7 @@ populations_length_class %>%
   )
 ```
 
+<br>
 
 ```{r table_length_full}
 populations_length_class %>% 
@@ -280,9 +314,11 @@ populations_length_class %>%
     class,
     ratio
   ) %>% 
-  knitr::kable(
-    digits = 4,
-    caption = "Alle lengdeklasser"
+  gt::gt() %>% 
+  gt::fmt_number(
+    columns = ratio,
+    decimals = 4,
+    dec_mark = ","
   )
 ```
 
