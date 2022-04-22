@@ -84,12 +84,16 @@ plot_standard_population <-
     ggplot(
       aes(
        x = class, 
-       y = ratio,
-       color = trp_name_and_road
+       y = ratio#,
+       #color = trp_name_and_road
        )
       ) +
     #facet_grid(rows = vars(classification_scheme)) +
-    geom_point() +
+    #geom_point() +
+    geom_jitter(
+      width = 0.25,
+      height = 0
+    ) +
     theme_bw() +
     theme(
       panel.grid.minor = element_blank(),
@@ -110,7 +114,8 @@ plot_standard_population <-
       plot.background = element_rect(fill = svv_background_color),
       panel.background = element_rect(fill = svv_background_color),
       legend.background = element_rect(fill = svv_background_color),
-      legend.key = element_blank()
+      legend.key = element_blank(),
+      legend.position = "bottom"
     ) +
     labs(
       x = "Klasse",

@@ -225,7 +225,7 @@ vbv_data_files <-
   ) %>%
   stringr::str_sort()
 
-read_vbv_and_save_summary(vbv_data_files[25])
+read_vbv_and_save_summary(vbv_data_files[86])
 
 
 # 3. Reading saved RDS ----
