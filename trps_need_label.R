@@ -45,6 +45,55 @@ zero_dt <-
   ) %>%
   purrr::map_df(
     ~ read_a_file(.)
+  ) %>%
+  dplyr::select(
+    -number_of_days
+  ) %>%
+  # Romove invisible trps
+  dplyr::filter(
+    trp_id %in% distinct_trps$trp_id
+  )
+
+present_trp_ids <-
+  zero_dt %>%
+  dplyr::select(
+    trp_id
+  ) %>%
+  dplyr::distinct()
+
+labels <-
+  get_labels_for_trp_list(
+    present_trp_ids$trp_id
+  ) %>%
+  dplyr::select(
+    trp_id,
+    lane,
+    date_interval
+  )
+
+labelled_zero_days <-
+  zero_dt %>%
+  dplyr::inner_join(
+    labels,
+    by = c("trp_id", "lane")
+  ) %>%
+  dplyr::mutate(
+    is_day_labelled = day %within% date_interval
+  ) %>%
+  dplyr::filter(
+    is_day_labelled == TRUE
+  ) %>%
+  dplyr::select(
+   trp_id,
+   lane,
+   day
+  )
+
+zero_dt_filtered <-
+  zero_dt %>%
+  dplyr::anti_join(
+    labelled_zero_days,
+    by = c("trp_id", "lane", "day")
   )
 
 trp_need_label <-
@@ -53,7 +102,6 @@ trp_need_label <-
     distinct_trps,
     by = "trp_id"
   ) %>%
-  # Romove invisible trps (bike)
   dplyr::filter(
     !is.na(name)
   ) %>%
@@ -67,15 +115,14 @@ trp_need_label <-
     registration_frequency,
     road_reference,
     lane,
-    month,
-    number_of_days
+    day
   ) %>%
   dplyr::arrange(
     county_geono,
     municipality_name,
     road_category,
     name,
-    month
+    day
   ) %>%
   dplyr::select(
     -county_geono
