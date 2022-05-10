@@ -1581,20 +1581,20 @@ final_file_rv_dir <-
   'nr_gpkg/trafikklenker_dir_rv_2021_5.gpkg'
 
 edges_rv <-
-  edges_dir_rv_urban_ratio
-  # sf::st_read(
-  #   final_file_rv_dir,
-  #   # as_tibble = TRUE,
-  #   query = "SELECT * FROM \"edges\""
-  # )
+  #edges_dir_rv_urban_ratio
+  sf::st_read(
+    final_file_rv_dir,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"edges\""
+  )
 
 nodes_rv <-
-  nodes_dir_rv
-  # sf::st_read(
-  #   final_file_rv_dir,
-  #   # as_tibble = TRUE,
-  #   query = "SELECT * FROM \"nodes\""
-  # )
+  #nodes_dir_rv
+  sf::st_read(
+    final_file_rv_dir,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"nodes\""
+  )
 
 aadt_rv <-
   sf::st_read(
@@ -1605,6 +1605,8 @@ aadt_rv <-
 
 source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 
+
+## Sola ----
 sola <-
   hent_kommune_v3(1124)
 
@@ -1614,7 +1616,7 @@ edges_sola <-
     sola) %>% lengths > 0,]
 
 
-## Write ----
+### Write ----
 final_file_sola <-
   'nr_gpkg/trafikklenker_sola_2021.gpkg'
 
@@ -1637,4 +1639,57 @@ sf::st_write(
   dsn = final_file_sola,
   layer = 'aadt'
 )
+
+## Nord-Jaeren ----
+sola <-
+  hent_kommune_v3(1124)
+
+stavanger <-
+  hent_kommune_v3(1103)
+
+sandnes <-
+  hent_kommune_v3(1108)
+
+randaberg <-
+  hent_kommune_v3(1127)
+
+nj <-
+  dplyr::bind_rows(
+    sola,
+    stavanger,
+    sandnes,
+    randaberg
+  ) %>%
+  sf::st_union()
+
+edges_nj <-
+  edges_rv[sf::st_intersects(
+    edges_rv,
+    nj) %>% lengths > 0,]
+
+
+### Write nj ----
+final_file_nj <-
+  'nr_gpkg/trafikklenker_nj_2021.gpkg'
+
+sf::st_write(
+  nodes_rv,
+  dsn = final_file_nj,
+  layer = 'nodes'
+)
+
+sf::st_write(
+  edges_nj,
+  dsn = final_file_nj,
+  layer = 'edges'
+)
+
+sf::st_write(
+  aadt_rv,
+  #traffic_link_id_and_aadt_rv,
+  append = FALSE,
+  dsn = final_file_nj,
+  layer = 'aadt'
+)
+
 
