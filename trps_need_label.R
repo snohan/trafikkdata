@@ -89,11 +89,22 @@ labelled_zero_days <-
    day
   )
 
+# Real zero days as informed by owners
+real_zero_days <-
+  readr::read_csv2("real_zero_days.csv") %>%
+  dplyr::mutate(
+    day = lubridate::dmy(day)
+  )
+
 zero_dt_filtered <-
   zero_dt %>%
   dplyr::anti_join(
     labelled_zero_days,
     by = c("trp_id", "lane", "day")
+  ) %>%
+  dplyr::anti_join(
+    real_zero_days,
+    by = c("trp_id", "day")
   )
 
 trp_need_label <-
@@ -130,5 +141,5 @@ trp_need_label <-
 
 writexl::write_xlsx(
   trp_need_label,
-  path = "O:/ToS/Utv/DKA40 Transportdata/05. Trafikkdata/Opplæring - kompetanse/7. Databehandling/nulltrafikk.xlsx"
+  path = "nulltrafikk.xlsx"
 )
