@@ -1,6 +1,15 @@
 ---
-title: "Predikert ÅDT"
-output: html_notebook
+title: "Modellberegnet ÅDT sammenlignet med \"manuell\" ÅDT-belegging"
+output: 
+  html_document:
+    css: svv.css
+    number_sections: true
+    toc: true
+    toc_float: 
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 2
+fig_width: 5
 ---
 
 ```{r setup, include = FALSE, echo = FALSE}
@@ -56,121 +65,192 @@ nvdb_crs <- leafletCRS(
 ```
 
 
+```{r todos}
+# TODO: load model predictions from gpkg
+# TODO: add model AADTs to undirected links
+# TODO: fetch manual AADT from NVDB
+# TODO: compare statistically
+# TODO: map with visualised differences
+```
+
+# Bakgrunn
+Norsk Regnesentral har utviklet en modell for maskinell ÅDT-belegging av vegnettet. ÅDT-estimater fra denne modellen er her sammenlignet med den "manuelle" ÅDT-beleggingen.
+
+
 ```{r gdb}
-klepp <- sf::st_read("trafikklenker/klepp.gdb")
-kinn <- sf::st_read("trafikklenker/kinn.gdb")
-kinn <- sf::read_sf("trafikklenker/kinn.gdb")
-vestland <- sf::st_read("trafikklenker/vestland_erf.gdb")
-vestland <- geojsonsf::geojson_sf("trafikklenker/vestland_erf.gdb")
+# klepp <- sf::st_read("trafikklenker/klepp.gdb")
+# kinn <- sf::st_read("trafikklenker/kinn.gdb")
+# kinn <- sf::read_sf("trafikklenker/kinn.gdb")
+# vestland <- sf::st_read("trafikklenker/vestland_erf.gdb")
+# vestland <- geojsonsf::geojson_sf("trafikklenker/vestland_erf.gdb")
 ```
 
 
 ```{r file_path, include=FALSE}
-geopackage_file <- "trafikklenker/steg2_AADT_ALL_EV_RV_2020.gpkg"
+# Model predictions for Vestland and Rogaland
+geopackage_file <- 
+"nr_prep_links/trafikklenker_dir_rv_2021_preproc_predaadt_balaadt_noder-kanter-kategorisert.gpkg"
 #layers <- sf::st_layers(geopackage_file)
 ```
 
 ```{r explore_rows, message=FALSE, include=FALSE}
-link_query <- "SELECT * FROM \"edges\""
+#link_query <- "SELECT * FROM \"edges_rv\" LIMIT 10"
+link_query <- "SELECT id, direction, municipality, med_metrering, roadref_category, roadref_number, aadt_alle_mean, pred_aadt, pred_aadt_sd, aadt_prelim, aadt_prelim_sd, aadt_bal, aadt_bal_sd, aadt_bal_tot, geom FROM \"edges_rv\" WHERE (roadref_category = 'F' AND roadref_number = 44)"
 #top_row_query <- "SELECT feature_oid, start_node_oid, end_node_oid FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL LIMIT 15"
 #link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE start_node_oid IN(3283021)"
-links_selected <- sf::st_read(geopackage_file, "edges",
-                                      as_tibble = TRUE,
-                                      query = link_query)
+links_selected <- 
+  sf::st_read(
+    geopackage_file, 
+    as_tibble = TRUE,
+    query = link_query,
+    quiet = TRUE
+  )
 
-links_selected_id <- links_selected %>% 
+links_selected_id <- 
+  links_selected %>% 
   dplyr::select(ID) %>% 
   dplyr::distinct()
 ```
 
 ```{r transform_geometry}
-traffic_links_wide <- links_selected %>%
-  dplyr::select(ID,
-                roadcat = ROADREF_CATEGORY,
-                roadn = ROADREF_NUMBER,
-                with = med_metrering,
-                pred_aadt,
-                sd = pred_aadt_sd,
-                tm_aadt = AADT_ALLE_MEAN#,
-                #nettaadt_mangler
-                ) %>% 
+traffic_links_wide <- 
+  links_selected %>%
+  dplyr::select(
+    ID,
+    roadcat = ROADREF_CATEGORY,
+    roadn = ROADREF_NUMBER,
+    with = med_metrering,
+    aadt_bal,
+    pred_aadt,
+    #sd = pred_aadt_sd,
+    trp_aadt = aadt_prelim,
+    tm_aadt = AADT_ALLE_MEAN#,
+    #nettaadt_mangler
+  ) %>% 
   sf::st_drop_geometry() %>% 
   tidyr::pivot_wider(
     names_from = with,
     names_prefix = "med_",
-    values_from = c(pred_aadt, sd, tm_aadt)
+    values_from = c(aadt_bal, pred_aadt, trp_aadt, tm_aadt)
   ) %>% 
   dplyr::rowwise() %>% 
   dplyr::mutate(
-    tm_aadt = sum(tm_aadt_med_0, tm_aadt_med_1, na.rm = TRUE),
-    aadt = sum(pred_aadt_med_0, pred_aadt_med_1, na.rm = TRUE),
-    sd = dplyr::case_when(
-      # if one or both directions are missing
-      is.na(pred_aadt_med_1) || is.na(pred_aadt_med_0) ~ 
-        sum(sd_med_1, sd_med_0, na.rm = TRUE),
-      # when both is present, combined sd
-      TRUE ~ sqrt((sd_med_1^2 + sd_med_0^2)/2 + 
-        ((pred_aadt_med_1 - pred_aadt_med_0)/2)^2)
-    )
+    aadt_bal = sum(aadt_bal_med_0, aadt_bal_med_1, na.rm = TRUE),
+    pred_aadt = sum(pred_aadt_med_0, pred_aadt_med_1, na.rm = TRUE),
+    trp_aadt = sum(trp_aadt_med_0, trp_aadt_med_1, na.rm = TRUE),
+    tm_aadt = sum(tm_aadt_med_0, tm_aadt_med_1, na.rm = TRUE)
+    #,
+    #sd = dplyr::case_when(
+      ## if one or both directions are missing
+      #is.na(pred_aadt_med_1) || is.na(pred_aadt_med_0) ~ 
+      #  sum(sd_med_1, sd_med_0, na.rm = TRUE),
+      ## when both is present, combined sd
+      #TRUE ~ sqrt((sd_med_1^2 + sd_med_0^2)/2 + 
+      #  ((pred_aadt_med_1 - pred_aadt_med_0)/2)^2)
+    #)
   ) %>% 
   dplyr::ungroup() %>% 
   dplyr::mutate(
     across(
-      .cols = c(pred_aadt_med_1, pred_aadt_med_0,
-                sd_med_1, sd_med_0,
-                tm_aadt_med_1, tm_aadt_med_0,
-                tm_aadt, aadt, sd),
+      .cols = c(
+        aadt_bal_med_1,
+        aadt_bal_med_0,
+        pred_aadt_med_1, 
+        pred_aadt_med_0,
+        #sd_med_1, 
+        #sd_med_0,
+        trp_aadt_med_1,
+        trp_aadt_med_0,
+        tm_aadt_med_1, 
+        tm_aadt_med_0,
+        aadt_bal,
+        pred_aadt,
+        trp_aadt,
+        tm_aadt
+        #sd
+        ),
       ~ round(.x)
     )
+  ) %>% 
+  dplyr::select(
+    ID,
+    aadt_bal,
+    pred_aadt,
+    trp_aadt,
+    tm_aadt
   )
 
-traffic_links_transformed <- links_selected_id %>% 
-  dplyr::left_join(traffic_links_wide, by = "ID") %>% 
+traffic_links_transformed <- 
+  links_selected_id %>% 
+  dplyr::left_join(
+    traffic_links_wide, 
+    by = "ID"
+  ) %>% 
   sf::st_zm(drop = T, what = "ZM") %>% 
-  dplyr::mutate(line_length = round(sf::st_length(geom),
-                                    digits = 0)) %>% 
   dplyr::mutate(
-    link_label = paste("Modell-ÅDT ", aadt, "S: ", sd, "TM:", tm_aadt, "<br/>",
-                       "Med ", pred_aadt_med_1, "S: ", sd_med_1, 
-                       "TM-ÅDT: ", tm_aadt_med_1,  "<br/>",
-                       "Mot ", pred_aadt_med_0, "S: ", sd_med_0, 
-                       "TM-ÅDT: ", tm_aadt_med_0, "<br/>",
-                       line_length, " m"),
+    line_length = 
+      round(
+        sf::st_length(geom),
+        digits = 0)
+  ) %>% 
+  dplyr::mutate(
+    link_label = 
+      paste(
+        "Balansert: ", aadt_bal, "<br/>",
+        "Predikert: ", pred_aadt, "<br/>",
+        "TM: ", tm_aadt, "<br/>",
+        "TRP: ", trp_aadt, "<br/>",
+        line_length, " m"
+      ),
+    # link_label = 
+    #   paste(
+    #     "Modell-ÅDT ", aadt, "S: ", sd, "TM:", tm_aadt, "<br/>",
+    #     "Med ", pred_aadt_med_1, "S: ", sd_med_1, 
+    #     "TM-ÅDT: ", tm_aadt_med_1,  "<br/>",
+    #     "Mot ", pred_aadt_med_0, "S: ", sd_med_0, 
+    #     "TM-ÅDT: ", tm_aadt_med_0, "<br/>",
+    #     line_length, " m"
+    #   ),
     link_label = lapply(link_label, htmltools::HTML)) %>% 
   sf::st_transform("+proj=longlat +datum=WGS84")
 
-# TODO: compare to manual aadt
 ```
 
 ```{r compare}
 # Try Rv 15
-manual_adt_rv15 <- get_aadt_by_road("RV15") %>% 
-  dplyr::filter(
-    purrr::map_lgl(
-      county_numbers, ~ 46 %in% .)
-  )
+# manual_adt_rv15 <- get_aadt_by_road("RV15") %>% 
+#   dplyr::filter(
+#     purrr::map_lgl(
+#       county_numbers, ~ 46 %in% .)
+#   )
+# 
+# manual_adt_rv5 <- get_aadt_by_road("RV5") %>% 
+#   dplyr::filter(
+#     purrr::map_lgl(
+#       county_numbers, ~ 46 %in% .)
+#   )
+# 
+# manual_adt_ev16 <- get_aadt_by_road("EV16") %>% 
+#   dplyr::filter(
+#     purrr::map_lgl(
+#       county_numbers, ~ 46 %in% .)
+#   )
+# 
+# manual_adt <- 
+#   dplyr::bind_rows(
+#     manual_adt_rv5,
+#     manual_adt_rv15,
+#     manual_adt_ev16
+#   )
+# 
+# nr_model <- 
+#   traffic_links_transformed %>% 
+#   dplyr::filter(roadn %in% c(5, 15, 16))
 
-manual_adt_rv5 <- get_aadt_by_road("RV5") %>% 
-  dplyr::filter(
-    purrr::map_lgl(
-      county_numbers, ~ 46 %in% .)
-  )
 
-manual_adt_ev16 <- get_aadt_by_road("EV16") %>% 
-  dplyr::filter(
-    purrr::map_lgl(
-      county_numbers, ~ 46 %in% .)
-  )
 
-manual_adt <- 
-  dplyr::bind_rows(
-    manual_adt_rv5,
-    manual_adt_rv15,
-    manual_adt_ev16
-  )
+manual_adt_fv44 <- get_aadt_by_road("FV44")
 
-nr_model <- traffic_links_transformed %>% 
-  dplyr::filter(roadn %in% c(5, 15, 16))
 
 # test <- sf::st_intersects(
 #   nr_model_rv15$geom[1],
@@ -178,16 +258,17 @@ nr_model <- traffic_links_transformed %>%
 #   ) %>% 
 #   unlist()
 
-matchende <- sf::st_join(
-  nr_model,
-  manual_adt,
-  largest = TRUE
+matchende <- 
+  sf::st_join(
+    traffic_links_transformed,
+    manual_adt_fv44,
+    largest = TRUE
   ) %>% 
   dplyr::mutate(
-    aadt_diff = round((aadt - aadt_total) / aadt_total * 100, digits = 0),
+    aadt_diff = round((aadt_bal - aadt_total) / aadt_total * 100, digits = 0),
     link_label_final = paste0(link_label,
                               "<br/>", 
-                              "NVDB-ÅDT: ", aadt_total, " Kilde: ", source),
+                              "NVDB: ", aadt_total, " Kilde: ", source),
     link_label_final = lapply(link_label_final, htmltools::HTML)
   ) %>% 
   dplyr::select(-link_label)
@@ -262,7 +343,7 @@ create_aadt_comparison_map <- function(aadt_df) {
       "bottomright",
       pal = palett_index,
       values = aadt_df$aadt_diff,
-      title = "Forskjell i ÅDT",
+      title = "Differanse",
       opacity = 0.8,
       labFormat = labelFormat(big.mark = " ")
       )
@@ -282,7 +363,7 @@ create_aadt_comparison_map(matchende)
 matchende %>% 
   ggplot(
     aes(
-      aadt_total, aadt
+      aadt_total, aadt_bal
       )
     ) +
   ggplot2::geom_point() +
@@ -296,8 +377,8 @@ matchende %>%
   theme(axis.text.x = element_text(angle = 90),
         panel.grid.minor.x = element_blank()) +
   #scale_fill_brewer(palette = "Set3") +
-  labs(x = "\nNVDB-ÅDT", y = "Predikert ÅDT\n") +
-  ggtitle("Predikert ÅDT sammenlignet med NVDB-ÅDT")
+  labs(x = "\nNVDB", y = "Balansert AADT\n") +
+  ggtitle("Balansert AADT sammenlignet med NVDB")
 ```
 
 
