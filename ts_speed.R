@@ -7,6 +7,7 @@
 # 5. Aggregate mean speed, 85th percentile and
 #    n vehicles in intervals above speed limit in Kibana
 
+base::Sys.setlocale(locale = "nb.utf8")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
@@ -129,6 +130,13 @@ ts_trp_aadt <-
     path = "ts/ts_trp.xlsx"
   )
 
+ts_trp_speed_limit <-
+  ts_trp_aadt %>%
+  dplyr::select(
+    trp_id,
+    speed_limit
+  )
+
 # TODO: speed limit history, but this is not complete in NVDB!
 # Check speed quality in Kibana (not available in the API) - looks ok
 
@@ -136,7 +144,7 @@ ts_trp_aadt <-
 read_a_file <- function(file_name) {
 
   readr::read_csv2(
-    paste0("ts_data_2019/", file_name)
+    paste0("ts_data_2022_01_05/", file_name)
   ) %>%
   dplyr::mutate(
     periode_start = as.character(periode_start)
@@ -148,7 +156,7 @@ read_a_file <- function(file_name) {
 # Prepare speed intervals ----
 speed_intervals <-
   list.files(
-    "ts_data_2019",
+    "ts_data_2022_01_05",
     pattern = "^Fartsintervaller*") %>%
   purrr::map_df(
     ~ read_a_file(.)
@@ -234,7 +242,7 @@ speed_intervals <-
 # Prepare means and percentiles ----
 means_and_percentiles <-
   list.files(
-    "ts_data_2019",
+    "ts_data_2022_01_05",
     pattern = "^Snitt*") %>%
   purrr::map_df(
     ~ read_a_file(.)
@@ -306,7 +314,7 @@ trp_speed_info <-
     lanes,
     measurand,
     year,
-    Jan:Des
+    Jan:Mai
   ) %>%
   dplyr::arrange(
     speed_limit,
@@ -316,7 +324,7 @@ trp_speed_info <-
 
 writexl::write_xlsx(
   trp_speed_info,
-  path = "ts/trp_speed_monthly_2019.xlsx"
+  path = "ts/trp_speed_monthly_2022_01-05.xlsx"
 )
 
 

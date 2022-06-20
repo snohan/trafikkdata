@@ -1,5 +1,11 @@
 # Get data from data.norge.no
-# Kjøretøyopplysninger
+# Kjøretøyopplysninger eller "Tekninsk kjøretøyinformasjon"
+# https://data.norge.no/datasets/a8533876-cca7-4417-90be-b368f7d9542c
+# https://hotell.difi.no/?dataset=vegvesen/kjoretoyinfo
+
+library(tidyverse)
+library(httr)
+library(jsonlite)
 
 data_norge_headers <- c(
   "X-Client" = "Statens vegvesen, trafikkdatagruppa",
@@ -14,6 +20,8 @@ get_vehicle_groups <- function() {
     readr::read_csv2("https://hotell.difi.no/api/csv/vegvesen/kjoretoygruppe?")
 }
 
+vehicle_groups <- get_vehicle_groups()
+
 
 get_technical_codes <- function() {
 
@@ -22,18 +30,25 @@ get_technical_codes <- function() {
 }
 
 
-get_vehicle_info_fields <- function() {
+# get_vehicle_info_fields <- function() {
+#
+#   response <-
+#     httr::GET(
+#       "https://hotell.difi.no/api/json/vegvesen/kjoretoy/fields",
+#       httr::add_headers(.headers = data_norge_headers)
+#     )
+#
+#   parsed_response <- jsonlite::fromJSON(
+#     stringr::str_conv(
+#       response$content, encoding = "UTF-8"),
+#     simplifyDataFrame = T,
+#     flatten = T)
+#
+# }
 
-  response <- httr::GET("https://hotell.difi.no/api/json/vegvesen/kjoretoy/fields",
-                        httr::add_headers(.headers = data_norge_headers))
+#info_fields <- get_vehicle_info_fields()
 
-  parsed_response <- jsonlite::fromJSON(
-    stringr::str_conv(
-      response$content, encoding = "UTF-8"),
-    simplifyDataFrame = T,
-    flatten = T)
 
-}
 
 traffic_data_relevant_columns <- c("tekn_aksler",
                                    #"tekn_aksler_drift",
@@ -67,9 +82,14 @@ traffic_data_relevant_columns <- c("tekn_aksler",
 #technical_code <- "O1"
 get_vehicle_info <- function(technical_code) {
 
-  api_base_url <- paste0("https://hotell.difi.no/api/json/vegvesen/kjoretoy?tekn_reg_status=Registrert&tekn_tknavn=",
-                         technical_code,
-                         "&page=")
+  # Takes a long time!
+
+  api_base_url <-
+    paste0(
+      "https://hotell.difi.no/api/json/vegvesen/kjoretoyinfo?tekn_reg_status=Registrert&tekn_tknavn=",
+      technical_code,
+      "&page="
+    )
 
   i = 1
   start_url <- paste0(api_base_url, i)
@@ -112,3 +132,4 @@ get_vehicle_info <- function(technical_code) {
 
 # TODO: a function that fetches number of vehicles per group, by querying for the first page per group
 
+test <- get_vehicle_info("M2G")
