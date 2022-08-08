@@ -49,9 +49,12 @@ zero_dt <-
   dplyr::select(
     -number_of_days
   ) %>%
-  # Romove invisible trps
+  # Remove invisible trps
   dplyr::filter(
     trp_id %in% distinct_trps$trp_id
+  ) %>%
+  dplyr::mutate(
+    day = lubridate::dmy(day)
   )
 
 present_trp_ids <-
@@ -108,7 +111,7 @@ zero_dt_filtered <-
   )
 
 trp_need_label <-
-  zero_dt %>%
+  zero_dt_filtered %>%
   dplyr::left_join(
     distinct_trps,
     by = "trp_id"

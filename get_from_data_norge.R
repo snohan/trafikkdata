@@ -29,6 +29,8 @@ get_technical_codes <- function() {
     readr::read_csv2("https://hotell.difi.no/api/csv/vegvesen/teknisk-kode?")
 }
 
+technical_codes <- get_technical_codes()
+
 
 # get_vehicle_info_fields <- function() {
 #
