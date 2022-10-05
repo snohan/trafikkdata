@@ -1640,6 +1640,15 @@ sf::st_write(
   layer = 'aadt'
 )
 
+### Read back in ----
+edges_sola <-
+  #edges_dir_rv_urban_ratio
+  sf::st_read(
+    final_file_sola,
+    # as_tibble = TRUE,
+    query = "SELECT * FROM \"edges\""
+  )
+
 ## Nord-Jaeren ----
 sola <-
   hent_kommune_v3(1124)

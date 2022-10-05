@@ -19,17 +19,20 @@ library(sf)
 library(knitr)
 library(htmltools)
 library(geojsonsf)
+library(scales)
 
 source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
 # knitr options ####
-knitr::opts_chunk$set(echo = FALSE,
-                      warning = FALSE,
-                      message = FALSE,
-                      error = FALSE,
-                      cache = FALSE)
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  error = FALSE,
+  cache = FALSE
+)
 
 # Map essentials ####
 nvdb_map_url <-
@@ -62,19 +65,20 @@ nvdb_crs <- leafletCRS(
     0.16536491406316148
   ),
   origin = c(-2500000.0, 9045984.0))
+
+svv_background_color <- "#F5F5F5"
 ```
 
 
-```{r todos}
-# TODO: load model predictions from gpkg
-# TODO: add model AADTs to undirected links
-# TODO: fetch manual AADT from NVDB
-# TODO: compare statistically
-# TODO: map with visualised differences
+```{r read}
+model_comparisons <- 
+  base::readRDS(
+    file = "compare_rv.rds"
+  )
 ```
 
 # Bakgrunn
-Norsk Regnesentral har utviklet en modell for maskinell ÅDT-belegging av vegnettet. ÅDT-estimater fra denne modellen er her sammenlignet med den "manuelle" ÅDT-beleggingen.
+Norsk Regnesentral har utviklet en modell for maskinell ÅDT-belegging av vegnettet. ÅDT-estimater fra denne modellen er her sammenlignet med den "manuelle" ÅDT-beleggingen som i dag er tilgjengelig i NVDB (objektet Trafikkmengde).
 
 
 ```{r gdb}
@@ -85,136 +89,6 @@ Norsk Regnesentral har utviklet en modell for maskinell ÅDT-belegging av vegnet
 # vestland <- geojsonsf::geojson_sf("trafikklenker/vestland_erf.gdb")
 ```
 
-
-```{r file_path, include=FALSE}
-# Model predictions for Vestland and Rogaland
-geopackage_file <- 
-"nr_prep_links/trafikklenker_dir_rv_2021_preproc_predaadt_balaadt_noder-kanter-kategorisert.gpkg"
-#layers <- sf::st_layers(geopackage_file)
-```
-
-```{r explore_rows, message=FALSE, include=FALSE}
-#link_query <- "SELECT * FROM \"edges_rv\" LIMIT 10"
-link_query <- "SELECT id, direction, municipality, med_metrering, roadref_category, roadref_number, aadt_alle_mean, pred_aadt, pred_aadt_sd, aadt_prelim, aadt_prelim_sd, aadt_bal, aadt_bal_sd, aadt_bal_tot, geom FROM \"edges_rv\" WHERE (roadref_category = 'F' AND roadref_number = 44)"
-#top_row_query <- "SELECT feature_oid, start_node_oid, end_node_oid FROM \"TrafikkLenker\" WHERE geometry IS NOT NULL LIMIT 15"
-#link_query <- "SELECT * FROM \"TrafikkLenker\" WHERE start_node_oid IN(3283021)"
-links_selected <- 
-  sf::st_read(
-    geopackage_file, 
-    as_tibble = TRUE,
-    query = link_query,
-    quiet = TRUE
-  )
-
-links_selected_id <- 
-  links_selected %>% 
-  dplyr::select(ID) %>% 
-  dplyr::distinct()
-```
-
-```{r transform_geometry}
-traffic_links_wide <- 
-  links_selected %>%
-  dplyr::select(
-    ID,
-    roadcat = ROADREF_CATEGORY,
-    roadn = ROADREF_NUMBER,
-    with = med_metrering,
-    aadt_bal,
-    pred_aadt,
-    #sd = pred_aadt_sd,
-    trp_aadt = aadt_prelim,
-    tm_aadt = AADT_ALLE_MEAN#,
-    #nettaadt_mangler
-  ) %>% 
-  sf::st_drop_geometry() %>% 
-  tidyr::pivot_wider(
-    names_from = with,
-    names_prefix = "med_",
-    values_from = c(aadt_bal, pred_aadt, trp_aadt, tm_aadt)
-  ) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(
-    aadt_bal = sum(aadt_bal_med_0, aadt_bal_med_1, na.rm = TRUE),
-    pred_aadt = sum(pred_aadt_med_0, pred_aadt_med_1, na.rm = TRUE),
-    trp_aadt = sum(trp_aadt_med_0, trp_aadt_med_1, na.rm = TRUE),
-    tm_aadt = sum(tm_aadt_med_0, tm_aadt_med_1, na.rm = TRUE)
-    #,
-    #sd = dplyr::case_when(
-      ## if one or both directions are missing
-      #is.na(pred_aadt_med_1) || is.na(pred_aadt_med_0) ~ 
-      #  sum(sd_med_1, sd_med_0, na.rm = TRUE),
-      ## when both is present, combined sd
-      #TRUE ~ sqrt((sd_med_1^2 + sd_med_0^2)/2 + 
-      #  ((pred_aadt_med_1 - pred_aadt_med_0)/2)^2)
-    #)
-  ) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::mutate(
-    across(
-      .cols = c(
-        aadt_bal_med_1,
-        aadt_bal_med_0,
-        pred_aadt_med_1, 
-        pred_aadt_med_0,
-        #sd_med_1, 
-        #sd_med_0,
-        trp_aadt_med_1,
-        trp_aadt_med_0,
-        tm_aadt_med_1, 
-        tm_aadt_med_0,
-        aadt_bal,
-        pred_aadt,
-        trp_aadt,
-        tm_aadt
-        #sd
-        ),
-      ~ round(.x)
-    )
-  ) %>% 
-  dplyr::select(
-    ID,
-    aadt_bal,
-    pred_aadt,
-    trp_aadt,
-    tm_aadt
-  )
-
-traffic_links_transformed <- 
-  links_selected_id %>% 
-  dplyr::left_join(
-    traffic_links_wide, 
-    by = "ID"
-  ) %>% 
-  sf::st_zm(drop = T, what = "ZM") %>% 
-  dplyr::mutate(
-    line_length = 
-      round(
-        sf::st_length(geom),
-        digits = 0)
-  ) %>% 
-  dplyr::mutate(
-    link_label = 
-      paste(
-        "Balansert: ", aadt_bal, "<br/>",
-        "Predikert: ", pred_aadt, "<br/>",
-        "TM: ", tm_aadt, "<br/>",
-        "TRP: ", trp_aadt, "<br/>",
-        line_length, " m"
-      ),
-    # link_label = 
-    #   paste(
-    #     "Modell-ÅDT ", aadt, "S: ", sd, "TM:", tm_aadt, "<br/>",
-    #     "Med ", pred_aadt_med_1, "S: ", sd_med_1, 
-    #     "TM-ÅDT: ", tm_aadt_med_1,  "<br/>",
-    #     "Mot ", pred_aadt_med_0, "S: ", sd_med_0, 
-    #     "TM-ÅDT: ", tm_aadt_med_0, "<br/>",
-    #     line_length, " m"
-    #   ),
-    link_label = lapply(link_label, htmltools::HTML)) %>% 
-  sf::st_transform("+proj=longlat +datum=WGS84")
-
-```
 
 ```{r compare}
 # Try Rv 15
@@ -249,7 +123,7 @@ traffic_links_transformed <-
 
 
 
-manual_adt_fv44 <- get_aadt_by_road("FV44")
+#manual_adt_fv44 <- get_aadt_by_road("FV44")
 
 
 # test <- sf::st_intersects(
@@ -258,20 +132,20 @@ manual_adt_fv44 <- get_aadt_by_road("FV44")
 #   ) %>% 
 #   unlist()
 
-matchende <- 
-  sf::st_join(
-    traffic_links_transformed,
-    manual_adt_fv44,
-    largest = TRUE
-  ) %>% 
-  dplyr::mutate(
-    aadt_diff = round((aadt_bal - aadt_total) / aadt_total * 100, digits = 0),
-    link_label_final = paste0(link_label,
-                              "<br/>", 
-                              "NVDB: ", aadt_total, " Kilde: ", source),
-    link_label_final = lapply(link_label_final, htmltools::HTML)
-  ) %>% 
-  dplyr::select(-link_label)
+# matchende <- 
+#   sf::st_join(
+#     traffic_links_transformed,
+#     manual_adt_fv44,
+#     largest = TRUE
+#   ) %>% 
+#   dplyr::mutate(
+#     aadt_diff = round((aadt_bal - aadt_total) / aadt_total * 100, digits = 0),
+#     link_label_final = paste0(link_label,
+#                               "<br/>", 
+#                               "NVDB: ", aadt_total, " Kilde: ", source),
+#     link_label_final = lapply(link_label_final, htmltools::HTML)
+#   ) %>% 
+#   dplyr::select(-link_label)
 
 # Three links do not match along Oppstrynsvatnet, as it seems
 # the geometry is a little moved to the side. Has something changed to 
@@ -280,14 +154,17 @@ matchende <-
 ```
 
 
-Sammenligning mellom predikert ÅDT fra Norsk Regnesentrals modell og manuell ÅDT-belegging.
+# Kart
+Sammenligning mellom ÅDT fra Norsk Regnesentrals modell og manuell ÅDT-belegging.
 
 ```{r map_function}
 create_aadt_comparison_map <- function(aadt_df) {
   
   # Create a red-green scale based on index values
-  negative_value <- round(abs(min(aadt_df$aadt_diff, na.rm = T)), digits = 0) + 1
-  positive_value <- round(max(aadt_df$aadt_diff, na.rm = T), digits = 0) + 1
+  negative_value <- 
+    round(abs(min(aadt_df$aadt_diff, na.rm = T)), digits = 0) + 1
+  positive_value <- 
+    round(max(aadt_df$aadt_diff, na.rm = T), digits = 0) + 1
 
   # If even the max value is negative
   if(positive_value < 0) positive_value <- 1
@@ -351,37 +228,191 @@ create_aadt_comparison_map <- function(aadt_df) {
   return(aadt_map)
 }
 
+
+create_aadt_comparison_map_abs <- function(aadt_df) {
+  
+  # Create a red-green scale based on index values
+  negative_value <- 
+    round(abs(min(aadt_df$aadt_diff_abs, na.rm = T)), digits = 0) + 1
+  positive_value <- 
+    round(max(aadt_df$aadt_diff_abs, na.rm = T), digits = 0) + 1
+
+  # If even the max value is negative
+  if(positive_value < 0) positive_value <- 1
+
+  rc1 <- colorRampPalette(
+    colors = c("blue", "green"), 
+    space = "Lab")(negative_value)
+
+  ## Make vector of colors for values larger than 0 (180 colors)
+  rc2 <- colorRampPalette(
+    colors = c("green", "red"), 
+    space = "Lab")(positive_value)
+
+  ## Combine the two color palettes
+  rampcols <- c(rc1, rc2)
+
+  palett_index <-
+    leaflet::colorNumeric(
+      palette = rampcols,
+      domain = NULL
+      )
+
+  aadt_map <- 
+    leaflet(
+      width = "100%",
+      height = 700,
+      options = leafletOptions(
+        crs = nvdb_crs,
+        zoomControl = TRUE
+        )
+      ) %>%
+  addTiles(
+    urlTemplate = nvdb_map_url,
+    attribution = nvdb_map_attribution
+    ) %>%
+  addPolylines(
+    data = aadt_df,
+    label = ~link_label_final,
+    opacity = 0.8,
+    color = ~palett_index(aadt_diff_abs),
+    highlightOptions = highlightOptions(
+      bringToFront = TRUE,
+      sendToBack = FALSE,
+      color = "purple",
+      opacity = 0.6
+      )
+    ) %>%
+    addLegend(
+      "bottomright",
+      pal = palett_index,
+      values = aadt_df$aadt_diff_abs,
+      title = "Avvik",
+      opacity = 0.8,
+      labFormat = labelFormat(big.mark = " ")
+      )
+  
+  return(aadt_map)
+}
+
 ```
 
 ```{r map}
-# TODO: show trps
-create_aadt_comparison_map(matchende)
+create_aadt_comparison_map_abs(
+  model_comparisons
+  )
 ```
 
 
-```{r plot}
-matchende %>% 
+## Spesielle tilfeller
+En titt på noen utvalgte lenker.
+
+### Toplanskryss på Ev 134 ved Raglamyr
+Fordeling av ÅDT i toplanskryss blir ofte feil. Modellen legger for mye trafikk på rampene. Skulle hatt endenoder inn i kommunalt vegnett som kunne dempe disse verdiene.
+
+
+### I-kryss på Fv 547 ved Åkrehamn
+Balanseringen bevarer trafikknivået langs fylkesvegen gjennom krysset. Her mangler modellen informasjon om trafikk som faktisk forsvinner ut i kommunalt vegnett.
+
+### Kollektivlenke på Ev 134 ved Førre
+Modellen vet ikke at dette er en lenke kun for kollektivtrafikk, og behandler den som en vanlig veg. Dermed tilegnes denne lenken alt for høy ÅDT-verdi.
+
+
+# Plott
+
+```{r plot, fig.height=8, fig.width=8}
+model_comparisons |> 
   ggplot(
     aes(
-      aadt_total, aadt_bal
+      x = aadt_total, 
+      y = aadt_bal,
+      color = intersection_part
+      #color = road_category
       )
     ) +
-  ggplot2::geom_point() +
+  ggplot2::geom_point(
+    alpha = 0.6,
+    size = 3
+  ) +
   geom_abline(
     slope = 1,
     intercept = 0
   ) +
-  xlim(0, 5e4) +
-  ylim(0, 5e4) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90),
-        panel.grid.minor.x = element_blank()) +
+  ggplot2::facet_wrap(
+    facets = vars(source),
+    ncol = 1
+    ) +
+  #xlim(0, 5e4) +
+  #ylim(0, 5e4) +
+  theme_light() +
+  theme(
+    #axis.text.x = element_text(angle = 90),
+    panel.grid.minor.x = element_blank(),
+    axis.title.y = element_text(
+        margin = margin(t = 0, r = 15, b = 0, l = 0)),
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0)),
+    plot.background = element_rect(fill = svv_background_color),
+    panel.background = element_rect(fill = svv_background_color),
+    legend.position = "bottom",
+    legend.background = element_rect(fill = svv_background_color),
+    legend.key = element_blank(),
+    strip.background = element_rect(fill = "#ed9300"),
+    strip.text = element_text(color = "black")
+  ) +
+  scale_x_continuous(
+    labels = 
+      scales::label_number(
+        suffix = "k",
+        scale = 1e-3
+      ),
+    limits = c(0, NA)
+  ) +
+  scale_y_continuous(
+    labels = 
+      scales::label_number(
+        suffix = "k",
+        scale = 1e-3
+      )
+  ) +
+  # scale_color_manual(
+  #   values = 
+  #     c("E" = "#008ec2",
+  #       "R" = "#58b02c",
+  #       "F" = "#444f55"),
+  #       name = "Vegkategori"
+  # ) +
+  scale_color_manual(
+    values = 
+      c("TRUE" = "#008ec2",
+        "FALSE" = "#58b02c"),
+        name = "Rampe"
+  ) +
   #scale_fill_brewer(palette = "Set3") +
-  labs(x = "\nNVDB", y = "Balansert AADT\n") +
-  ggtitle("Balansert AADT sammenlignet med NVDB")
+  labs(x = "\u00c5DT fra NVDB", y = "Modellert \u00c5DT (balansert)") +
+  ggtitle("Modellert \u00c5DT sammenlignet med \"manuell\"")
 ```
 
 
+# Tavletegninger
+Manuell ÅDT-belegging i toplanskryss er vanskelig og tidkrevende.
 
+```{r adt_image_1}
+knitr::include_graphics(
+  "C:/Users/snohan/Pictures/adt/adt_1.jpg"
+)
+```
 
+```{r adt_image_2}
+knitr::include_graphics(
+  "C:/Users/snohan/Pictures/adt/adt_2.jpg"
+)
+```
 
+```{r adt_image_3}
+knitr::include_graphics(
+  "C:/Users/snohan/Pictures/adt/adt_3.jpg"
+)
+```
+
+Foto: Snorre Hansen

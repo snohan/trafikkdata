@@ -52,10 +52,11 @@ zero_dt <-
   # Remove invisible trps
   dplyr::filter(
     trp_id %in% distinct_trps$trp_id
-  ) %>%
-  dplyr::mutate(
-    day = lubridate::dmy(day)
   )
+# %>%
+#   dplyr::mutate(
+#     day = lubridate::dmy(day)
+#   )
 
 present_trp_ids <-
   zero_dt %>%
@@ -109,6 +110,14 @@ zero_dt_filtered <-
     real_zero_days,
     by = c("trp_id", "day")
   )
+
+n_before_2022 <-
+  zero_dt_filtered |>
+  dplyr::filter(
+    day < "2022-01-01"
+  )
+
+# 2022-10-03: 49843
 
 trp_need_label <-
   zero_dt_filtered %>%
