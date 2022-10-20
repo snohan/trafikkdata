@@ -547,13 +547,46 @@ writexl::write_xlsx(trs_all_commissions,
 
 
 # TRP with direction names ----
-trp_with_direction <- get_points_with_direction() %>%
+trp_with_direction <-
+  get_points_with_direction() %>%
   split_road_system_reference() %>%
   dplyr::arrange(county_no) %>%
   dplyr::select(-road, -road_number) %>%
   dplyr::relocate(road_category_and_number, .before = section_number)
 
-writexl::write_xlsx(trp_with_direction, path = "punkter_med_retningsnavn.xlsx")
+trp_names <-
+  trp_with_direction |>
+  dplyr::mutate(
+    traffic_type =
+      stringr::str_to_lower(traffic_type),
+    link_to_map =
+      paste0(
+        #"=HYPERKOBLING(\"",
+        "https://www.vegvesen.no/trafikkdata/start/kart?lat=",
+        lat,
+        "&lon=",
+        lon,
+        "&trafficType=",
+        traffic_type,
+        "&zoom=13#trpids=",
+        trp_id
+        #"\")"
+      )
+  ) |>
+  dplyr::select(
+    trp_id,
+    name,
+    from,
+    to,
+    county_name,
+    road_reference,
+    link_to_map
+    #road_category_and_number,
+    #operational_status
+  )
+
+#writexl::write_xlsx(trp_with_direction, path = "punkter_med_retningsnavn.xlsx")
+writexl::write_xlsx(trp_names, path = "punkter_og_navn.xlsx")
 
 
 # TRS' first commission ----
