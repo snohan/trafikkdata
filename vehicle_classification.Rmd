@@ -309,15 +309,27 @@ Tabellen nedenfor viser antall kjøretøy i kjøretøyklassene.
 <br>
   
 ```{r autosys_valid_length_table}
-classified_vehicles %>%
+n_vehicles <-
+  classified_vehicles %>%
   dplyr::group_by(class, valid_length) %>% 
-  dplyr::summarise(n_vehicles = n()) %>% 
+  dplyr::summarise(
+    n_vehicles = n(),
+    .groups = "drop"
+  ) %>% 
   tidyr::pivot_wider(
     names_from = valid_length,
     names_prefix = "valid_length_",
     values_from = n_vehicles
     ) %>% 
-  dplyr::select(class, valid_length_TRUE, valid_length_FALSE) %>% 
+  dplyr::select(class, valid_length_TRUE, valid_length_FALSE)
+
+readr::write_rds(
+  n_vehicles,
+  file = 
+    "H:/Programmering/R/trafikkdata/vehicle_classification_data/n_vehicles.rds"
+)
+
+n_classified_vehicles %>% 
   flextable() %>%
   set_header_labels(
     class = "Kjøretøyklasse",
@@ -374,7 +386,7 @@ classified_vehicles %>%
 ```
 <br>
 
-I figuren går det tydelig fram at klassene L, M1 og N1 stort sett passer inn under 5,6 m Videre er det ganske bra plass til de fleste i klasse M2 og N2 mellom 5,6 m og 7,6 m. M3 blir delt i to ved skillet på 12,5 m. N3 passer rimelig greit inn  mellom 7,6 m og 12,5 m, men disse kjøretøyene har jo ofte henger i tillegg. Foreløpig foreligger ingen informasjon om typiske sammensetninger av bil og henger.
+I figuren går det tydelig fram at klassene L, M1 og N1 stort sett passer inn under 5,6 m. Videre er det ganske bra plass til de fleste i klasse M2 og N2 mellom 5,6 m og 7,6 m. M3 blir delt i to ved skillet på 12,5 m. N3 passer rimelig greit inn  mellom 7,6 m og 12,5 m, men disse kjøretøyene har jo ofte henger i tillegg. Foreløpig foreligger ingen informasjon om typiske sammensetninger av bil og henger.
 
 <br>
 

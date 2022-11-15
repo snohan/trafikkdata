@@ -1,0 +1,39 @@
+.reveal .slide-logo {
+  display: block;
+  position: fixed;
+  bottom: unset !important;
+  right: 50px !important;
+  top: 40px !important;
+  left: unset !important;
+  height: 70px !important;
+  max-width: unset !important;
+  max-height: unset !important;
+}
+
+.reveal h2 {
+  margin-bottom: 50px;
+  font-size: 26pt;
+}
+
+.reveal ul {
+  list-style: none;
+  font-size: 18pt;
+  margin-left: 50px !important;
+}
+
+ul li::before {
+  content: "\2022";
+  color: #ed9300;
+  font-weight: bold;
+  display: inline-block;
+  width: 1em;
+  margin-left: -1em;
+}
+
+p {
+  font-size: 18pt;
+}
+
+caption {
+  font-size: 14pt;
+}

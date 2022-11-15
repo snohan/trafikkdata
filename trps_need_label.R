@@ -8,7 +8,8 @@ library(writexl)
 # TRP stats ----
 trp <- get_points()
 
-distinct_trps <- trp %>%
+distinct_trps <-
+  trp %>%
   split_road_system_reference() %>%
   dplyr::select(
     county_geono,
@@ -109,6 +110,13 @@ zero_dt_filtered <-
   dplyr::anti_join(
     real_zero_days,
     by = c("trp_id", "day")
+  ) |>
+  dplyr::filter(
+    # Innherredsvegen ved Fjæregata
+    !(trp_id == "04300V72813" & lane == 2 & day > "2017-07-01"),
+    !(trp_id == "04300V72813" & lane == 4 & day > "2017-07-01"),
+    # Gamle Nygårdsbru foratu og bilveg
+    !(trp_id %in% c("17729B2483952", "17981B2483952"))
   )
 
 n_before_2022 <-
@@ -119,6 +127,7 @@ n_before_2022 <-
 
 # 2022-10-03: 49843
 # 2022-10-17: 51420
+# 2022-10-31: 48368
 
 trp_need_label <-
   zero_dt_filtered %>%

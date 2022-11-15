@@ -36,3 +36,6 @@ vehicle_registry_api_key.R
 nr_gpkg
 knowit
 *.geojson
+*.png
+*.svg
+vehicle_classification_data
