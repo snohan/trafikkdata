@@ -39,3 +39,4 @@ knowit
 *.png
 *.svg
 vehicle_classification_data
+*.db

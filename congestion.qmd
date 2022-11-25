@@ -1,0 +1,264 @@
+---
+title: "Redusert kapasitet på vegene i nærheten av Moss ferjekai"
+format: 
+  html:
+    css: svv.css
+    number-sections: true
+    toc: true
+    toc-location: left
+    toc-title: "Innhold"
+    df-print: paged
+    self-contained: true
+crossref:
+  fig-title: Figur
+  tbl-title: Tabell
+  title-delim: .
+  fig-prefix: figur
+  tbl-prefix: tabell
+editor: source
+knitr: 
+  opts_chunk: 
+    echo: false
+---
+
+```{r}
+#| label: read
+#| include: false
+#| echo: false
+
+source("H:/Programmering/R/byindeks/rmd_setup.R")
+source("congestion_functions.R")
+library(DT)
+
+
+# Data
+radhusbrua_trp <-
+  readr::read_rds(
+  file = "congestion_data/radhusbrua_2022_trp.rds"
+)
+
+radhusbrua_2021 <-
+  readr::read_rds(
+  file = "congestion_data/radhusbrua_2021.rds"
+)
+
+radhusbrua_stats_2021 <-
+  readr::read_rds(
+  file = "congestion_data/radhusbrua_2021_stats.rds"
+  ) |> 
+  dplyr::mutate(
+    year = "2021"
+  )
+
+radhusbrua_stats_2022 <-
+  readr::read_rds(
+  file = "congestion_data/radhusbrua_2022_stats.rds"
+  ) |> 
+  dplyr::mutate(
+    year = "2022"
+  )
+
+radhusbrua_stats_all <-
+  dplyr::bind_rows(
+    radhusbrua_stats_2021,
+    radhusbrua_stats_2022
+  )
+
+
+kanalbrua_2021_trp <-
+  readr::read_rds(
+  file = "congestion_data/kanalbrua_2021_trp.rds"
+)
+
+kanalbrua_2021 <-
+  readr::read_rds(
+  file = "congestion_data/kanalbrua_2021.rds"
+)
+
+kanalbrua_stats_2021 <-
+  readr::read_rds(
+  file = "congestion_data/kanalbrua_2021_stats.rds"
+  ) |> 
+  dplyr::mutate(
+    year = "2021"
+  )
+
+kanalbrua_2022_trp <-
+  readr::read_rds(
+  file = "congestion_data/kanalbrua_2022_trp.rds"
+)
+
+kanalbrua_2022 <-
+  readr::read_rds(
+  file = "congestion_data/kanalbrua_2022.rds"
+)
+
+kanalbrua_stats_2022 <-
+  readr::read_rds(
+  file = "congestion_data/kanalbrua_2022_stats.rds"
+  ) |> 
+  dplyr::mutate(
+    year = "2022"
+  )
+
+kanalbrua_stats_all <-
+  dplyr::bind_rows(
+    kanalbrua_stats_2021,
+    kanalbrua_stats_2022
+  )
+
+
+
+#
+```
+
+Dette dokumentet beskriver beregning av perioder med redusert kapasitet på utvalgte vegstrekninger. Grunnlagsdata er fra kontinuerlige trafikkregistreringer i Statens vegvesens trafikkdatasystem. 
+
+
+# Teori
+Beregningene tar utgangspunkt i registrering av passeringstidspunkt og fart for enkeltkjøretøy. For alle komplette registreringsperioder er data aggregert til intervaller på 5 minutter. Disse aggregatene har verdi for gjennomsnittsfart, trafikkstrøm (kjøretøy per time) og trafikktetthet (kjøretøy per km). 
+
+For det aktuelle tidsrommet beregnes den maksimale trafikkstrømmen som er observert. Denne bestemmes ved å sortere ut de 0,5 % høyeste trafikkstrømverdiene. Den maksimale trafikkstrømmen er da satt som medianen i dette utvalget. Den tilsvarende gjennomsnittsfarten og trafikktettheten ved maksimal trafikkstrøm betegnes henholdsvis som kritisk fart og trafikkapasitet. Disse to størrelsen er også medianen i utvalget.
+
+En periode med redusert kapasitet er dermed definert som bestående av intervaller hvor gjennomsnittsfarten er lavere enn den kritiske farten samtidig som trafikktettheten er større enn trafikkapasiteten.
+
+Alle analyser gjøres per kjørefelt. Andel tid med redusert kapasitet er beregnet per ukedag for det tidsrommet det er trafikkregistreringer for.
+
+
+# Rv 19 Rådhusbrua, Moss
+Trafikkregistreringspunktet Rådhusbrua ligger på Rv 19. Et foto som viser vegen der sensorene er installert vises i @fig-radhusbrua.
+
+![Rv 19 Rådhusbrua, Moss. Foto: Vegbilder, Statens vegvesen.](congestion_data/radhusbrua.png){#fig-radhusbrua width=100%}
+
+I denne analysen er det benyttet data for ukene 33, 34, 37-43 i 2021 og 2022. Nedenfor vises sammenhengen mellom fart og trafikkstrøm.
+
+```{r}
+#| label: fig-sf_radhus
+#| fig-cap: "Sammenhengen mellom gjennomsnittsfart og trafikkstrøm per kjørefelt."
+
+visualize_speed_and_flow(
+  radhusbrua_2021[[1]],
+  radhusbrua_2021[[2]],
+  radhusbrua_trp[[1]],
+  radhusbrua_trp[[2]]
+)
+```
+
+
+Nedenfor er sammenhengen mellom trafikktetthet og trafikkstrøm.
+
+```{r}
+#| label: fig-df_radhus
+#| fig-cap: "Sammenhengen mellom trafikktetthet og trafikkstrøm per kjørefelt."
+
+visualize_density_and_flow(
+  radhusbrua_2021[[1]],
+  radhusbrua_2021[[2]],
+  radhusbrua_trp[[1]],
+  radhusbrua_trp[[2]]
+)
+```
+
+
+Nedenfor vises gjennomsnittsfarten gjennom et døgn.
+
+```{r}
+#| label: fig-speed_day_radhus
+#| fig-cap: "Gjennomsnittsfart per 5 min gjennom en hel dag. Felt 3 har et tydelig og avgrenset ettermiddagsrush."
+
+visualize_speed_day(
+  radhusbrua_2021[[1]],
+  radhusbrua_2021[[2]],
+  radhusbrua_trp[[1]],
+  radhusbrua_trp[[2]],
+  "2021-10-12"
+)
+```
+
+
+Andel tid med redusert kapasitet i denne perioden er gitt i tabellen nedenfor.
+
+
+```{r}
+#| label: radhus_stats
+#| fig-cap: "Andel av tiden per ukedag med redusert kapasitet."
+
+visualize_congestion_ratio(
+  radhusbrua_stats_all,
+  radhusbrua_trp[[1]],
+  radhusbrua_trp[[2]]
+)
+
+```
+
+
+# Fv 371 Kanalbrua, Moss
+Fv 317 over Kanalbrua ble sommeren 2022 bygd om fra fire til to kjørefelt.
+
+I @fig-kanalbrua_2021 og @fig-kanalbrua_2022 vises henholdsvis vegen slik den var før og etter ombyggingen.
+
+
+![Fv 317 Kanalbrua, Moss, 2021. Foto: Vegbilder, Statens vegvesen.](congestion_data/kanalbrua_2021.png){#fig-kanalbrua_2021 width=100%}
+
+
+![Fv 317 Kanalbrua, Moss, 2022. Foto: Google Street View.](congestion_data/kanalbrua_2022.png){#fig-kanalbrua_2022 width=100%}
+
+I denne analysen er det benyttet data for ukene 33-43 i 2021 og 2022. Nedenfor vises sammenhengen mellom fart og trafikkstrøm.
+
+```{r}
+#| label: fig-df-kanal
+#| fig-cap: "Sammenhengen mellom trafikktetthet og trafikkstrøm per kjørefelt."
+
+visualize_density_and_flow(
+  kanalbrua_2021[[1]],
+  kanalbrua_2021[[2]],
+  kanalbrua_2021_trp[[1]],
+  kanalbrua_2021_trp[[2]]
+)
+```
+
+
+Nedenfor vises gjennomsnittsfarten gjennom et døgn.
+
+```{r}
+#| label: fig-speed_day_kanal
+#| fig-cap: "Gjennomsnittsfart per 5 min gjennom en hel dag. Felt 3 har et tydelig og avgrenset ettermiddagsrush."
+
+visualize_speed_day(
+  kanalbrua_2021[[1]],
+  kanalbrua_2021[[2]],
+  kanalbrua_2021_trp[[1]],
+  kanalbrua_2021_trp[[2]],
+  "2021-10-12"
+)
+```
+
+
+```{r}
+#| label: fig-speed_day_kanal_22
+#| fig-cap: "Gjennomsnittsfart per 5 min gjennom en hel dag. Felt 3 har et tydelig og avgrenset ettermiddagsrush."
+
+visualize_speed_day(
+  kanalbrua_2022[[1]],
+  kanalbrua_2022[[2]],
+  kanalbrua_2022_trp[[1]],
+  kanalbrua_2022_trp[[2]],
+  "2022-10-12"
+)
+```
+
+
+Andel tid med redusert kapasitet i denne perioden er gitt i tabellen nedenfor.
+
+
+```{r}
+#| label: fig-kanal_stats
+#| fig-cap: "Andel av tiden per ukedag med redusert kapasitet."
+
+visualize_congestion_ratio(
+  kanalbrua_stats_all,
+  kanalbrua_2021_trp[[1]],
+  kanalbrua_2021_trp[[2]]
+)
+
+```

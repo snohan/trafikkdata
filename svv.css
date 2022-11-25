@@ -20,3 +20,9 @@ caption {
 table {
   margin-top: 2px;
 }
+
+.figure-caption {
+  font-family: LFT Etica;
+  font-size: 11pt;
+  padding-bottom: .4em;
+}
