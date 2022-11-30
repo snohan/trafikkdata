@@ -45,7 +45,7 @@ visualize_speed_and_flow <-
       values =
         c("Nei" = "#dadada",
           "Ja" = "#008ec2"),
-      name = "Redusert kapasitet"
+      name = "Redusert\nkapasitet"
     ) +
     theme(
       panel.grid.minor.x = element_blank(),
@@ -133,7 +133,7 @@ visualize_density_and_flow <-
         values =
           c("Nei" = "#dadada",
             "Ja" = "#008ec2"),
-        name = "Redusert kapasitet"
+        name = "Redusert\nkapasitet"
       ) +
       theme(
         panel.grid.minor.x = element_blank(),
@@ -217,11 +217,14 @@ visualize_speed_day <-
         color = "#444f55"
       ) +
       theme_light() +
+      scale_x_datetime(
+        date_labels = "%H"
+      ) +
       scale_color_manual(
         values =
           c("Nei" = "#444f55",
             "Ja" = "#008ec2"),
-        name = "Redusert kapasitet"
+        name = "Redusert\nkapasitet"
       ) +
       scale_alpha(
         name = "Trafikktetthet"

@@ -12,9 +12,10 @@ h1,h2,h3,h4,h5,h6 {
 
 caption {
   color: black;
-  padding-bottom: .1em;
-  padding-top: .8em;
-  margin-bottom: 2px;
+  padding-left: 1px;
+  padding-right: 1px;
+  padding-top: 1px;
+  margin-bottom: 3px;
 }
 
 table {
@@ -24,5 +25,14 @@ table {
 .figure-caption {
   font-family: LFT Etica;
   font-size: 11pt;
-  padding-bottom: .4em;
+  font-style: italic;
+  margin-top: 0px;
+  margin-bottom: 2px;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.figure {
+  margin-top: 2px;
+  margin-bottom: 1px;
 }

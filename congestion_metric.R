@@ -167,7 +167,7 @@ data_congested <-
       lubridate::wday(
         date,
         label = TRUE,
-        abbr = TRUE,
+        abbr = FALSE,
         week_start = 1
       )
   )

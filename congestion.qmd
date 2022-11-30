@@ -118,11 +118,11 @@ Dette dokumentet beskriver beregning av perioder med redusert kapasitet på utva
 # Teori
 Beregningene tar utgangspunkt i registrering av passeringstidspunkt og fart for enkeltkjøretøy. For alle komplette registreringsperioder er data aggregert til intervaller på 5 minutter. Disse aggregatene har verdi for gjennomsnittsfart, trafikkstrøm (kjøretøy per time) og trafikktetthet (kjøretøy per km). 
 
-For det aktuelle tidsrommet beregnes den maksimale trafikkstrømmen som er observert. Denne bestemmes ved å sortere ut de 0,5 % høyeste trafikkstrømverdiene. Den maksimale trafikkstrømmen er da satt som medianen i dette utvalget. Den tilsvarende gjennomsnittsfarten og trafikktettheten ved maksimal trafikkstrøm betegnes henholdsvis som kritisk fart og trafikkapasitet. Disse to størrelsen er også medianen i utvalget.
+For det aktuelle tidsrommet beregnes den maksimale trafikkstrømmen som er observert. Denne bestemmes ved å sortere ut et utvalg intervaller med de 0,5 % høyeste trafikkstrømverdiene. Den maksimale trafikkstrømmen er da satt som medianen i dette utvalget. Den tilsvarende gjennomsnittsfarten og trafikktettheten ved maksimal trafikkstrøm betegnes henholdsvis som kritisk fart og trafikkapasitet. Disse to størrelsene er også satt til å være medianen i utvalget av intervaller.
 
-En periode med redusert kapasitet er dermed definert som bestående av intervaller hvor gjennomsnittsfarten er lavere enn den kritiske farten samtidig som trafikktettheten er større enn trafikkapasiteten.
+En periode med redusert kapasitet er definert som bestående av intervaller hvor gjennomsnittsfarten er lavere enn den kritiske farten samtidig som trafikktettheten er større enn trafikkapasiteten.
 
-Alle analyser gjøres per kjørefelt. Andel tid med redusert kapasitet er beregnet per ukedag for det tidsrommet det er trafikkregistreringer for.
+Alle analyser gjøres per kjørefelt. Andel tid med redusert kapasitet er beregnet per ukedag for det tidsrommet det er komplette trafikkregistreringer for.
 
 
 # Rv 19 Rådhusbrua, Moss
@@ -130,11 +130,13 @@ Trafikkregistreringspunktet Rådhusbrua ligger på Rv 19. Et foto som viser vege
 
 ![Rv 19 Rådhusbrua, Moss. Foto: Vegbilder, Statens vegvesen.](congestion_data/radhusbrua.png){#fig-radhusbrua width=100%}
 
-I denne analysen er det benyttet data for ukene 33, 34, 37-43 i 2021 og 2022. Nedenfor vises sammenhengen mellom fart og trafikkstrøm.
+I denne analysen er det benyttet data for ukene 33, 34, 37-43 i 2021 og 2022. Data mangler fra uke 35 og 36 i 2022, og for at periodene skal være sammenlignbare er disse to ukene utelatt fra 2021 også.
+
+Nedenfor vises sammenhengen mellom fart og trafikkstrøm.
 
 ```{r}
 #| label: fig-sf_radhus
-#| fig-cap: "Sammenhengen mellom gjennomsnittsfart og trafikkstrøm per kjørefelt."
+#| fig-cap: "Sammenhengen mellom gjennomsnittsfart og trafikkstrøm per kjørefelt. Horisontal linje angir maksimal trafikkstrøm, og vertikal linje angir kritisk fartsnivå."
 
 visualize_speed_and_flow(
   radhusbrua_2021[[1]],
@@ -160,7 +162,7 @@ visualize_density_and_flow(
 ```
 
 
-Nedenfor vises gjennomsnittsfarten gjennom et døgn.
+Som et eksempel på hvordan metoden angir intervaller med redusert kapasitet, vises nedenfor gjennomsnittsfarten gjennom ett helt døgn.
 
 ```{r}
 #| label: fig-speed_day_radhus
@@ -175,25 +177,25 @@ visualize_speed_day(
 )
 ```
 
+Som @fig-speed_day_radhus viser, er det et tydelig avgrenset ettermiddagsrush i felt 3. I felt 4 er det på dagtid noen intervaller innimellom som har redusert kapasitet.
 
-Andel tid med redusert kapasitet i denne perioden er gitt i tabellen nedenfor.
+Andel tid med redusert kapasitet i perioden det er inkludert data for, er gitt i tabellen nedenfor.
 
 
 ```{r}
-#| label: radhus_stats
-#| fig-cap: "Andel av tiden per ukedag med redusert kapasitet."
+#| label: fig-radhus_stats
+#| fig-cap: "Andel redusert kapasitet per ukedag."
 
 visualize_congestion_ratio(
   radhusbrua_stats_all,
   radhusbrua_trp[[1]],
   radhusbrua_trp[[2]]
 )
-
 ```
 
 
 # Fv 371 Kanalbrua, Moss
-Fv 317 over Kanalbrua ble sommeren 2022 bygd om fra fire til to kjørefelt.
+Fv 317 over Kanalbrua ble sommeren 2022 bygd om fra fire til to kjørefelt for å begrense belastningen på den bærende konstruksjonen.
 
 I @fig-kanalbrua_2021 og @fig-kanalbrua_2022 vises henholdsvis vegen slik den var før og etter ombyggingen.
 
@@ -253,7 +255,7 @@ Andel tid med redusert kapasitet i denne perioden er gitt i tabellen nedenfor.
 
 ```{r}
 #| label: fig-kanal_stats
-#| fig-cap: "Andel av tiden per ukedag med redusert kapasitet."
+#| fig-cap: "Andel redusert kapasitet per ukedag."
 
 visualize_congestion_ratio(
   kanalbrua_stats_all,
