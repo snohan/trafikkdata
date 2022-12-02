@@ -290,7 +290,9 @@ visualize_congestion_ratio <-
       geom_col(
         position = "dodge"
       ) +
-      scale_fill_grey() +
+      scale_fill_grey(
+        name = "År"
+      ) +
       facet_wrap(
         vars(lane),
         labeller = labeller(lane = lane_info)

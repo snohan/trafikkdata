@@ -6,11 +6,18 @@ base::Sys.setlocale(locale = "nb.utf8")
 
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+
 # Literature
 # A Survey of Methods and Technologies for Congestion Estimation Based on Multisource Data Fusion
 # https://www.mdpi.com/2076-3417/11/5/2306/htm
 
 # https://research.geodan.nl/measuring-traffic-congestion-a-better-way/
+
+# Estimation of traffic stream space mean speed from time aggregations of double loop detector data
+
+# We should have vbv value of
+# Time between activation of loop 1 and 2
+# Time that loop 1 was activated
 
 # TRP ----
 trp <-
@@ -35,7 +42,7 @@ read_a_file <- function(file_name) {
 }
 
 # Choose which files to read
-filename_root <- "kanalbrua_2021"
+filename_root <- "radhusbrua_2021-w"
 
 # Do read
 vbv_data <-
@@ -47,7 +54,7 @@ vbv_data <-
     ~ read_a_file(.)
   )
 
-# Smoothing by 5 in intervals
+# Smoothing by intervals
 # Alternative smoothing: exponential average of vbv
 aggregated_data <-
   vbv_data |>
@@ -78,13 +85,18 @@ aggregated_data <-
         0,
         0
       ),
-    # speed =
-    #   dplyr::if_else(
-    #     valid_speed == TRUE,
-    #     speed,
-    #     NA_real_,
-    #     NA_real_
-    #   )
+    # Using personal car equivalents (pce) based on length
+    pce_length =
+      dplyr::case_when(
+        valid_length == FALSE ~ 5,
+        TRUE ~ length
+      ),
+    pce = dplyr::case_when(
+      pce_length < 7.6 ~ 1,
+      pce_length < 12.5 ~ 2,
+      pce_length < 16 ~ 3.5,
+      TRUE ~ 5
+    )
   ) |>
   dplyr::group_by(
     trp_id,
@@ -96,13 +108,17 @@ aggregated_data <-
   dplyr::summarise(
     volume = n(),
     volume_with_valid_speed = sum(valid_speed),
+    pce_volume = sum(pce),
     mean_speed = mean(speed),
+    space_mean_speed = 1 / mean(1 / speed),
     mean_time_gap = mean(time_gap),
     .groups = "drop"
   ) |>
   dplyr::mutate(
     flow = volume / 5 * 60, # Explicitly using 5 min aggregates
-    density = flow / mean_speed
+    pce_flow = pce_volume / 5 * 60,
+    density = flow / mean_speed,
+    density_2 = pce_flow / space_mean_speed
   )
 
 
@@ -113,23 +129,31 @@ aggregated_data <-
 # To avoid single slow vehicles at night being tagged as congested, the
 # mean time gap should be less than 5 s.
 
-# TODO:
-# Using personal car equivalents?
+# Here we use time mean speed. Theoreticvally this should be replaced by
+# space mean speed, but this is not measurable. If some cars have higher speeds
+# than others,
+# these influende time mean speed more than they would the space mean.
+# Therefore, using the time mean speed can overestimate the critcal speed,
+# and thus underestimate flow and density.
 
 critical_values <-
   aggregated_data |>
   dplyr::group_by(
     lane
   ) |>
+  # TODO: polynomial regression (degree 2)
+  # TODO: use stats::optimize to find maximum
   dplyr::slice_max(
-    order_by = flow,
+    order_by = pce_flow,
     #n = 15,
     prop = 0.005
   ) |>
   dplyr::summarise(
     max_flow = median(flow),
-    critical_speed = median(mean_speed),
+    pce_max_flow = median(pce_flow),
+    critical_speed = median(space_mean_speed),
     road_capacity = median(density),
+    pce_road_capacity = median(density_2),
     .groups = "drop"
   )
 
@@ -158,9 +182,9 @@ data_congested <-
   dplyr::mutate(
     congestion =
       dplyr::case_when(
-        mean_speed < critical_speed &
+        space_mean_speed < critical_speed &
           #mean_time_gap < 5 &
-          density >= road_capacity ~ "Ja",
+          density_2 >= pce_road_capacity ~ "Ja",
         TRUE ~ "Nei"
       ),
     weekday =
@@ -296,8 +320,8 @@ readr::write_rds(
 data_congested |>
   ggplot(
     aes(
-      x = density,
-      y = flow,
+      x = density_2,
+      y = pce_flow,
       color = congestion
     )
   ) +
@@ -308,14 +332,14 @@ data_congested |>
   geom_hline(
     data = critical_values,
     aes(
-      yintercept = max_flow
+      yintercept = pce_max_flow
     ),
     color = "red"
   ) +
   geom_vline(
     data = critical_values,
     aes(
-      xintercept = road_capacity
+      xintercept = pce_road_capacity
     ),
     color = "red"
   )
@@ -325,8 +349,8 @@ data_congested |>
 data_congested |>
   ggplot(
     aes(
-      x = density,
-      y = mean_speed,
+      x = density_2,
+      y = space_mean_speed,
       color = congestion
     )
   ) +
@@ -344,7 +368,7 @@ data_congested |>
   geom_vline(
     data = critical_values,
     aes(
-      xintercept = road_capacity
+      xintercept = pce_road_capacity
     ),
     color = "red"
   )
