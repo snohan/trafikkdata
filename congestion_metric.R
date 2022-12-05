@@ -25,24 +25,8 @@ trp <-
   dplyr::distinct(trp_id, .keep_all = T)
 
 
-# Read ----
-# some_data <-
-#   readr::read_csv2(
-#     "congestion_data/kanalbrua_2021.csv"
-#     #"congestion_data/sundland_4.csv"
-#   )
-
-# Read Kibana-exported CSVs ----
-read_a_file <- function(file_name) {
-
-  readr::read_csv2(
-    paste0("congestion_data/", file_name)
-  )
-
-}
-
 # Choose which files to read
-filename_root <- "radhusbrua_2021-w"
+filename_root <- "kanalbrua_2021"
 
 # Do read
 vbv_data <-
@@ -85,6 +69,13 @@ aggregated_data <-
         0,
         0
       ),
+    valid_speed_values =
+      dplyr::if_else(
+        valid_speed == 1,
+        speed,
+        NA_real_,
+        NA_real_
+      ),
     # Using personal car equivalents (pce) based on length
     pce_length =
       dplyr::case_when(
@@ -109,16 +100,16 @@ aggregated_data <-
     volume = n(),
     volume_with_valid_speed = sum(valid_speed),
     pce_volume = sum(pce),
-    mean_speed = mean(speed),
-    space_mean_speed = 1 / mean(1 / speed),
+    #mean_speed = mean(speed),
+    space_mean_speed = 1 / mean(1 / valid_speed_values, na.rm = TRUE),
     mean_time_gap = mean(time_gap),
     .groups = "drop"
   ) |>
   dplyr::mutate(
-    flow = volume / 5 * 60, # Explicitly using 5 min aggregates
+    #flow = volume / 5 * 60, # Explicitly using 5 min aggregates
     pce_flow = pce_volume / 5 * 60,
-    density = flow / mean_speed,
-    density_2 = pce_flow / space_mean_speed
+    #density = flow / mean_speed,
+    pce_density = pce_flow / space_mean_speed
   )
 
 
@@ -129,31 +120,54 @@ aggregated_data <-
 # To avoid single slow vehicles at night being tagged as congested, the
 # mean time gap should be less than 5 s.
 
-# Here we use time mean speed. Theoreticvally this should be replaced by
+# Here we use time mean speed. Theoretically this should be replaced by
 # space mean speed, but this is not measurable. If some cars have higher speeds
 # than others,
-# these influende time mean speed more than they would the space mean.
+# these influence time mean speed more than they would the space mean.
 # Therefore, using the time mean speed can overestimate the critcal speed,
 # and thus underestimate flow and density.
+
+# critical_values <-
+#   aggregated_data |>
+#   dplyr::group_by(
+#     lane
+#   ) |>
+#   # TODO: polynomial regression (degree 2)
+#   # TODO: use stats::optimize to find maximum
+#   dplyr::slice_max(
+#     order_by = pce_flow,
+#     #n = 15,
+#     prop = 0.005
+#   ) |>
+#   dplyr::summarise(
+#     #max_flow = median(flow),
+#     pce_max_flow = median(pce_flow),
+#     #critical_speed = median(space_mean_speed),
+#     #road_capacity = median(density),
+#     # q = uk
+#     pce_road_capacity = min(pce_density),
+#     #pce_road_capacity = pce_max_flow / critical_speed,
+#     critical_speed = pce_max_flow / pce_road_capacity,
+#     .groups = "drop"
+#   )
 
 critical_values <-
   aggregated_data |>
   dplyr::group_by(
     lane
   ) |>
-  # TODO: polynomial regression (degree 2)
-  # TODO: use stats::optimize to find maximum
-  dplyr::slice_max(
-    order_by = pce_flow,
-    #n = 15,
-    prop = 0.005
+  dplyr::filter(
+    pce_flow >= max(pce_flow) - 100
   ) |>
   dplyr::summarise(
-    max_flow = median(flow),
-    pce_max_flow = median(pce_flow),
-    critical_speed = median(space_mean_speed),
-    road_capacity = median(density),
-    pce_road_capacity = median(density_2),
+    #max_flow = median(flow),
+    pce_max_flow = min(pce_flow),
+    #critical_speed = median(space_mean_speed),
+    #road_capacity = median(density),
+    # q = uk
+    pce_road_capacity = min(pce_density),
+    #pce_road_capacity = pce_max_flow / critical_speed,
+    critical_speed = pce_max_flow / pce_road_capacity,
     .groups = "drop"
   )
 
@@ -184,7 +198,7 @@ data_congested <-
       dplyr::case_when(
         space_mean_speed < critical_speed &
           #mean_time_gap < 5 &
-          density_2 >= pce_road_capacity ~ "Ja",
+          pce_density >= pce_road_capacity ~ "Ja",
         TRUE ~ "Nei"
       ),
     weekday =
@@ -230,76 +244,6 @@ readr::write_rds(
 )
 
 
-find_trp_info_and_direction_names <- function(aggregated_data) {
-
-  # Needs a "trp" df with all TRP info from Trafikkdata API
-
-  trp_here <-
-    trp |>
-    dplyr::filter(
-      trp_id == data_congested$trp_id[1]
-    ) |>
-    split_road_system_reference()
-
-  trp_info <-
-    base::paste0(
-      trp_here$road_category_and_number,
-      " ",
-      stringr::str_to_title(trp_here$name),
-      ", ",
-      trp_here$municipality_name
-    )
-
-  trp_direction_names <-
-    trp_here |>
-    dplyr::select(
-      from,
-      to
-    ) |>
-    tidyr::pivot_longer(
-      cols = c(from, to),
-      names_to = "trp_direction",
-      values_to = "direction_name_to"
-    ) |>
-    dplyr::mutate(
-      direction_name_to = stringr::str_to_title(direction_name_to)
-    )
-
-  trp_directions <-
-    data_congested |>
-    dplyr::distinct(lane) |>
-    dplyr::mutate(
-      trp_direction = dplyr::if_else(lane %% 2 == 0, "from", "to")
-    ) |>
-    dplyr::left_join(
-      trp_direction_names,
-      by = "trp_direction"
-    ) |>
-    dplyr::mutate(
-      name_string = paste0(
-        "Felt ",
-        lane,
-        ": til ",
-        direction_name_to
-      )
-    )
-
-  lane_names <-
-    trp_directions$name_string
-
-  names(lane_names) <-
-    trp_directions$lane
-
-  result <- list(
-    trp_info,
-    lane_names
-  )
-
-  return(result)
-}
-
-
-
 # Write ----
 find_trp_info_and_direction_names(data_congested) |>
   readr::write_rds(
@@ -320,7 +264,7 @@ readr::write_rds(
 data_congested |>
   ggplot(
     aes(
-      x = density_2,
+      x = pce_density,
       y = pce_flow,
       color = congestion
     )
@@ -349,7 +293,7 @@ data_congested |>
 data_congested |>
   ggplot(
     aes(
-      x = density_2,
+      x = pce_density,
       y = space_mean_speed,
       color = congestion
     )
@@ -377,14 +321,14 @@ data_congested |>
 ## Look at a particular day ----
 data_congested |>
   dplyr::filter(
-    date == "2022-10-28"
+    date == "2021-09-30"
   ) |>
   ggplot(
     aes(
       x = timestamp_floored,
-      y = mean_speed,
+      y = space_mean_speed,
       color = congestion,
-      alpha = density
+      alpha = pce_density
     )
   ) +
   geom_point() +

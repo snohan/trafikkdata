@@ -1,4 +1,84 @@
-## Speed and flow ----
+# Utilities ----
+
+# Read Kibana-exported CSVs ----
+read_a_file <- function(file_name) {
+
+  readr::read_csv2(
+    paste0("congestion_data/", file_name)
+  )
+
+}
+
+find_trp_info_and_direction_names <- function(aggregated_data) {
+
+  # Needs a "trp" df with all TRP info from Trafikkdata API
+
+  trp_here <-
+    trp |>
+    dplyr::filter(
+      trp_id == data_congested$trp_id[1]
+    ) |>
+    split_road_system_reference()
+
+  trp_info <-
+    base::paste0(
+      trp_here$road_category_and_number,
+      " ",
+      stringr::str_to_title(trp_here$name),
+      ", ",
+      trp_here$municipality_name
+    )
+
+  trp_direction_names <-
+    trp_here |>
+    dplyr::select(
+      from,
+      to
+    ) |>
+    tidyr::pivot_longer(
+      cols = c(from, to),
+      names_to = "trp_direction",
+      values_to = "direction_name_to"
+    ) |>
+    dplyr::mutate(
+      direction_name_to = stringr::str_to_title(direction_name_to)
+    )
+
+  trp_directions <-
+    data_congested |>
+    dplyr::distinct(lane) |>
+    dplyr::mutate(
+      trp_direction = dplyr::if_else(lane %% 2 == 0, "from", "to")
+    ) |>
+    dplyr::left_join(
+      trp_direction_names,
+      by = "trp_direction"
+    ) |>
+    dplyr::mutate(
+      name_string = paste0(
+        "Felt ",
+        lane,
+        ": til ",
+        direction_name_to
+      )
+    )
+
+  lane_names <-
+    trp_directions$name_string
+
+  names(lane_names) <-
+    trp_directions$lane
+
+  result <- list(
+    trp_info,
+    lane_names
+  )
+
+  return(result)
+}
+
+
+# Speed and flow ----
 
 visualize_speed_and_flow <-
   function(
@@ -13,8 +93,8 @@ visualize_speed_and_flow <-
   aggregated_data |>
     ggplot(
       aes(
-        x = mean_speed,
-        y = flow,
+        x = space_mean_speed,
+        y = pce_flow,
         color = congestion
       )
     ) +
@@ -29,7 +109,7 @@ visualize_speed_and_flow <-
     geom_hline(
       data = critical_values,
       aes(
-        yintercept = max_flow
+        yintercept = pce_max_flow
       ),
       color = "#444f55"
     ) +
@@ -87,7 +167,7 @@ visualize_speed_and_flow <-
   }
 
 
-## Density and flow ----
+# Density and flow ----
 visualize_density_and_flow <-
   function(
     critical_values,
@@ -101,8 +181,8 @@ visualize_density_and_flow <-
     aggregated_data |>
       ggplot(
         aes(
-          x = density,
-          y = flow,
+          x = pce_density,
+          y = pce_flow,
           color = congestion
         )
       ) +
@@ -117,14 +197,14 @@ visualize_density_and_flow <-
       geom_hline(
         data = critical_values,
         aes(
-          yintercept = max_flow
+          yintercept = pce_max_flow
         ),
         color = "#444f55"
       ) +
       geom_vline(
         data = critical_values,
         aes(
-          xintercept = road_capacity
+          xintercept = pce_road_capacity
         ),
         color = "#444f55"
       ) +
@@ -176,7 +256,7 @@ visualize_density_and_flow <-
 
 
 
-## Particular day ----
+# Particular day ----
 visualize_speed_day <-
   function(
     critical_values,
@@ -197,9 +277,9 @@ visualize_speed_day <-
       ggplot(
         aes(
           x = timestamp_floored,
-          y = mean_speed,
+          y = space_mean_speed,
           color = congestion,
-          alpha = density
+          alpha = pce_density
         )
       ) +
       geom_point(
@@ -269,7 +349,7 @@ visualize_speed_day <-
   }
 
 
-## Congestion ratio ----
+# Congestion ratio ----
 visualize_congestion_ratio <-
   function(
     congestion_stats,
@@ -301,8 +381,10 @@ visualize_congestion_ratio <-
       theme(
         panel.grid.minor.x = element_blank(),
         legend.position = "right",
-        axis.title.x = element_text(
-          margin = margin(t = 15, r = 0, b = 0, l = 0)),
+        axis.text.x = element_text(
+          angle = 90,
+          vjust = 0.5
+        ),
         axis.text.y = element_text(vjust = 0.5),
         plot.caption =
           element_text(

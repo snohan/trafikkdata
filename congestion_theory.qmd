@@ -1,0 +1,11 @@
+Beregningene tar utgangspunkt i registrering av passeringstidspunkt og fart for enkeltkjøretøy. For alle komplette registreringsperioder er data aggregert til intervaller på 5 minutter. Disse aggregatene har verdi for gjennomsnittsfart, trafikkstrøm (kjøretøy per time) og trafikktetthet (kjøretøy per km). 
+
+Gjennomsnittsfarten er beregnet som et harmonisk gjennomsnitt av fartsmålingene, og er dermed et mål på strekningshastigheten ved trafikkregistreringspunktet. Kun gyldige fartsmålinger er inkludert.
+
+Trafikkstrømmen er beregnet ved å omregne kjøretøyregistreringene til personbilekvivalenter basert på målt kjøretøy lengde. Lengder under 7,6 m er 1 personbilekvivalent. Videre er lengder under 12,5 m satt til 2 personbilekvivalenter. Videre er lengder under og over 16 m satt til henholdsvis 3,5 og 5 personbilekvivalenter.
+
+For det aktuelle tidsrommet beregnes den maksimale trafikkstrømmen som er observert. Denne bestemmes ved å hente ut den høyeste verdien og trekke fra 100 for å ta øyde for noe variasjon. Den tilsvarende gjennomsnittsfarten og trafikktettheten ved maksimal trafikkstrøm betegnes henholdsvis som kritisk fart og trafikkapasitet. Trafikkapasiteten er satt til den laveste trafikktettheten observert ved maksimal trafikkstrøm. Kritisk fart gis dermed ut fra sammhengen "kritisk fart" = "maksimal trafikkstrøm" / "trafikkapasitet".
+
+En periode med redusert kapasitet er definert som bestående av intervaller hvor gjennomsnittsfarten er lavere enn den kritiske farten samtidig som trafikktettheten er større enn trafikkapasiteten.
+
+Alle analyser gjøres per kjørefelt. Andel tid med redusert kapasitet er beregnet per ukedag for det tidsrommet det er komplette trafikkregistreringer for.
