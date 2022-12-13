@@ -1,0 +1,383 @@
+---
+title: "Dekningsgrad som kvalitetsparameter for trafikkdata"
+format: 
+  html:
+    css: svv.css
+    number-sections: true
+    toc: true
+    toc-location: left
+    toc-title: "Innhold"
+    df-print: paged
+    self-contained: true
+crossref:
+  fig-title: Figur
+  tbl-title: Tabell
+  title-delim: .
+  fig-prefix: figur
+  tbl-prefix: tabell
+editor: source
+knitr: 
+  opts_chunk: 
+    echo: false
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+#| #| echo: false
+
+source("H:/Programmering/R/byindeks/rmd_setup.R")
+library(tidyverse, quietly = TRUE)
+svv_background_color <- "#F5F5F5"
+```
+
+```{r}
+#| label: functions
+
+visualize_coverage_calculation <- 
+  function(coverage_values, relevant_parameters, coverage_title) {
+  
+  coverage_values |> 
+  dplyr::filter(
+    parameter %in% relevant_parameters
+  ) |> 
+  dplyr::mutate(
+    parameter = factor(parameter, levels = relevant_parameters)
+  ) |> 
+  ggplot() +
+  geom_step(aes(x = time_interval, y = value)) +
+  facet_grid(
+    rows = vars(parameter)
+  ) +
+  scale_x_continuous(
+    limits = c(1, 10),
+    breaks = 1:10
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    breaks = c(0, 0.5, 1)
+  ) +
+  theme_classic() +
+  theme(
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0)),
+    strip.background =
+      element_rect(
+        colour = "#444f55",
+        fill = "#ed9300"
+      ),
+    strip.text =
+      element_text(
+        colour = "#444f55"
+      ),
+    strip.text.y = element_text(
+        angle = 0
+    ),
+    plot.background = element_rect(fill = svv_background_color),
+    panel.background = element_rect(fill = svv_background_color)
+  ) +
+  labs(
+    x = "Tid",
+    y = NULL
+  ) +
+  ggtitle(
+    coverage_title,
+    subtitle = "Per kjørefelt"
+  )
+  
+}
+```
+
+
+```{r}
+#| label: example data
+coverage <-
+  tibble::tibble(
+    time_interval = c(base::seq(1, 10, 1)),
+    operational = c(
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ),
+    completeness = c(
+      1,
+      1,
+      0.5,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ),
+    valid_speed_ratio = c(
+      1,
+      1,
+      1,
+      0.5,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ),
+    valid_length_ratio = c(
+      1,
+      1,
+      1,
+      0.5,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ),
+    valid_length_speed_ratio = c(
+      1,
+      1,
+      1,
+      0.5,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ),
+    manual_label_closed = c(
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1
+    ),
+    manual_label_fail = c(
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+    ),
+    manual_label_invalid_speed = c(
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1
+    ),
+    manual_label_invalid_length = c(
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1
+    )
+  ) |> 
+  dplyr::mutate(
+    volume_coverage = 
+      operational * completeness * 
+      manual_label_closed * manual_label_fail,
+    speed_coverage = 
+      operational * completeness * 
+      valid_speed_ratio *
+      manual_label_closed * manual_label_fail * 
+      manual_label_invalid_speed,
+    speed_length_coverage =
+      operational * completeness * 
+      valid_length_speed_ratio *
+      manual_label_closed * manual_label_fail * 
+      manual_label_invalid_speed *
+      manual_label_invalid_length,
+  )
+
+coverage_long <-
+  coverage |> 
+  tidyr::pivot_longer(
+    cols = !c("time_interval"),
+    names_to = "parameter",
+    values_to = "value"
+  )
+```
+
+
+# Hva er en kvalitetsparameter?
+En trafikkregistrering har ikke alltid klart å fange opp all trafikk med gode måleverdier. Måleusikkerhet er noe som en bruker av trafikkdata må være oppmerksom på. Derfor bør alle trafikkdataverdier ha knyttet til seg informasjon om måleusikkerheten. Dekningsgrad er en størrelse som sier noe om måleusikkerheten ved å angi hvor stor andel av et tidsintervall som en trafikkregistrering har data for.
+
+
+# Dekningsgrad per kjørefelt
+Det beregnes en dekningsgrad for hver størrelsestype:
+
+- Dekningsgrad for trafikkmengde
+- Dekningsgrad for trafikkmengde med lengdeklassifisering
+- Dekningsgrad for trafikkmengde med kjøretøyklassifisering
+- Dekningsgrad for fartsmålinger
+- Dekningsgrad for fartsmålinger med lengdeklassifisering
+- Dekningsgrad for fartsmålinger med kjøretøyklassifisering
+
+Altså vil enhver trafikkdatastørrelse kun ha _en_ medfølgende dekningsgrad. Andre mål på måleusikkerhet kan også oppgis, f.eks. standardavvik.
+
+Utregningen av dekningsgrad tar hensyn til:
+
+- operasjonellperioder
+- dataoverføringskompletthet (fulltallighet)
+- gyldige verdier for fart, lengde og kjøretøyklasse 
+- manuelle merkinger
+
+Manuelle merkinger er lagt inn av personer som har vurdert datakvaliteten på den aktuelle trafikkregistreringen. En merking gjelder for et angitt tidsintervall og kan enten synliggjøre bortfall av data eller være til opplysning om unormale trafikkforhold.
+
+Manuelle merkinger kan gjelde en eller flere av følgende forhold:
+
+- stengt veg
+- feil på utstyr (ingen data gyldige data)
+- feil lengdemålinger
+- feil fartsmålinger
+- feil kjøretøyklassifisering
+- unormal trafikkmengde
+- unormalt fartsnivå
+
+
+## Matematisk formulering
+Dekningsgraden er satt sammen av flere komponenter som hver kan beskrives som en funksjon av en parameter.
+
+Operasjonelltid kan modelleres som en enhetsstegfunksjon som er lik 1 når trafikkregistreringspunktet er operasjonelt og 0 ellers.
+
+Dataoverføringskomplettheten kan modelleres som en kontinuerlig funksjon med verdimengde mellom 0 og 1, der 1 angir at alle data er overført.
+
+Andel gyldige verdier for lengde, fart og kjøretøyklasse kan hver modelleres som en kontinuerlig funksjon med verdimengde mellom 0 og 1, der 1 angir at alle data har gyldig verdi for respektive målestørrelse.
+
+Manuelle merkinger for stengt veg og feil i registrering kan hver modelleres som en enhetsstegfunksjon som er lik 1 når registreringen _ikke_ har feil ved seg, mens den er 0 når en merking er lagt inn for det aktuelle tidsintervallet.
+
+Dekningsgraden kan dermed enkelt regnes ut som produktet av de relevante funksjonene. Utregningsmetoden for de ulike dekningsgradene er beskrevet i det følgende.
+
+
+## Dekningsgrad for trafikkmengde
+Dekningsgrad for trafikkmengde settes sammen av:
+
+- operasjonellperioder
+- dataoverføringskompletthet (fulltallighet)
+- manuell merking for stengt veg
+- manuell merking for feil på utstyr (ingen data gyldige data)
+
+Sammenhengen er illustrert i @fig-plot_volume nedenfor.
+
+
+```{r}
+#| label: fig-plot_volume
+#| fig-cap: "Beregning av dekningsgrad for trafikkmengde."
+
+volume_coverage_parameters <- 
+  c("operational", "completeness", 
+    "manual_label_fail", "manual_label_closed", 
+    "volume_coverage")
+
+visualize_coverage_calculation(
+  coverage_long,
+  volume_coverage_parameters,
+  "Dekningsgrad for trafikkmengde"
+)
+```
+
+
+## Dekningsgrad for fartsmålinger
+Dekningsgrad for fartsmålinger settes sammen av:
+
+- operasjonellperioder
+- dataoverføringskompletthet (fulltallighet)
+- andel gyldige fartsmålinger
+- manuell merking for stengt veg
+- manuell merking for feil på utstyr (ingen data gyldige data)
+- manuell merking for feil fartsmålinger
+
+Sammenhengen er illustrert i @fig-plot_speed nedenfor.
+
+
+```{r}
+#| label: fig-plot_speed
+#| fig-cap: "Beregning av dekningsgrad for fartsmålinger."
+
+speed_coverage_parameters <- 
+  c("operational", "completeness", 
+    "valid_speed_ratio",
+    "manual_label_fail", "manual_label_closed", 
+    "manual_label_invalid_speed",
+    "speed_coverage")
+
+visualize_coverage_calculation(
+  coverage_long,
+  speed_coverage_parameters,
+  "Dekningsgrad for fartsmålinger"
+)
+```
+
+## Dekningsgrad for fartsmålinger med lengdeklassifisering
+Måling av fart og lengde er gjerne sterkt korrelert på grunn av måten de regnes ut av registreringsutstyret på. Et aggregat av trafikkdata må derfor ha knyttet til seg en andel av registreringene som har både gyldig lengdemåling og fartsmåling.
+
+Dekningsgrad for fartsmålinger med lengdeklassifisering settes sammen av:
+
+- operasjonellperioder
+- dataoverføringskompletthet (fulltallighet)
+- andel med både gyldig lengde- og fartsmåling
+- manuell merking for stengt veg
+- manuell merking for feil på utstyr (ingen data gyldige data)
+- manuell merking for feil lengdemålinger
+- manuell merking for feil fartsmålinger
+
+Sammenhengen er illustrert i @fig-plot_speed_length nedenfor.
+
+
+```{r}
+#| label: fig-plot_speed_length
+#| fig-cap: "Beregning av dekningsgrad for fartsmålinger med lengdeklassifisering."
+
+speed_length_coverage_parameters <- 
+  c("operational", "completeness", 
+    "valid_length_speed_ratio",
+    "manual_label_fail", "manual_label_closed", 
+    "manual_label_invalid_length",
+    "manual_label_invalid_speed",
+    "speed_length_coverage")
+
+visualize_coverage_calculation(
+  coverage_long,
+  speed_length_coverage_parameters,
+  "Dekningsgrad for fartsmålinger med lengdeklassifisering"
+)
+```
+
+
+
+# Samlet dekningsgrad for flere enn ett kjørefelt
+Trafikkdatastørrelser som er beregnet for flere enn ett kjørefelt får en tilsvarende dekningsgrad. Dersom alle kjørefelt har dekningsgrad forskjellig fra null er dekningsgraden for kjøreretningen lik det aritmetiske gjennomsnittet av kjørefeltenes dekningsgrad. Dersom minst ett kjørefelt har dekningsgrad lik null, så blir dekningsgraden for den kjøreretningen også null.
+
+Samme metodikk gjelder også for begge kjøreretningene samlet.
