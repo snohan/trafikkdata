@@ -1,12 +1,12 @@
 # Fetch daily data and calculate aadt by using factor curves
 
-library(writexl)
+source("H:/Programmering/R/byindeks/rmd_setup.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
-source("H:/Programmering/R/byindeks/get_from_trp_api.R")
+#source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+library(writexl)
 
 # TRP info from Traffic Data API
-# Dec. 21: the mobile trps are not here yet, must use TRP API
 points_metadata <-
   get_points() %>%
   dplyr::select(
@@ -16,12 +16,88 @@ points_metadata <-
     county_geono,
     county_name,
     municipality_name,
+    registration_frequency,
     road_link_position,
     lat,
     lon
   ) %>%
   dplyr::distinct(trp_id, .keep_all = T) %>%
   dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
+
+trp_data_timespan <-
+  get_trp_data_time_span()
+
+
+# Periodic AADT from API Jan 2023 ----
+# AADTs for 2019-2022
+
+periodic_trp <-
+  points_metadata |>
+  dplyr::filter(
+    registration_frequency == "PERIODIC"
+  ) |>
+  dplyr::left_join(
+    trp_data_timespan,
+    by = "trp_id"
+  ) |>
+  dplyr::filter(
+    latest_daily_traffic > "2018-12-31",
+    first_data < "2023-01-01"
+  ) |>
+  split_road_system_reference()
+
+# test <-
+#   periodic_trp$trp_id[2] |>
+#   get_periodic_aadt_by_length()
+
+aadt <-
+  periodic_trp$trp_id[1:40] |>
+  get_periodic_aadt_by_length_for_trp_list()
+
+aadt_heavy_ratio <-
+  aadt |>
+  dplyr::filter(
+    by_length.lengthRange.representation %in% c(NA, "[5.6,..)")
+  ) |>
+  dplyr::mutate(
+    heavy_percentage = round(100 * (by_length.total.volume.average / aadt_total))
+  ) |>
+  dplyr::select(
+    trp_id,
+    year,
+    aadt = aadt_total,
+    factor_curve,
+    heavy_percentage
+  ) |>
+  dplyr::left_join(
+    periodic_trp,
+    by = "trp_id"
+  ) |>
+  dplyr::select(
+    county_name,
+    municipality_name,
+    road_category,
+    trp_id,
+    name,
+    road_reference,
+    year,
+    aadt,
+    factor_curve,
+    heavy_percentage
+  ) |>
+  dplyr::arrange(
+    county_name,
+    municipality_name
+  )
+
+
+aadt_heavy_ratio %>%
+  writexl::write_xlsx(
+    path = "periodic_data/periodisk_adt_2019_2022.xlsx"
+  )
+
+
+# Old stuff ----
 
 # Permanent sensors 2020 ----
 # Fetched from file made in trs_trp.R
@@ -512,5 +588,4 @@ okstadbakken <-
     point_id, datetime, total_volume = Volum, heavy
   ) %>%
   calculate_aadt_by_hourly_traffic()
-
 
