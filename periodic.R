@@ -1,10 +1,12 @@
 # Fetch daily data and calculate aadt by using factor curves
 
-source("H:/Programmering/R/byindeks/rmd_setup.R")
-source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
-#source("H:/Programmering/R/byindeks/get_from_trp_api.R")
-source("H:/Programmering/R/byindeks/split_road_system_reference.R")
-library(writexl)
+{
+  source("H:/Programmering/R/byindeks/rmd_setup.R")
+  source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+  #source("H:/Programmering/R/byindeks/get_from_trp_api.R")
+  source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+  #library(writexl)
+}
 
 # TRP info from Traffic Data API
 points_metadata <-
@@ -50,9 +52,19 @@ periodic_trp <-
 #   periodic_trp$trp_id[2] |>
 #   get_periodic_aadt_by_length()
 
-aadt <-
-  periodic_trp$trp_id[1:40] |>
+aadt_1 <-
+  periodic_trp$trp_id[1:600] |>
   get_periodic_aadt_by_length_for_trp_list()
+
+aadt_2 <-
+  periodic_trp$trp_id[601:1295] |>
+  get_periodic_aadt_by_length_for_trp_list()
+
+aadt <-
+  dplyr::bind_rows(
+    aadt_1,
+    aadt_2
+  )
 
 aadt_heavy_ratio <-
   aadt |>
@@ -60,14 +72,14 @@ aadt_heavy_ratio <-
     by_length.lengthRange.representation %in% c(NA, "[5.6,..)")
   ) |>
   dplyr::mutate(
-    heavy_percentage = round(100 * (by_length.total.volume.average / aadt_total))
+    heavy_ratio = round(100 * (by_length.total.volume.average / aadt_total))
   ) |>
   dplyr::select(
     trp_id,
     year,
-    aadt = aadt_total,
-    factor_curve,
-    heavy_percentage
+    adt = aadt_total,
+    curve = factor_curve,
+    heavy_ratio
   ) |>
   dplyr::left_join(
     periodic_trp,
@@ -77,23 +89,41 @@ aadt_heavy_ratio <-
     county_name,
     municipality_name,
     road_category,
+    road_category_and_number,
     trp_id,
     name,
+    registration_frequency,
     road_reference,
+    road_link_position,
     year,
-    aadt,
-    factor_curve,
-    heavy_percentage
+    adt,
+    heavy_ratio,
+    curve
   ) |>
   dplyr::arrange(
     county_name,
     municipality_name
   )
 
+aadt_heavy_ratio %>%
+  readr::write_csv2(
+    file = "periodic_data/periodisk_adt_alle.csv"
+  )
 
 aadt_heavy_ratio %>%
-  writexl::write_xlsx(
-    path = "periodic_data/periodisk_adt_2019_2022.xlsx"
+  dplyr::filter(
+    year %in% c(2019:2022)
+  ) |>
+  readr::write_csv2(
+    file = "periodic_data/periodisk_adt_2019_2022.csv"
+  )
+
+aadt_heavy_ratio |>
+  dplyr::filter(
+    year == 2022
+  ) |>
+  readr::write_csv2(
+    file = "periodic_data/periodisk_adt_2022.csv"
   )
 
 
