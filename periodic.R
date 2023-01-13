@@ -32,7 +32,6 @@ trp_data_timespan <-
 
 # Periodic AADT from API Jan 2023 ----
 # AADTs for 2019-2022
-
 periodic_trp <-
   points_metadata |>
   dplyr::filter(
@@ -52,19 +51,19 @@ periodic_trp <-
 #   periodic_trp$trp_id[2] |>
 #   get_periodic_aadt_by_length()
 
-aadt_1 <-
-  periodic_trp$trp_id[1:600] |>
-  get_periodic_aadt_by_length_for_trp_list()
-
-aadt_2 <-
-  periodic_trp$trp_id[601:1295] |>
-  get_periodic_aadt_by_length_for_trp_list()
+# aadt_1 <-
+#   periodic_trp$trp_id[1:6] |>
+#   get_periodic_aadt_by_length_for_trp_list()
 
 aadt <-
-  dplyr::bind_rows(
-    aadt_1,
-    aadt_2
-  )
+  periodic_trp$trp_id |>
+  get_periodic_aadt_by_length_for_trp_list()
+
+# aadt <-
+#   dplyr::bind_rows(
+#     aadt_1,
+#     aadt_2
+#   )
 
 aadt_heavy_ratio <-
   aadt |>
@@ -79,7 +78,8 @@ aadt_heavy_ratio <-
     year,
     adt = aadt_total,
     curve = factor_curve,
-    heavy_ratio
+    heavy_ratio,
+    days
   ) |>
   dplyr::left_join(
     periodic_trp,
@@ -98,6 +98,7 @@ aadt_heavy_ratio <-
     year,
     adt,
     heavy_ratio,
+    days,
     curve
   ) |>
   dplyr::arrange(
