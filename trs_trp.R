@@ -11,17 +11,22 @@ library(writexl)
 # TRP stats ----
 trp <- get_points()
 
-distinct_trps <- trp %>%
+distinct_trps <-
+  trp %>%
   split_road_system_reference() %>%
   dplyr::select(
     trp_id,
+    name,
     traffic_type,
-    road_category,
+    road_category_and_number,
+    road_reference,
     county_name,
+    municipality_name,
     registration_frequency,
     operational_status
     ) %>%
-  dplyr::distinct(trp_id, .keep_all = T)
+  dplyr::distinct(trp_id, .keep_all = T) |>
+  dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
 
 trp_stats_road_category <- distinct_trps %>%
   dplyr::group_by(
@@ -31,6 +36,29 @@ trp_stats_road_category <- distinct_trps %>%
   ) %>%
   dplyr::summarise(
     n_trp = n()
+  )
+
+
+# TRPS and data time span
+trp_data_timespan <-
+  get_trp_data_time_span()
+
+
+# Nedre Glomma
+nedre_glomma <-
+  distinct_trps |>
+  dplyr::filter(
+    municipality_name %in% c("Fredrikstad", "Sarpsborg"),
+    traffic_type == "VEHICLE",
+    registration_frequency == "CONTINUOUS",
+    operational_status %in% c("OPERATIONAL", "TEMPORARILY_OUT_OF_SERVICE")
+  ) |>
+  dplyr::left_join(
+    trp_data_timespan,
+    by = "trp_id"
+  ) |>
+  dplyr::filter(
+    first_data_with_quality_metrics > "2016-01-01"
   )
 
 # Large distance from TRS to TRP ----
