@@ -1,5 +1,6 @@
 # TRS and TRP
 
+base::Sys.setlocale(locale = "nb.utf8")
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
@@ -1237,3 +1238,30 @@ sykkel_tromso <- all_trps %>%
   dplyr::slice_min(validFrom)
 
 
+# Bike TRPs ----
+vestfold <-
+  distinct_trps |>
+  dplyr::filter(
+    traffic_type == "BICYCLE",
+    county_name == "Vestfold og Telemark"
+  ) |>
+  dplyr::filter(
+    municipality_name %in% c(
+      "Larvik",
+      "Sandefjord",
+      "Færder",
+      "Tønsberg",
+      "Horten",
+      "Holmestrand"
+    )
+  ) |>
+  dplyr::left_join(
+    trp_data_timespan,
+    by = "trp_id"
+  )
+
+writexl::write_xlsx(
+  vestfold,
+  path = "spesialbestillinger/vestfold_sykkelpunkt.xlsx"
+
+)

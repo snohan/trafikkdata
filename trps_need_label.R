@@ -111,12 +111,21 @@ zero_dt_filtered <-
     real_zero_days,
     by = c("trp_id", "day")
   ) |>
+  dplyr::mutate(
+    month_number = lubridate::month(day)
+  ) |>
   dplyr::filter(
     # Innherredsvegen ved Fjæregata
     !(trp_id == "04300V72813" & lane == 2 & day > "2017-07-01"),
     !(trp_id == "04300V72813" & lane == 4 & day > "2017-07-01"),
     # Gamle Nygårdsbru foratu og bilveg
-    !(trp_id %in% c("17729B2483952", "17981B2483952"))
+    !(trp_id %in% c("17729B2483952", "17981B2483952")),
+    # Videseter
+    !(trp_id =="90465V384130" & month_number %in% c(10, 11, 12, 1, 2, 3, 4, 5)),
+    # Aurlandsfjellet
+    !(trp_id =="12252V384272" & month_number %in% c(10, 11, 12, 1, 2, 3, 4, 5)),
+    # Hogga sluser
+    !(trp_id =="86134B493596" & month_number %in% c(10, 11, 12, 1, 2, 3))
   )
 
 n_before_2022 <-
@@ -129,6 +138,8 @@ n_before_2022 <-
 # 2022-10-17: 51 420
 # 2022-10-31: 48 368
 # 2023-02-08: 42 887
+# 2023-03-09: 48 780
+# 2023-03-22: 38 901
 
 trp_need_label <-
   zero_dt_filtered %>%
@@ -166,3 +177,23 @@ writexl::write_xlsx(
   trp_need_label,
   path = "nulltrafikk.xlsx"
 )
+
+
+trp_need_label |>
+  dplyr::mutate(
+    month = lubridate::floor_date(day, "month")
+  ) |>
+  ggplot(aes(x = month)) +
+  geom_histogram()
+
+trp_top_list <-
+  trp_need_label |>
+  dplyr::group_by(
+    name
+  ) |>
+  dplyr::summarise(
+    count = n()
+  ) |>
+  dplyr::arrange(
+    desc(count)
+  )

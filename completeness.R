@@ -164,14 +164,14 @@ possible_periods_missing_completeness <-
     commission_zero_duration == FALSE,
     commission_to < latest_completeness_timestamp
   ) |>
-  dplyr::distinct() |>
   dplyr::select(
     trs_id,
     trs_name,
     commission_from,
     commission_to,
     completeness_timestamp
-  )
+  ) |>
+  dplyr::distinct()
 
 
 
