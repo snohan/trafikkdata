@@ -1,0 +1,420 @@
+---
+title: "FREMTRANS Kongsvinger"
+format: 
+  html:
+    css: svv.css
+    number-sections: true
+    toc: true
+    toc-location: left
+    toc-title: "Innhold"
+    df-print: paged
+    self-contained: true
+crossref:
+  fig-title: Figur
+  tbl-title: Tabell
+  title-delim: .
+  fig-prefix: figur
+  tbl-prefix: tabell
+editor: source
+knitr: 
+  opts_chunk: 
+    echo: false
+---
+
+```{r}
+#| label: read
+#| include: false
+#| echo: false
+
+source("H:/Programmering/R/byindeks/rmd_setup.R")
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+library(writexl)
+library(bizdays)
+library(timeDate)
+
+# Set holidays
+create_holiday_list_for_year <- function(year) {
+
+  holidays <- c(
+    timeDate::NewYearsDay(year) |> 
+    lubridate::ymd(),
+    timeDate::GoodFriday(year) |> 
+    lubridate::ymd() - lubridate::days(1),
+    timeDate::GoodFriday(year) |> 
+    lubridate::ymd(),
+    timeDate::EasterMonday(year) |> 
+    lubridate::ymd(),
+    timeDate::LaborDay(year) |> 
+    lubridate::ymd(),
+    lubridate::ymd(paste0(year, "-05-17")),
+    timeDate::Ascension(year) |> 
+    lubridate::ymd(),
+    timeDate::PentecostMonday(year) |> 
+    lubridate::ymd(),
+    timeDate::ChristmasEve(year) |> 
+    lubridate::ymd(),
+    timeDate::ChristmasDay(year) |> 
+    lubridate::ymd(),
+    timeDate::BoxingDay(year) |> 
+    lubridate::ymd(),
+    timeDate::ChristmasEve(year) |> 
+    lubridate::ymd() + lubridate::days(7)
+  )  
+}
+ 
+holidays <-
+  c(
+    create_holiday_list_for_year(2019),
+    create_holiday_list_for_year(2022),
+    create_holiday_list_for_year(2023),
+    create_holiday_list_for_year(2024)
+  )
+
+calendar <- 
+  bizdays::create.calendar(
+    name = "my_calendar",
+    holidays = holidays,
+    weekdays = c("saturday", "sunday"),
+    start.date = "2019-01-01",
+    end.date = "2024-12-31"
+  )
+```
+
+## Trafikkregistreringspunkt
+
+Seks punkt på Kongsvinger.
+
+```{r}
+#| label: trp
+
+chosen_trps <- 
+  c(
+    '\"17681V704560',
+    "04274V705260",
+    "49306V704987",
+    "15329V704987",
+    "04929V704558",
+    '53504V704979\"'
+  ) |> 
+  stringr::str_flatten(collapse = '\", \"')
+
+trp_meta_data <- 
+  get_trp_metadata_by_list(chosen_trps) |> 
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference
+  ) |> 
+  dplyr::distinct()
+
+data_time_span <-
+  get_trp_data_time_span() |> 
+  dplyr::filter(
+    trp_id %in% trp_meta_data$trp_id
+  )
+
+trp_directions <- 
+  get_trps_with_direction() |> 
+  dplyr::filter(
+    trp_id %in% trp_meta_data$trp_id
+  ) |> 
+  dplyr::select(
+    trp_id,
+    from_according_to_metering,
+    to_according_to_metering
+  ) |> 
+  dplyr::distinct()
+
+trp_meta_data_full <- 
+  trp_meta_data |> 
+  dplyr::left_join(
+    data_time_span,
+    by = "trp_id"
+  ) |> 
+  dplyr::left_join(
+    trp_directions,
+    by = "trp_id"
+  ) |> 
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    heading_1 = to_according_to_metering,
+    heading_2 = from_according_to_metering
+  )
+
+trp_direction_long <-
+  trp_meta_data_full |> 
+  dplyr::select(
+    trp_id,
+    heading_1,
+    heading_2
+  ) |> 
+  tidyr::pivot_longer(
+    cols = c(heading_1, heading_2),
+    names_to = "heading_no",
+    values_to = "heading"
+  )
+
+trp_meta_data_full
+```
+
+# Gjennomsnittlig timetrafikk
+
+Data er:
+
+-   kun for yrkedøgn
+-   per uke
+-   per kjøreretning.
+-   gruppert i alle, korte og lange (skille ved 5,6 m).
+
+Tidsperiode for data er alle uker i disse årene:
+
+-   2019
+
+-   2022
+
+-   2023
+
+-   2024
+
+```{r}
+#| label: volume_by_hour 
+
+get_hour_of_day_for_trp <- function(trp_id, years, week_numbers) {
+  
+  hour_of_day_total <-
+  purrr::map2(
+    years,
+    week_numbers,
+    ~ get_hour_of_day_week_direction_total(.x, .y, "WEEKDAY", trp_id)
+  ) |> 
+  purrr::list_rbind()
+
+  hour_of_day_length <-
+    purrr::map2(
+      years,
+      week_numbers,
+      ~ get_hour_of_day_week_direction_length(.x, .y, "WEEKDAY", trp_id)
+    ) |> 
+    purrr::list_rbind()
+  
+  hour_of_day <-
+    dplyr::bind_rows(
+      hour_of_day_total,
+      hour_of_day_length
+    ) |> 
+    dplyr::filter(
+      length_range %in% c("all", "[..,5.6)", "[5.6,..)"),
+      hour %in% c("06:00:00", "07:00:00", "08:00:00", "09:00:00",
+                  "14:00:00", "15:00:00", "16:00:00", "17:00:00")
+    )
+  
+  return(hour_of_day)
+  
+}
+
+years = c(rep(2019, 52), rep(2022, 52))
+week_numbers <- rep(base::seq(1, 52, 1), 2)
+
+# hour_of_day <-
+#   dplyr::bind_rows(
+#     get_hour_of_day_for_trp(trp_meta_data$trp_id[1], years, week_numbers),
+#     get_hour_of_day_for_trp(trp_meta_data$trp_id[2], years, week_numbers),
+#     get_hour_of_day_for_trp(trp_meta_data$trp_id[3], years, week_numbers),
+#     get_hour_of_day_for_trp(trp_meta_data$trp_id[4], years, week_numbers),
+#     get_hour_of_day_for_trp(trp_meta_data$trp_id[5], years, week_numbers),
+#     get_hour_of_day_for_trp(trp_meta_data$trp_id[6], years, week_numbers)
+#   )
+# 
+# readr::write_rds(
+#   hour_of_day,
+#   file = "spesialbestillinger/kongsvinger_timetrafikk.rds"
+# )
+
+hour_of_day <- 
+ readr::read_rds(
+  file = "spesialbestillinger/kongsvinger_timetrafikk.rds"
+) 
+
+hour_of_day_wide <-
+  hour_of_day |> 
+  dplyr::mutate(
+    length_range = 
+      dplyr::case_when(
+        length_range == "all" ~ "alle",
+        length_range == "[..,5.6)" ~ "korte",
+        length_range == "[5.6,..)" ~ "lange",
+      ),
+    heading = stringr::str_to_title(heading, locale = "no")
+  ) |> 
+  dplyr::left_join(
+    trp_direction_long,
+    by = c("trp_id", "heading")
+  ) |> 
+  dplyr::select(
+    trp_id, heading_no, year, week, length_range, hour, volume
+  ) |> 
+  tidyr::pivot_wider(
+    names_from = c(heading_no, length_range, hour),
+    values_from = volume
+  ) |> 
+  dplyr::left_join(
+    trp_meta_data,
+    by = "trp_id"
+  ) |> 
+  dplyr::select(
+    -trp_id,
+    -road_reference
+  ) |> 
+  dplyr::relocate(
+    name
+  )
+```
+
+# Døgntrafikk
+
+```{r}
+#| label: daily_traffic
+
+# Fetch daily traffic
+# Filter for business days
+# Mean per week
+
+
+```
+
+# Gjennomsnittsfart
+
+Data hentet fra Kibana med gjennomsnittsfart per klokketime. Filtrert for de to rush-intervallene.
+
+```{r}
+#| label: speed intervals
+speed <-
+  dplyr::bind_rows(
+    readr::read_csv2(
+    "spesialbestillinger/kongsvinger_speed_2019.csv",
+    show_col_types = FALSE
+    ),
+    readr::read_csv2(
+      "spesialbestillinger/kongsvinger_speed_2022.csv",
+      show_col_types = FALSE
+    )
+  ) |> 
+  dplyr::select(
+    trp_id = trpId,
+    lane,
+    date_time = from,
+    hourly_mean_speed = averageSpeedFromValidSpeed,
+    n_vehicles = vehiclesWithValidSpeedCount,
+    coverage = temporalCoverageForSpeedCoverage
+  ) |> 
+  dplyr::mutate(
+    hourly_mean_speed = 
+      stringr::str_replace(hourly_mean_speed, ",", ".") |> as.numeric(),
+    date_time = lubridate::ymd_hms(date_time),
+    hour = lubridate::hour(date_time),
+    week = lubridate::week(date_time),
+    date = lubridate::as_date(date_time),
+    year = lubridate::year(date_time),
+    interval = 
+      dplyr::case_when(
+        hour %in% c(7, 8) ~ "7-9",
+        hour %in% c(15, 16) ~ "15-17",
+        TRUE ~ "non_rush"
+      ) |> 
+      factor(levels = c("7-9", "15-17", "non_rush"))
+  ) |> 
+  dplyr::filter(
+    interval != "non_rush"
+  ) |> 
+  dplyr::select(
+    trp_id,
+    lane,
+    date,
+    year,
+    week,
+    hourly_mean_speed,
+    n_vehicles,
+    interval
+  ) 
+
+# speed_example <-
+#   speed |> 
+#   dplyr::filter(
+#     trp_id == "17681V704560",
+#     lane == 1,
+#     week == 1,
+#     interval == "7-9"
+#   ) |> 
+#   dplyr::mutate(
+#     mean_speed_numerator = n_vehicles * hourly_mean_speed
+#   )
+
+head(speed)
+```
+
+Beholder bare yrkedøgn og beregner gjennomsnitt for rush-intervallet.
+
+```{r}
+#| label: speed_by_week
+speed_weekly <-
+  speed |> 
+  dplyr::mutate(
+    working_day = bizdays::is.bizday(date, "my_calendar")
+  ) |> 
+  dplyr::filter(
+    working_day == TRUE
+  ) |> 
+  dplyr::group_by(
+    trp_id, lane, year, week, interval
+  ) |> 
+  dplyr::summarise(
+    mean_speed = 
+      (sum(n_vehicles * hourly_mean_speed) / sum(n_vehicles)) |> 
+      round(1),
+    .groups = "drop"
+  ) |> 
+  dplyr::mutate(
+    # TODO: NAIVE APPROACH!!! Here only 2 lanes!
+    heading_no = dplyr::case_when(
+      lane == 1 ~ "heading_1",
+      lane == 2 ~ "heading_2"
+    )
+  ) |> 
+  dplyr::left_join(
+    trp_meta_data,
+    by = "trp_id"
+  ) |> 
+  dplyr::select(
+    -trp_id,
+    -road_reference,
+    -lane
+  ) |> 
+  dplyr::relocate(
+    name
+  ) |> 
+  tidyr::pivot_wider(
+    names_from = c(heading_no, interval),
+    values_from = mean_speed
+  )
+
+head(speed_weekly)
+```
+
+# Excel
+
+```{r}
+#| label: write
+
+list(
+  timetrafikk = hour_of_day_wide,
+  dogntrafikk = daily_traffic_wide,
+  gjennomsnittshastighet = speed_weekly,
+  punktinfo = trp_meta_data_full
+) |> 
+  writexl::write_xlsx(
+    path = "spesialbestillinger/kongsvinger.xlsx"
+  )
+
+```
