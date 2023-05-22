@@ -270,6 +270,8 @@ hour_of_day_wide <-
   dplyr::relocate(
     name
   )
+
+hour_of_day_wide
 ```
 
 # Døgntrafikk
@@ -281,7 +283,64 @@ hour_of_day_wide <-
 # Filter for business days
 # Mean per week
 
+dt_2019 <- 
+  purrr::map(
+    trp_meta_data$trp_id,
+    ~ get_dt_by_direction(.x, "2019-01-01", "2019-12-31")
+  ) |> 
+  purrr::list_rbind()
 
+dt_2022 <- 
+  purrr::map(
+    trp_meta_data$trp_id,
+    ~ get_dt_by_direction(.x, "2022-01-01", "2022-12-31")
+  ) |> 
+  purrr::list_rbind()
+
+dt <-
+  dplyr::bind_rows(
+    dt_2019,
+    dt_2022
+  ) |> 
+  dplyr::mutate(
+    week = lubridate::isoweek(day),
+    year = lubridate::isoyear(day),
+    working_day = bizdays::is.bizday(day, "my_calendar")
+  ) |> 
+  dplyr::filter(
+    working_day == TRUE,
+    coverage >= 90
+  ) |> 
+  dplyr::summarise(
+    # average weekly working day traffic
+    awwdt = base::mean(volume, na.rm = TRUE) |> base::floor(),
+    n_days = n(),
+    .by = c(trp_id, heading, week, year)
+  ) |> 
+  dplyr::mutate(
+    heading = stringr::str_to_title(heading, locale = "no")
+  ) |> 
+  dplyr::left_join(
+    trp_direction_long,
+    by = c("trp_id", "heading")
+  ) |> 
+  dplyr::left_join(
+    trp_meta_data,
+    by = "trp_id"
+  ) |> 
+  dplyr::select(
+    name,
+    year, 
+    week,
+    heading_no,
+    awwdt
+  ) |> 
+  tidyr::pivot_wider(
+    names_from = heading_no,
+    values_from = awwdt
+  )
+
+dt
 ```
 
 # Gjennomsnittsfart
@@ -290,6 +349,7 @@ Data hentet fra Kibana med gjennomsnittsfart per klokketime. Filtrert for de to 
 
 ```{r}
 #| label: speed intervals
+
 speed <-
   dplyr::bind_rows(
     readr::read_csv2(
@@ -314,9 +374,9 @@ speed <-
       stringr::str_replace(hourly_mean_speed, ",", ".") |> as.numeric(),
     date_time = lubridate::ymd_hms(date_time),
     hour = lubridate::hour(date_time),
-    week = lubridate::week(date_time),
+    week = lubridate::isoweek(date_time),
     date = lubridate::as_date(date_time),
-    year = lubridate::year(date_time),
+    year = lubridate::isoyear(date_time),
     interval = 
       dplyr::case_when(
         hour %in% c(7, 8) ~ "7-9",
@@ -409,7 +469,7 @@ head(speed_weekly)
 
 list(
   timetrafikk = hour_of_day_wide,
-  dogntrafikk = daily_traffic_wide,
+  dogntrafikk = dt,
   gjennomsnittshastighet = speed_weekly,
   punktinfo = trp_meta_data_full
 ) |> 
