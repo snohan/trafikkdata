@@ -1,0 +1,200 @@
+---
+title: "Fartsdata"
+format: 
+  html:
+    css: svv.css
+    number-sections: true
+    toc: true
+    toc-location: left
+    toc-title: "Innhold"
+    df-print: paged
+    self-contained: true
+crossref:
+  fig-title: Figur
+  tbl-title: Tabell
+  title-delim: .
+  fig-prefix: figur
+  tbl-prefix: tabell
+editor: source
+knitr: 
+  opts_chunk: 
+    echo: false
+---
+
+```{r}
+#| label: read
+#| include: false
+#| echo: false
+
+source("H:/Programmering/R/byindeks/rmd_setup.R")
+source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+library(writexl)
+
+
+```
+
+# Trafikkregistreringspunkt
+
+Ønsker fartsdata for månedene februar-mai i årene 2019-2023. Hvilke trafikkregistreringspunkt kan ha brukbare fartsdata i hele denne perioden? Punktene er ikke sjekket for egnethet i vegnett eller trafikkomlegginger.
+
+```{r}
+#| label: trp
+
+trp_speed_nrk <-
+  readr::read_rds(
+    file = "trp_speed_nrk.rds"
+  ) |> 
+  dplyr::mutate(
+    label_text = 
+      paste0(
+        trp_id, "<br/>",
+        name, ", ", "<br/>",
+        road_reference, "<br/>",
+        speed_limit, " km/h"
+      ),
+    label_text = lapply(label_text, htmltools::HTML)
+  )
+```
+
+## Kartvisning
+
+```{r}
+#| label: map 
+
+speed_palette <-
+  leaflet::colorFactor(
+    palette = "Accent",
+    domain = trp_speed_nrk$speed_limit
+  )
+
+trp_speed_nrk |> 
+  leaflet(
+      width = "100%",
+      height = 700,
+      options =
+        leafletOptions(
+          crs = nvdb_crs,
+          zoomControl = F
+        )
+    ) %>%
+    addTiles(
+      urlTemplate = nvdb_map_url,
+      attribution = nvdb_map_attribution
+    ) %>%
+    addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = 6,
+      stroke = T,
+      weight = 2,
+      color = "#444f55",
+      opacity = 0.8,
+      fill = T,
+      fillColor = ~speed_palette(speed_limit),
+      fillOpacity = 0.8,
+      label = ~label_text,
+      data = base::subset(trp_speed_nrk, speed_limit == 50),
+      group = "50"
+    ) |> 
+  addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = 6,
+      stroke = T,
+      weight = 2,
+      color = "#444f55",
+      opacity = 0.8,
+      fill = T,
+      fillColor = ~speed_palette(speed_limit),
+      fillOpacity = 0.8,
+      label = ~label_text,
+      data = base::subset(trp_speed_nrk, speed_limit == 60),
+      group = "60"
+    ) |> 
+  addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = 6,
+      stroke = T,
+      weight = 2,
+      color = "#444f55",
+      opacity = 0.8,
+      fill = T,
+      fillColor = ~speed_palette(speed_limit),
+      fillOpacity = 0.8,
+      label = ~label_text,
+      data = base::subset(trp_speed_nrk, speed_limit == 70),
+      group = "70"
+    ) |> 
+  addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = 6,
+      stroke = T,
+      weight = 2,
+      color = "#444f55",
+      opacity = 0.8,
+      fill = T,
+      fillColor = ~speed_palette(speed_limit),
+      fillOpacity = 0.8,
+      label = ~label_text,
+      data = base::subset(trp_speed_nrk, speed_limit == 80),
+      group = "80"
+    ) |> 
+  addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = 6,
+      stroke = T,
+      weight = 2,
+      color = "#444f55",
+      opacity = 0.8,
+      fill = T,
+      fillColor = ~speed_palette(speed_limit),
+      fillOpacity = 0.8,
+      label = ~label_text,
+      data = base::subset(trp_speed_nrk, speed_limit == 90),
+      group = "90"
+    ) |> 
+  addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = 6,
+      stroke = T,
+      weight = 2,
+      color = "#444f55",
+      opacity = 0.8,
+      fill = T,
+      fillColor = ~speed_palette(speed_limit),
+      fillOpacity = 0.8,
+      label = ~label_text,
+      data = base::subset(trp_speed_nrk, speed_limit == 100),
+      group = "100"
+    ) |> 
+  addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = 6,
+      stroke = T,
+      weight = 2,
+      color = "#444f55",
+      opacity = 0.8,
+      fill = T,
+      fillColor = ~speed_palette(speed_limit),
+      fillOpacity = 0.8,
+      label = ~label_text,
+      data = base::subset(trp_speed_nrk, speed_limit == 110),
+      group = "110"
+    ) |> 
+  addLegend(
+    "bottomright",
+    pal = speed_palette,
+    values = ~speed_limit,
+    title = "Fartsgrense",
+    opacity = 0.7
+  ) |> 
+  addLayersControl(
+    baseGroups = trp_speed_nrk$speed_limit,
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```

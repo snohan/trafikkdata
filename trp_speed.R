@@ -6,6 +6,9 @@ library(jsonlite)
 
 # Source files ####
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
+source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+
 
 trps <- getPoints()
 # TODO: filter periodic
@@ -156,4 +159,134 @@ write.csv2(trp_speed_average_filtered, file = "punkter_fart_apparat.csv",
            row.names = F)
 
 
+# NRK ----
+interval_of_interest =
+  lubridate::interval(
+    lubridate::ymd("2019-02-01"),
+    lubridate::ymd("2023-06-01")
+  )
 
+trp_all <- get_points()
+
+trp_tidy <-
+  trp_all |>
+  dplyr::filter(
+    traffic_type == "VEHICLE",
+    registration_frequency == "CONTINUOUS"
+  ) |>
+  dplyr::mutate(
+    validTo =
+      dplyr::case_when(
+        is.na(validTo) ~ lubridate::today(),
+        TRUE ~ validTo
+      ),
+    commission_interval = lubridate::interval(validFrom, validTo),
+    interval_overlap =
+      lubridate::int_overlaps(
+        commission_interval,
+        interval_of_interest
+      )
+  ) |>
+  dplyr::filter(
+    interval_overlap == TRUE
+  ) |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    n_lanes = nrow(lanes)
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::select(
+    -lanes
+  ) |>
+  dplyr::distinct() |>
+  # Remove TRPs with changed n_lanes
+  dplyr::add_count(trp_id) |>
+  split_road_system_reference() |>
+  dplyr::filter(
+    n == 1,
+    is.na(intersection_part_number)
+  ) |>
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    lat, lon,
+    n_lanes,
+    road_link_position
+  )
+
+
+# trp_speed <-
+#   trp_tidy |>
+#   dplyr::mutate(
+#     speed_limit =
+#       purrr::map_dbl(road_link_position, ~ get_speedlimit_by_roadlink(.))
+#   )
+
+readr::write_rds(
+  trp_speed,
+  file = "trp_speed.rds"
+)
+
+mdt_coverage <-
+  # All MDT with at least 50 % coverage
+  readr::read_csv2(
+    "spesialbestillinger/mdt_coverage.csv"
+  ) |>
+  dplyr::rename(
+    trp_id = traffic_registration_point_id
+  ) |>
+  dplyr::mutate(
+    month =
+      stringr::str_sub(from, 1, 10) |>
+      lubridate::ymd(),
+    year = lubridate::year(month),
+    month_n = lubridate::month(month),
+    #invalid_speed_days = total_volume.count - valid_speed_volume.count
+  ) |>
+  dplyr::filter(
+    #invalid_speed_days == 0,
+    # At least 16 days with valid speed per month
+    valid_speed_volume.count >= 16,
+    month_n %in% c(2:5)
+  ) |>
+  dplyr::add_count(trp_id) |>
+  dplyr::select(
+    trp_id,
+    year,
+    month_n,
+    n
+  ) |>
+  dplyr::filter(
+    n == 20
+  ) |>
+  dplyr::select(
+    trp_id
+  ) |>
+  dplyr::distinct()
+
+trp_tidy_ok_coverage <-
+  trp_speed |>
+  dplyr::filter(
+    trp_id %in% mdt_coverage$trp_id
+  ) |>
+  dplyr::filter(
+    stringr::str_detect(road_reference, pattern = "^F|^R|^E"),
+    speed_limit > 40
+  )
+
+readr::write_rds(
+  trp_tidy_ok_coverage,
+  file = "trp_speed_nrk.rds"
+)
+
+trp_tidy_ok_coverage |>
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference,
+    speed_limit
+  ) |>
+  writexl::write_xlsx(
+  path = "spesialbestillinger/nrk_fart.xlsx"
+  )
