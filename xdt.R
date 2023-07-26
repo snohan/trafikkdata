@@ -127,6 +127,57 @@ writexl::write_xlsx(
   "spesialbestillinger/utvalgte_mdt_trondelag.xlsx"
 )
 
+
+# mdt krs ----
+trp_chosen <- c(
+  "22540V121303",
+  "98936V121303",
+  "95764V121488",
+  "47254V121508",
+  "47077V121488"
+)
+
+mdts <-
+  dplyr::bind_rows(
+    get_mdt_for_trp_list(trp_chosen, "2022"),
+    get_mdt_for_trp_list(trp_chosen, "2023")
+  )
+
+mdt_summed <-
+  mdts |>
+  dplyr::filter(
+    month < 7
+  ) |>
+  dplyr::summarise(
+    traffic = round(mean(mdt)),
+    .by = c(trp_id, year)
+  ) |>
+  tidyr::pivot_wider(
+    names_from = year,
+    names_prefix = "mdt_",
+    values_from = traffic
+  ) |>
+  dplyr::mutate(
+    change_percentage = ((mdt_2023 / mdt_2022 - 1) * 100) |> round(1)
+  )
+
+trp_metadata <-
+  get_trp_metadata_by_list(trp_chosen) |>
+  dplyr::select(
+    trp_id, name, from, to, road_reference
+  ) |>
+  dplyr::distinct() |>
+  dplyr::left_join(
+    mdt_summed,
+    by = join_by(trp_id)
+  )
+
+writexl::write_xlsx(
+  trp_metadata,
+  "spesialbestillinger/krs.xlsx"
+)
+
+
 # device_type ####
 trp_device <- get_trs_device() %>%
   dplyr::select(trp_id, trs_id, deviceType)
