@@ -125,7 +125,21 @@ zero_dt_filtered <-
     # Aurlandsfjellet
     !(trp_id =="12252V384272" & month_number %in% c(10, 11, 12, 1, 2, 3, 4, 5)),
     # Hogga sluser
-    !(trp_id =="86134B493596" & month_number %in% c(10, 11, 12, 1, 2, 3))
+    !(trp_id =="86134B493596" & month_number %in% c(10, 11, 12, 1, 2, 3)),
+    # Rinnelva sykkel
+    !(trp_id =="97043B1797561" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Løsberga sykkel
+    !(trp_id =="28518B1828478" & month_number %in% c(10, 11, 12, 1, 2, 3)),
+    # Værnestunnelen sykkel
+    !(trp_id =="85036B1824272" & month_number %in% c(10, 11, 12, 1, 2, 3)),
+    # Pirbrua sykkel sør
+    !(trp_id =="50284B2426199" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Stavne sykkel
+    !(trp_id =="82732B2353931" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Svingbrua sykkel
+    !(trp_id =="03908B2426198" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Gamle Okstadbakken - Sykkel
+    !(trp_id =="10272B1698646" & month_number %in% c(11, 12, 1, 2, 3))
   )
 
 n_before_2022 <-
@@ -143,6 +157,7 @@ n_before_2022 <-
 # 2023-04-25: 33 847
 # 2023-05-29: 38 412
 # 2023-06-22: 38 142
+# 2023-07-27: 38 125
 
 trp_need_label <-
   zero_dt_filtered %>%
