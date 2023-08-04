@@ -9,6 +9,39 @@ library(geosphere)
 library(readxl)
 library(writexl)
 
+
+# TRP reference direction ----
+trp <- get_trp_direction_reference()
+
+# trp |>
+#   dplyr::select(
+#     same_direction_of_metering_and_link_then,
+#     registration_frequency,
+#     trp_type
+#   ) |>
+#   table()
+
+trps_without_reference_direction <-
+  trp |>
+  dplyr::filter(
+    trp_type == "PERMANENT",
+    #trp_type == "MOBILE",
+    operational_status != "PLANNED",
+    is.na(same_direction_of_metering_and_link_then)
+  ) |>
+  dplyr::arrange(
+    county_id,
+    road_reference
+  )
+
+trps_without_reference_direction |>
+  dplyr::select(
+    registration_frequency,
+    trp_type
+  ) |>
+  table()
+
+
 # TRP stats ----
 trp <- get_points()
 
