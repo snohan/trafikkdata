@@ -26,8 +26,9 @@ trps_without_reference_direction <-
   dplyr::filter(
     trp_type == "PERMANENT",
     #trp_type == "MOBILE",
-    operational_status != "PLANNED",
-    is.na(same_direction_of_metering_and_link_then)
+    operational_status == "OPERATIONAL",
+    #operational_status != "PLANNED",
+    is.na(direction_with_current_link)
   ) |>
   dplyr::arrange(
     county_id,

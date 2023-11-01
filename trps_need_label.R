@@ -31,12 +31,17 @@ distinct_trps <-
 # Read CSVs from Kibana ----
 read_a_file <- function(file_name) {
 
-  readr::read_csv2(
-    paste0("zero_dt/", file_name)
-  ) #%>%
+  # readr::read_csv2(
+  #   paste0("zero_dt/", file_name)
+  # ) #%>%
   # dplyr::mutate(
   #   periode_start = as.character(periode_start)
   # )
+
+  readr::read_csv(
+    file = paste0("zero_dt/", file_name),
+    #delim = ","
+  )
 
 }
 
@@ -53,11 +58,11 @@ zero_dt <-
   # Remove invisible trps
   dplyr::filter(
     trp_id %in% distinct_trps$trp_id
+  ) %>%
+  dplyr::mutate(
+    #day = lubridate::dmy(day)
+    lane = lane / 10 # 1,0 tolkes visst til 10!
   )
-# %>%
-#   dplyr::mutate(
-#     day = lubridate::dmy(day)
-#   )
 
 present_trp_ids <-
   zero_dt %>%
@@ -139,7 +144,15 @@ zero_dt_filtered <-
     # Svingbrua sykkel
     !(trp_id =="03908B2426198" & month_number %in% c(11, 12, 1, 2, 3)),
     # Gamle Okstadbakken - Sykkel
-    !(trp_id =="10272B1698646" & month_number %in% c(11, 12, 1, 2, 3))
+    !(trp_id =="10272B1698646" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Mortavika ferjekai, felt 4
+    !(trp_id == "74885V319528" & lane == 4 & day > "2018-02-01"),
+    # Arna sykkel gs
+    !(trp_id == "83708B802716"),
+    # Sandviken sykkel R1
+    !(trp_id =="23565B805152" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Sandviken sykkel R2
+    !(trp_id =="24316B805152" & month_number %in% c(11, 12, 1, 2, 3))
   )
 
 n_before_2022 <-
@@ -159,6 +172,8 @@ n_before_2022 <-
 # 2023-06-22: 38 142
 # 2023-07-27: 38 125
 # 2023-09-11: 38 537
+# 2023-10-16: 36 528
+# 2023-11-01: 35 325
 
 trp_need_label <-
   zero_dt_filtered %>%
