@@ -1,9 +1,10 @@
 # List of TRPs in need of labels
 
-source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
-source("H:/Programmering/R/byindeks/split_road_system_reference.R")
-
-library(writexl)
+{
+  source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
+  source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+  library(writexl)
+}
 
 # TRP stats ----
 trp <- get_points()
@@ -106,6 +107,8 @@ real_zero_days <-
     day = lubridate::dmy(day)
   )
 
+# TODO: add filter for lonely days in winter for bike
+
 zero_dt_filtered <-
   zero_dt %>%
   dplyr::anti_join(
@@ -174,37 +177,55 @@ n_before_2022 <-
 # 2023-09-11: 38 537
 # 2023-10-16: 36 528
 # 2023-11-01: 35 325
+# 2024-01-01: 34 676
 
 trp_need_label <-
-  zero_dt_filtered %>%
+  zero_dt_filtered |>
   dplyr::left_join(
     distinct_trps,
     by = "trp_id"
-  ) %>%
+  ) |>
   dplyr::filter(
     !is.na(name)
-  ) %>%
+  ) |>
   dplyr::select(
     county_geono,
     county_name,
     municipality_name,
     road_category,
+    trp_id,
     name,
     traffic_type,
-    registration_frequency,
     road_reference,
     lane,
-    day
-  ) %>%
+    day,
+    month_number
+  ) |>
   dplyr::arrange(
-    county_geono,
+    trp_id,
+    lane,
+    day
+  ) |>
+  dplyr::mutate(
+    streak_group = base::cumsum(c(TRUE, base::diff(day) != 1))
+  ) |>
+  dplyr::mutate(
+    streak_length = n(),
+    .by = c(trp_id, lane, streak_group)
+  ) |>
+  dplyr::filter(
+    !(traffic_type == "BICYCLE" & month_number %in% c(1, 2, 3, 4, 10, 11, 12) & streak_length <= 3)
+  ) |>
+  dplyr::arrange(
+    county_name,
     municipality_name,
     road_category,
-    name,
-    day
-  ) %>%
+    name
+  ) |>
   dplyr::select(
-    -county_geono
+    -county_geono,
+    -month_number,
+    -streak_group
   )
 
 writexl::write_xlsx(
@@ -222,11 +243,9 @@ trp_need_label |>
 
 trp_top_list <-
   trp_need_label |>
-  dplyr::group_by(
-    name
-  ) |>
   dplyr::summarise(
-    count = n()
+    count = n(),
+    .by = c(name, traffic_type, municipality_name)
   ) |>
   dplyr::arrange(
     desc(count)
