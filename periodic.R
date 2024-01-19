@@ -43,7 +43,7 @@ periodic_trp <-
   ) |>
   dplyr::filter(
     latest_daily_traffic > "2018-12-31",
-    first_data < "2023-01-01"
+    first_data < "2024-01-01"
   ) |>
   split_road_system_reference()
 
@@ -107,24 +107,30 @@ aadt_heavy_ratio <-
   )
 
 aadt_heavy_ratio %>%
-  readr::write_csv2(
-    file = "periodic_data/periodisk_adt_alle.csv"
+  write.csv2(
+  #readr::write_csv2(
+    file = "periodic_data/periodisk_adt_alle.csv",
+    row.names = FALSE
   )
 
 aadt_heavy_ratio %>%
   dplyr::filter(
-    year %in% c(2019:2022)
+    year %in% c(2019:2023)
   ) |>
-  readr::write_csv2(
-    file = "periodic_data/periodisk_adt_2019_2022.csv"
+  write.csv2(
+  #readr::write_csv2(
+    file = "periodic_data/periodisk_adt_2019_2023.csv",
+    row.names = FALSE
   )
 
 aadt_heavy_ratio |>
   dplyr::filter(
-    year == 2022
+    year == 2023
   ) |>
-  readr::write_csv2(
-    file = "periodic_data/periodisk_adt_2022.csv"
+  write.csv2(
+  #readr::write_csv2(
+    file = "periodic_data/periodisk_adt_2023.csv",
+    row.names = FALSE
   )
 
 
