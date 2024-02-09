@@ -165,3 +165,11 @@ toll_stations_aadt |>
   writexl::write_xlsx(
     "toll/toll_station_aadt_2023.xlsx"
   )
+
+
+# JSON ----
+jsonlite::write_json(
+  toll_stations_aadt,
+  path = "toll/toll_station_aadt_2023.json",
+  prettify = TRUE
+)

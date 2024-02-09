@@ -42,3 +42,4 @@ vehicle_classification_data
 *.db
 *.pdf
 trp_direction
+*.json
