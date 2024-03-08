@@ -62,7 +62,7 @@ zero_dt <-
   ) %>%
   dplyr::mutate(
     #day = lubridate::dmy(day)
-    lane = lane / 10 # 1,0 tolkes visst til 10!
+    lane = lane / 100 # 1,00 tolkes visst til 100!
   )
 
 present_trp_ids <-
@@ -178,6 +178,7 @@ n_before_2022 <-
 # 2023-10-16: 36 528
 # 2023-11-01: 35 325
 # 2024-01-01: 34 676
+# 2024-03-08: 34 543
 
 trp_need_label <-
   zero_dt_filtered |>
