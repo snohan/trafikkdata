@@ -26,8 +26,7 @@ trps_without_reference_direction <-
   dplyr::filter(
     trp_type == "PERMANENT",
     #trp_type == "MOBILE",
-    operational_status == "OPERATIONAL",
-    #operational_status != "PLANNED",
+    !(operational_status %in% c("PLANNED", "RETIRED")),
     is.na(direction_with_current_link)
   ) |>
   dplyr::arrange(
