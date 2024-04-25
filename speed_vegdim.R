@@ -21,7 +21,15 @@
 
 # TRPs ----
 chosen_trps <- c(
-  "57808V2282277"
+  "57808V2282277",
+  "94187V1916131",
+  "79196V443434",
+  "14051V2499835",
+  "09750V705194",
+  "00509V885112",
+  "72936V3118172",
+  "29431V3118173",
+  "47985V2491853"
 )
 
 # Reference direction and current metering: Need to handle direction names and lane numbers accordingly
@@ -77,13 +85,14 @@ trp_info_direction <-
 # Kibana CSVs ----
 read_a_file <- function(file_name) {
 
-  readr::read_csv(
-    paste0("vegdim/", file_name)
+  readr::read_delim(
+    paste0("vegdim/", file_name),
+    locale = readr::locale(decimal_mark = ",")
   )
 
 }
 
-# TODO: should have included data logger type to convert vehicle_type_raw to readable names
+# TODO: If vehicle class: should have included data logger type to convert vehicle_type_raw to readable names
 vegdim_data <-
   list.files("vegdim") |>
   purrr::map_df(
@@ -95,10 +104,10 @@ vegdim_data <-
     sd_l = 'Lower Standard Deviation of speed'
   ) |>
   dplyr::mutate(
-    dplyr::across(
-      where(is.numeric),
-      ~ .x / 100
-    ),
+    # dplyr::across(
+    #   where(is.numeric),
+    #   ~ .x / 100
+    # ),
     lane_parity = dplyr::if_else(lane %% 2 == 0, "even", "odd"),
     length_range = dplyr::case_when(
       stringr::str_detect(length_range, "< 5") ~ "lette",
@@ -143,6 +152,27 @@ vegdim_data <-
     )
   )
 
+# Check ratio of valid values
+valid_data <-
+  vegdim_data |>
+  dplyr::mutate(
+    valid = valid_speed & valid_length
+  ) |>
+  tidyr::pivot_wider(
+    id_cols = c(trp_id, lane, length_range, month),
+    names_from = valid,
+    names_prefix = "valid_",
+    values_from = volume,
+    values_fn = sum,
+    values_fill = 0
+  ) |>
+  dplyr::mutate(
+    valid_ratio = (valid_TRUE / (valid_TRUE + valid_FALSE)) |> round(2)
+  ) |>
+  dplyr::select(
+    trp_id, lane, length_range, month, valid_ratio
+  )
+
 
 # Write ----
 vegdim_data |>
@@ -153,5 +183,12 @@ vegdim_data |>
   dplyr::select(
     -valid_speed,
     -valid_length
+  ) |>
+  dplyr::left_join(
+    valid_data,
+    by = dplyr::join_by(trp_id, lane, length_range, month)
+  ) |>
+  dplyr::rename(
+    volume_with_valid_speed_and_length = volume
   ) |>
   writexl::write_xlsx("vegdim.xlsx")
