@@ -10,8 +10,8 @@
 trp <- get_points()
 
 distinct_trps <-
-  trp %>%
-  split_road_system_reference() %>%
+  trp |>
+  split_road_system_reference() |>
   dplyr::select(
     county_geono,
     county_name,
@@ -22,11 +22,11 @@ distinct_trps <-
     road_reference,
     traffic_type,
     registration_frequency
-  ) %>%
-  dplyr::distinct(trp_id, .keep_all = T) %>%
-  dplyr::mutate(
-    name = stringr::str_to_title(name, locale = "no")
-  )
+  ) |>
+  dplyr::distinct(trp_id, .keep_all = T) #%>%
+  # dplyr::mutate(
+  #   name = stringr::str_to_title(name, locale = "no")
+  # )
 
 
 # Read CSVs from Kibana ----
@@ -128,6 +128,8 @@ zero_dt_filtered <-
     !(trp_id == "04300V72813" & lane == 4 & day > "2017-07-01"),
     # Gamle Nygårdsbru foratu og bilveg
     !(trp_id %in% c("17729B2483952", "17981B2483952")),
+    # Langvatnet
+    !(trp_id =="19588V1060150" & month_number %in% c(11, 12, 1, 2, 3, 4)),
     # Videseter
     !(trp_id =="90465V384130" & month_number %in% c(10, 11, 12, 1, 2, 3, 4, 5)),
     # Aurlandsfjellet
@@ -179,6 +181,7 @@ n_before_2022 <-
 # 2023-11-01: 35 325
 # 2024-01-01: 34 676
 # 2024-03-08: 34 543
+# 2024-04-29: 33 057
 
 trp_need_label <-
   zero_dt_filtered |>
