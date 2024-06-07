@@ -29,7 +29,8 @@ chosen_trps <- c(
   "00509V885112",
   "72936V3118172",
   "29431V3118173",
-  "47985V2491853"
+  "47985V2491853",
+  "19085V885118"
 )
 
 # Reference direction and current metering: Need to handle direction names and lane numbers accordingly
@@ -191,4 +192,4 @@ vegdim_data |>
   dplyr::rename(
     volume_with_valid_speed_and_length = volume
   ) |>
-  writexl::write_xlsx("vegdim.xlsx")
+  writexl::write_xlsx("spesialbestillinger/vegdim.xlsx")
