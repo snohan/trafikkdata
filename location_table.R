@@ -10,6 +10,11 @@ library(writexl)
 # Points - coordinates of names at points
 # Roads - road sections with names at each end
 
+# name_translations <-
+#   readr::read_delim(
+#     "location_table/NAMETRANSLATIONS.DAT",
+#     col_types = cols(.default = "c")
+#   )
 
 names_raw <-
   readr::read_delim(
@@ -17,6 +22,37 @@ names_raw <-
     col_types = cols(.default = "c"),
     col_select = c(NID, NAME)
   )
+
+admin_areas_raw <-
+  readr::read_delim(
+    "location_table/ADMINISTRATIVEAREA.DAT",
+    col_types = cols(.default = "c"),
+    col_select = c(LCD, NID, POL_LCD)
+  )
+
+
+admin_areas_names <-
+  admin_areas_raw |>
+  dplyr::left_join(
+    names_raw,
+    by = join_by(NID)
+  ) |>
+  dplyr::left_join(
+    admin_areas_raw,
+    suffix = c("", "_pol"),
+    by = join_by(POL_LCD == LCD)
+  ) |>
+  dplyr::left_join(
+    names_raw,
+    suffix = c("", "_pol"),
+    by = join_by(NID_pol == NID)
+  ) |>
+  dplyr::select(
+    POL_LCD,
+    area = NAME_pol
+  ) |>
+  dplyr::distinct()
+
 
 soffsets_raw <-
   readr::read_delim(
@@ -179,8 +215,8 @@ roads <-
     by = join_by(N2ID == NID)
   ) |>
   dplyr::left_join(
-    names_raw,
-    by = join_by(POL_LCD == NID)
+    admin_areas_names,
+    by = join_by(POL_LCD)
   ) |>
   # Remove roads that have more fine grained segments
   dplyr::filter(
@@ -203,7 +239,7 @@ roads_and_names <-
     segments = LCD %in% segments$ROA_LCD
   ) |>
   dplyr::select(
-    fylke = NAME,
+    fylke = area,
     vegkategori,
     vegnummer,
     veg = ROADNUMBER,

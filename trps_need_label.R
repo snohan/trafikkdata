@@ -255,3 +255,5 @@ trp_top_list <-
   dplyr::arrange(
     desc(count)
   )
+
+# TODO: add instances of negative speeed
