@@ -29,7 +29,7 @@ distinct_trps <-
   # )
 
 
-# Read CSVs from Kibana ----
+# Zero dt ----
 read_a_file <- function(file_name) {
 
   # readr::read_csv2(
@@ -183,6 +183,7 @@ n_before_2022 <-
 # 2024-03-08: 34 543
 # 2024-04-29: 33 057
 # 2024-06-04: 33 051
+# 2024-08-08: 33 400
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -233,10 +234,10 @@ trp_need_label <-
     -streak_group
   )
 
-writexl::write_xlsx(
-  trp_need_label,
-  path = "nulltrafikk.xlsx"
-)
+# writexl::write_xlsx(
+#   trp_need_label,
+#   path = "nulltrafikk.xlsx"
+# )
 
 
 trp_need_label |>
@@ -256,4 +257,85 @@ trp_top_list <-
     desc(count)
   )
 
-# TODO: add instances of negative speeed
+
+# Negative speed ----
+# Get data grom Kibana raw, use last seven days
+negative_speed <-
+  readr::read_csv2("negative_speed.csv") |>
+  dplyr::mutate(
+    speed =
+      dplyr::case_when(
+        speed == "≥ -10000 and < 0" ~ "neg",
+        speed == "≥ 0 and < 2000" ~ "pos"
+      )
+  ) |>
+  tidyr::pivot_wider(
+    names_from = speed,
+    names_prefix = "speed_",
+    values_from = volume
+  ) |>
+  dplyr::mutate(
+    total_volume = speed_neg + speed_pos,
+    percentage_negative_speed = round(speed_neg / (total_volume) * 100, 0),
+    trs_id = as.character(trs_id)
+  ) |>
+  dplyr::filter(
+    total_volume > 700,
+    # When there are just a few events, it is probably just real overtakes, so filter them.
+    percentage_negative_speed >= 10
+  ) |>
+  dplyr::arrange(
+    desc(percentage_negative_speed)
+  )
+
+# Need to add some metainfo on stations from TRP-API
+# Need not fetch new data every time
+# {
+#   source("H:/Programmering/R/byindeks/get_from_trp_api.R")
+#   trs_id <-
+#     get_trs_info_simple()
+#   readr::write_rds(
+#     trs_id,
+#     "trs_trp/trs.rds"
+#   )
+# }
+
+trs <- readr::read_rds("trs_trp/trs.rds")
+
+negative_speed_trs <-
+  negative_speed |>
+  dplyr::left_join(
+    trs,
+    by = dplyr::join_by(trs_id)
+  ) |>
+  dplyr::select(
+    county_name,
+    municipality_name,
+    trs_id,
+    name,
+    road_category,
+    road_reference,
+    traffic_type,
+    registration_frequency,
+    sensor_port,
+    total_volume,
+    speed_neg,
+    speed_pos,
+    percentage_negative_speed
+  ) |>
+  dplyr::arrange(
+    county_name,
+    municipality_name,
+    trs_id,
+    sensor_port
+  )
+
+
+# Write ----
+list(
+  nulltrafikk = trp_need_label,
+  negativ_fart = negative_speed_trs
+) |>
+writexl::write_xlsx(
+  path = "nulltrafikk.xlsx"
+)
