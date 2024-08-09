@@ -225,3 +225,40 @@ writexl::write_xlsx(
   the_data_tidy,
   "spesialbestillinger/lindheimminde.xlsx"
 )
+
+
+# Heggedalsposten ----
+heggedal <-
+  dplyr::bind_rows(
+    readr::read_delim(
+      "spesialbestillinger/heggedalsposten_1.csv"
+    ),
+    readr::read_delim(
+      "spesialbestillinger/heggedalsposten_2.csv"
+    )
+  ) |>
+  # Weird quirk in reading Kibana eksport: ignores decimal
+  dplyr::mutate(
+    dplyr::across(
+      tidyselect::where(is.numeric),
+      ~ .x / 100
+    )
+  ) |>
+  dplyr::left_join(
+    trp_info_no_lane,
+    by = dplyr::join_by(trp_id)
+  ) |>
+  dplyr::select(
+    trp_id,
+    trp_name,
+    road_reference,
+    dag,
+    periode_start,
+    trafikkmengde,
+    snittfart
+  )
+
+writexl::write_xlsx(
+  heggedal,
+  "spesialbestillinger/heggedal.xlsx"
+)
