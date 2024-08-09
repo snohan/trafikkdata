@@ -290,15 +290,6 @@ negative_speed <-
 
 # Need to add some metainfo on stations from TRP-API
 # Need not fetch new data every time
-# {
-#   source("H:/Programmering/R/byindeks/get_from_trp_api.R")
-#   trs_id <-
-#     get_trs_info_simple()
-#   readr::write_rds(
-#     trs_id,
-#     "trs_trp/trs.rds"
-#   )
-# }
 
 trs <- readr::read_rds("trs_trp/trs.rds")
 
