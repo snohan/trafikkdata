@@ -259,7 +259,7 @@ trp_top_list <-
 
 
 # Negative speed ----
-# Get data grom Kibana raw, use last seven days
+# Get data grom "negative_speed" in Kibana raw, use last seven days
 negative_speed <-
   readr::read_csv2("negative_speed.csv") |>
   dplyr::mutate(
