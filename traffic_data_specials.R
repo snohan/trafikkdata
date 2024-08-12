@@ -7,6 +7,28 @@
   library(writexl)
   source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
   source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+
+  # TRP metainfo, and map internal lanes to fit current metering
+  trp_info <- readr::read_rds("trs_trp/trp.rds")
+
+  # Mobile TRPs lack info on lanes
+  trp_info_no_lane <-
+    trp_info |>
+    dplyr::select(
+      trp_id,
+      trp_name,
+      road_reference,
+      registration_frequency
+    ) |>
+    dplyr::distinct()
+
+  trp_info_lane <-
+    trp_info |>
+    dplyr::select(
+      trp_id,
+      lane_internal,
+      lane_according_to_current_metering
+    )
 }
 
 # MDT for SD ----
@@ -157,28 +179,6 @@ the_data <-
       )
   )
 
-# TRP metainfo, and map internal lanes to fit current metering
-trp_info <- readr::read_rds("trs_trp/trp.rds")
-
-# Mobile TRPs lack info on lanes
-trp_info_no_lane <-
-  trp_info |>
-  dplyr::select(
-    trp_id,
-    trp_name,
-    road_reference,
-    registration_frequency
-  ) |>
-  dplyr::distinct()
-
-trp_info_lane <-
-  trp_info |>
-  dplyr::select(
-    trp_id,
-    lane_internal,
-    lane_according_to_current_metering
-  )
-
 the_data_tidy <-
   the_data |>
   dplyr::left_join(
@@ -231,10 +231,10 @@ writexl::write_xlsx(
 heggedal <-
   dplyr::bind_rows(
     readr::read_delim(
-      "spesialbestillinger/heggedalsposten_1.csv"
+      "spesialbestillinger/heggedalsposten_1a.csv"
     ),
     readr::read_delim(
-      "spesialbestillinger/heggedalsposten_2.csv"
+      "spesialbestillinger/heggedalsposten_2a.csv"
     )
   ) |>
   # Weird quirk in reading Kibana eksport: ignores decimal
@@ -248,15 +248,41 @@ heggedal <-
     trp_info_no_lane,
     by = dplyr::join_by(trp_id)
   ) |>
+  # dplyr::left_join(
+  #   trp_info_lane,
+  #   by = dplyr::join_by(trp_id, felt == lane_internal)
+  # ) |>
   dplyr::select(
     trp_id,
     trp_name,
     road_reference,
+    felt,
     dag,
     periode_start,
     trafikkmengde,
-    snittfart
+    snittfart,
+    fraktil_85 = '85th percentile of 85_fraktil'
+  ) |>
+  dplyr::mutate(
+    snittfart =
+      dplyr::case_when(
+        trafikkmengde <= 5 ~ NA_real_,
+        TRUE ~ snittfart
+      ),
+    fraktil_85 =
+      dplyr::case_when(
+        trafikkmengde <= 5 ~ NA_real_,
+        TRUE ~ fraktil_85
+      )
   )
+
+# daily <-
+#   heggedal |>
+#   dplyr::summarise(
+#     n = n(),
+#     traffic = sum(trafikkmengde),
+#     .by = c(trp_id, dag)
+#   )
 
 writexl::write_xlsx(
   heggedal,
