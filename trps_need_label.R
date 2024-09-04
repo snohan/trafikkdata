@@ -75,30 +75,55 @@ present_trp_ids <-
 labels <-
   get_labels_for_trp_list(
     present_trp_ids$trp_id
-  ) %>%
+  ) |>
   dplyr::select(
     trp_id,
     lane,
+    label_start,
+    label_end,
     date_interval
   )
 
-labelled_zero_days <-
-  zero_dt %>%
+labelled_zero_days_lane <-
+  zero_dt |>
   dplyr::inner_join(
     labels,
-    by = c("trp_id", "lane")
-  ) %>%
-  dplyr::mutate(
-    is_day_labelled = day %within% date_interval
-  ) %>%
-  dplyr::filter(
-    is_day_labelled == TRUE
-  ) %>%
+    by = dplyr::join_by(trp_id, lane, dplyr::between(day, label_start, label_end))
+  ) |>
   dplyr::select(
    trp_id,
    lane,
    day
   )
+
+labels_all_lanes <-
+  labels |>
+  dplyr::filter(
+    is.na(lane)
+  ) |>
+  dplyr::select(
+    -lane
+  )
+
+labelled_zero_days_all_lanes <-
+  zero_dt |>
+  dplyr::inner_join(
+    labels_all_lanes,
+    by = dplyr::join_by(trp_id, dplyr::between(day, label_start, label_end))
+  ) |>
+  dplyr::select(
+    trp_id,
+    lane,
+    day
+  )
+
+labelled_zero_days <-
+  dplyr::bind_rows(
+    labelled_zero_days_lane,
+    labelled_zero_days_all_lanes
+  ) |>
+  dplyr::distinct()
+
 
 # Real zero days as informed by owners
 real_zero_days <-
@@ -184,6 +209,7 @@ n_before_2022 <-
 # 2024-04-29: 33 057
 # 2024-06-04: 33 051
 # 2024-08-08: 33 400
+# 2024-09-04: 27 952 (labels all lanes update)
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -238,7 +264,6 @@ trp_need_label <-
 #   trp_need_label,
 #   path = "nulltrafikk.xlsx"
 # )
-
 
 trp_need_label |>
   dplyr::mutate(
