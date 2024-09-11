@@ -52,6 +52,7 @@ distinct_trps <-
     trp_id,
     name,
     traffic_type,
+    road_category,
     road_category_and_number,
     road_reference,
     county_name,
@@ -59,8 +60,9 @@ distinct_trps <-
     registration_frequency,
     operational_status
     ) %>%
-  dplyr::distinct(trp_id, .keep_all = T) |>
-  dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
+  dplyr::distinct(trp_id, .keep_all = T)# |>
+  #dplyr::mutate(name = stringr::str_to_title(name, locale = "no"))
+
 
 trp_stats_road_category <- distinct_trps %>%
   dplyr::group_by(
@@ -695,6 +697,149 @@ writexl::write_xlsx(trs_info_all, path = "trs_trp/all_stations.xlsx")
 
 trs_info_all <-
   readxl::read_xlsx(path = "trs_trp/all_stations.xlsx")
+
+
+# TRS info for NVDB ----
+trs_trp_for_nvdb_raw <- get_trs_trp_for_nvdb()
+
+trs_for_nvdb <-
+  trs_trp_for_nvdb_raw |>
+  dplyr::select(
+    #-data.trafficRegistrationStations.trafficRegistrationPoints,
+    -data.trafficRegistrationStations.sensorModel.type
+  ) |>
+  dplyr::filter(
+    data.trafficRegistrationStations.operationalStatus != "RETIRED"
+  ) |>
+  dplyr::rename(
+    malestasjonsnummer = data.trafficRegistrationStations.id,
+    stasjonsnavn = data.trafficRegistrationStations.name,
+    trafikantgruppe = data.trafficRegistrationStations.trafficType,
+    registreringshyppighet = data.trafficRegistrationStations.registrationFrequency,
+    status = data.trafficRegistrationStations.operationalStatus,
+    veglenke_id = data.trafficRegistrationStations.location.roadLink.id,
+    veglenkeposisjon = data.trafficRegistrationStations.location.roadLink.position,
+    utm33_wkt = data.trafficRegistrationStations.location.coordinates.utm33.wkt
+  ) |>
+  dplyr::mutate(
+    trafikantgruppe =
+      dplyr::case_when(
+        trafikantgruppe == "VEHICLE" ~ "Motorkjøretøy",
+        trafikantgruppe == "BICYCLE" ~ "Sykkel"
+      ),
+    status =
+      dplyr::case_when(
+        status == "OPERATIONAL" ~ "Operasjonell",
+        status == "NON_OPERATIONAL" ~ "Ute av drift"
+      ),
+    registreringshyppighet =
+      dplyr::case_when(
+        registreringshyppighet == "CONTINUOUS" ~ "Kontinuerlig",
+        registreringshyppighet == "PERIODIC" ~ "Periodisk"
+      )
+  ) |>
+  tidyr::unnest(
+    data.trafficRegistrationStations.trafficRegistrationPoints
+  ) |>
+  dplyr::filter(
+    operationalStatus != "RETIRED"
+  ) |>
+  dplyr::select(
+    -operationalStatus,
+    -location.roadLink.id,
+    -location.roadLink.position,
+    -location.coordinates.utm33.wkt,
+    -laneSensor.trpLaneMapping
+  ) |>
+  dplyr::summarise(
+    assosiert_trafikkregistreringspunkt = stringr::str_c(id, collapse = ", "),
+    .by = c(everything(), -id)
+  )
+
+
+# TODO: TRPs
+
+
+# TODO: lengde og bredde på alle induktivsløyfer
+sensor_for_nvdb <-
+  trs_trp_for_nvdb_raw |>
+  dplyr::filter(
+    data.trafficRegistrationStations.operationalStatus != "RETIRED"
+  ) |>
+  dplyr::select(
+    data.trafficRegistrationStations.id,
+    data.trafficRegistrationStations.trafficType,
+    data.trafficRegistrationStations.sensorModel.type,
+    data.trafficRegistrationStations.trafficRegistrationPoints
+  ) |>
+  tidyr::unnest(
+    data.trafficRegistrationStations.trafficRegistrationPoints
+  ) |>
+  dplyr::filter(
+    operationalStatus != "RETIRED",
+    !is.na(data.trafficRegistrationStations.sensorModel.type)
+  ) |>
+  dplyr::select(
+    malestasjonsnummer = data.trafficRegistrationStations.id,
+    id,
+    bruksomrade = data.trafficRegistrationStations.trafficType,
+    type = data.trafficRegistrationStations.sensorModel.type,
+    veglenke_id = location.roadLink.id,
+    veglenkeposisjon = location.roadLink.position,
+    utm33_wkt = location.coordinates.utm33.wkt,
+    laneSensor.trpLaneMapping
+  ) |>
+  dplyr::mutate(
+    type =
+      dplyr::case_when(
+        type == "Induktivt sløyfepar" & bruksomrade == "VEHICLE" ~ "Induktivsløyfe, motorkjøretøy",
+        type == "Induktivt sløyfepar" & bruksomrade == "BICYCLE" ~ "Induktivsløyfe, sykkel",
+        type == "Piezo sensorpar" ~ "Piezo-elektrisk kabel"
+      ),
+    bruksomrade =
+      dplyr::case_when(
+        bruksomrade == "VEHICLE" ~ "Trafikkregistrering motorkjøretøy",
+        bruksomrade == "BICYCLE" ~ "Trafikkregistrering sykkel"
+      )
+  ) |>
+  tidyr::unnest(
+    laneSensor.trpLaneMapping
+  ) |>
+  dplyr::arrange(
+    as.numeric(malestasjonsnummer),
+    id,
+    trpLane.laneNumberAccordingToRoadLink
+  ) |>
+  dplyr::summarise(
+    felt = stringr::str_c(trpLane.laneNumberAccordingToRoadLink, collapse = "#"),
+    .by = c(everything(), -trpLane.laneNumberAccordingToRoadLink)
+  )
+
+
+list(
+  trs = trs_for_nvdb,
+  trp = trp_for_nvdb,
+  sensor = sensor_for_nvdb
+) |>
+  writexl::write_xlsx(
+    "trs_trp/trs_trp_sensor_til_nvdb.xlsx"
+  )
+
+# TRPs associated with more than one TRS
+# trp_with_multiple_trs <-
+#   trp_for_nvdb |>
+#   dplyr::select(
+#     data.trafficRegistrationStations.id,
+#     id
+#   ) |>
+#   dplyr::summarise(
+#     n = n(),
+#     .by = id,
+#   ) |>
+#   dplyr::filter(
+#     n > 1
+#   )
+
 
 # TRS history ----
 # History of commission, device:
