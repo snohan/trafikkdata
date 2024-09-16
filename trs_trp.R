@@ -702,10 +702,11 @@ trs_info_all <-
 # TRS info for NVDB ----
 trs_trp_for_nvdb_raw <- get_trs_trp_for_nvdb()
 
+
+# TRS
 trs_for_nvdb <-
   trs_trp_for_nvdb_raw |>
   dplyr::select(
-    #-data.trafficRegistrationStations.trafficRegistrationPoints,
     -data.trafficRegistrationStations.sensorModel.type
   ) |>
   dplyr::filter(
@@ -745,11 +746,15 @@ trs_for_nvdb <-
     operationalStatus != "RETIRED"
   ) |>
   dplyr::select(
-    -operationalStatus,
-    -location.roadLink.id,
-    -location.roadLink.position,
-    -location.coordinates.utm33.wkt,
-    -laneSensor.trpLaneMapping
+    id,
+    malestasjonsnummer,
+    stasjonsnavn,
+    trafikantgruppe,
+    status,
+    registreringshyppighet,
+    veglenke_id,
+    veglenkeposisjon,
+    utm33_wkt
   ) |>
   dplyr::summarise(
     assosiert_trafikkregistreringspunkt = stringr::str_c(id, collapse = ", "),
@@ -757,9 +762,84 @@ trs_for_nvdb <-
   )
 
 
-# TODO: TRPs
+# TRP
+# Need also mobile TRPs
+mobile_trps <-
+  get_mobile_trps()
+
+mobile_trps_tidy <-
+  mobile_trps |>
+  dplyr::rename_with(
+    ~ stringr::str_replace(., "data.trafficRegistrationPoints.", "")
+  ) |>
+  dplyr::select(
+    id,
+    navn = name,
+    trafikantgruppe = trafficType,
+    installasjonstype = trpType,
+    retning_fra = trpDirection.directionAccordingToCurrentMetering.from,
+    retning_til = trpDirection.directionAccordingToCurrentMetering.to,
+    veglenke_id = location.roadLink.id,
+    veglenkeposisjon = location.roadLink.position,
+    #utm33_wkt = location.coordinates.utm33.wkt
+  )
+
+permanent_trps <-
+  trs_trp_for_nvdb_raw |>
+  dplyr::filter(
+    data.trafficRegistrationStations.operationalStatus != "RETIRED"
+  ) |>
+  dplyr::select(
+    #data.trafficRegistrationStations.id,
+    data.trafficRegistrationStations.trafficType,
+    data.trafficRegistrationStations.trafficRegistrationPoints
+  ) |>
+  tidyr::unnest(
+    data.trafficRegistrationStations.trafficRegistrationPoints
+  ) |>
+  dplyr::filter(
+    operationalStatus != "RETIRED"
+  ) |>
+  dplyr::select(
+    id,
+    navn = name,
+    trafikantgruppe = data.trafficRegistrationStations.trafficType,
+    installasjonstype = trpType,
+    retning_fra = trpDirection.directionAccordingToCurrentMetering.from,
+    retning_til = trpDirection.directionAccordingToCurrentMetering.to,
+    veglenke_id = location.roadLink.id,
+    veglenkeposisjon = location.roadLink.position,
+    #utm33_wkt = location.coordinates.utm33.wkt
+  )
+
+trp_for_nvdb <-
+  dplyr::bind_rows(
+    mobile_trps_tidy,
+    permanent_trps
+  ) |>
+  dplyr::mutate(
+    lenke_til_tds = paste0("https://trafikkdata.atlas.vegvesen.no/#/utforsk?datatype=volume&display=chart&trpids=", id),
+    assosiert_sensor_i_vegbane =
+      dplyr::case_when(
+        installasjonstype == "PERMANENT" ~ id,
+        TRUE ~ NA_character_
+      )
+  ) |>
+  dplyr::mutate(
+    trafikantgruppe =
+      dplyr::case_when(
+        trafikantgruppe == "VEHICLE" ~ "Trafikkregistrering motorkjøretøy",
+        trafikantgruppe == "BICYCLE" ~ "Trafikkregistrering sykkel"
+      ),
+    installasjonstype =
+      dplyr::case_when(
+        installasjonstype == "PERMANENT" ~ "Fast",
+        installasjonstype == "MOBILE" ~ "Mobilt"
+      )
+  )
 
 
+# Sensor
 # TODO: lengde og bredde på alle induktivsløyfer
 sensor_for_nvdb <-
   trs_trp_for_nvdb_raw |>
@@ -770,6 +850,7 @@ sensor_for_nvdb <-
     data.trafficRegistrationStations.id,
     data.trafficRegistrationStations.trafficType,
     data.trafficRegistrationStations.sensorModel.type,
+    data.trafficRegistrationStations.sensorModel.dimensions,
     data.trafficRegistrationStations.trafficRegistrationPoints
   ) |>
   tidyr::unnest(
@@ -784,9 +865,10 @@ sensor_for_nvdb <-
     id,
     bruksomrade = data.trafficRegistrationStations.trafficType,
     type = data.trafficRegistrationStations.sensorModel.type,
+    dimensjoner = data.trafficRegistrationStations.sensorModel.dimensions,
     veglenke_id = location.roadLink.id,
     veglenkeposisjon = location.roadLink.position,
-    utm33_wkt = location.coordinates.utm33.wkt,
+    #utm33_wkt = location.coordinates.utm33.wkt,
     laneSensor.trpLaneMapping
   ) |>
   dplyr::mutate(
@@ -813,9 +895,30 @@ sensor_for_nvdb <-
   dplyr::summarise(
     felt = stringr::str_c(trpLane.laneNumberAccordingToRoadLink, collapse = "#"),
     .by = c(everything(), -trpLane.laneNumberAccordingToRoadLink)
+  ) |>
+  dplyr::mutate(
+    lengde =
+      dplyr::case_when(
+        dimensjoner == "185 x 185" ~ 500,
+        dimensjoner == "120 x (150–199)" ~ 550,
+        dimensjoner == "120 x (200–330)" ~ 700,
+        dimensjoner == "40 x (110-140)" ~ 150
+      ),
+    bredde =
+      dplyr::case_when(
+        dimensjoner == "185 x 185" ~ 200,
+        dimensjoner == "120 x (150–199)" ~ 210,
+        dimensjoner == "120 x (200–330)" ~ 340,
+        dimensjoner == "40 x (110-140)" ~ 150
+      )
+  ) |>
+  dplyr::select(
+    -malestasjonsnummer,
+    -dimensjoner
   )
 
 
+# Write
 list(
   trs = trs_for_nvdb,
   trp = trp_for_nvdb,

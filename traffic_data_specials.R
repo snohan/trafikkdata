@@ -8,6 +8,10 @@
   source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
   source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
+  decimal_point <- function(number) {
+    stringr::str_replace(as.character(number), ",", "\\.")
+  }
+
   # TRP metainfo, and map internal lanes to fit current metering
   trp_info <- readr::read_rds("trs_trp/trp.rds")
 
@@ -290,11 +294,13 @@ writexl::write_xlsx(
 )
 
 
-# Zhong ----
+# 15 min ----
+# Zhong et. al.
+
 the_data <-
   dplyr::bind_rows(
     readr::read_delim(
-      "spesialbestillinger/harebakken.csv"
+      "spesialbestillinger/molde_ferjekai_2024-07-10.csv"
     )
   ) |>
   # Weird quirk in reading Kibana eksport: ignores decimal
@@ -373,15 +379,15 @@ the_data_tidy |>
 
 writexl::write_xlsx(
   the_data_tidy,
-  "spesialbestillinger/harebakken.xlsx"
+  "spesialbestillinger/molde_ferjekai_2024-07-10.xlsx"
 )
 
 
-# Kot ----
+# Speed ----
 the_data <-
   dplyr::bind_rows(
     readr::read_delim(
-      "spesialbestillinger/skoger_15_min.csv"
+      "spesialbestillinger/atlanterhavsvegen.csv"
     )
   ) |>
   # Weird quirk in reading Kibana eksport: ignores decimal
@@ -391,29 +397,37 @@ the_data <-
       ~ .x / 100
     )
   ) |>
-  tidyr::pivot_wider(
-    names_from = godkjent_fart,
-    values_from = c(trafikkmengde, snittfart),
-    values_fill = list(trafikkmengde = c(0), snittfart = NA)
+  dplyr::rename(
+    percentile_85 = '85th percentile of percentile_85'
   ) |>
   dplyr::mutate(
-    trafikkmengde = trafikkmengde_TRUE + trafikkmengde_FALSE,
-    prosentandel_godkjent_fart = round(trafikkmengde_TRUE / trafikkmengde * 100, 1)
+    mean_speed = decimal_point(mean_speed) |> as.numeric(),
+    percentile_85 = decimal_point(percentile_85) |> as.numeric()
+  ) |>
+  tidyr::pivot_wider(
+    names_from = valid_speed,
+    values_from = c(traffic, mean_speed, percentile_85),
+    values_fill = list(traffic = c(0), mean_speed = NA, percentile_85 = NA)
+  ) |>
+  dplyr::mutate(
+    traffic_volume = traffic_TRUE + traffic_FALSE,
+    percentage_valid_speed = round(traffic_TRUE / traffic_volume * 100, 1)
   ) |>
   dplyr::select(
     trp_id,
-    felt,
-    dag,
-    periode_start,
-    trafikkmengde,
-    snittfart = snittfart_TRUE,
-    prosentandel_godkjent_fart
+    trp_lane,
+    day,
+    #periode_start,
+    traffic_volume,
+    mean_speed = mean_speed_TRUE,
+    percentile_85 = percentile_85_TRUE,
+    percentage_valid_speed
   ) |>
   dplyr::mutate(
-    snittfart =
+    mean_speed =
       dplyr::case_when(
-        trafikkmengde <= 5 ~ NA_real_,
-        TRUE ~ snittfart
+        traffic_volume <= 5 ~ NA_real_,
+        TRUE ~ mean_speed
       )
   )
 
@@ -429,36 +443,37 @@ the_data_tidy <-
     trp_info_lane,
     by = dplyr::join_by(
       trp_id == trp_id,
-      felt == lane_internal
+      trp_lane == lane_internal
     )
   ) |>
   dplyr::mutate(
-    felt =
+    trp_lane =
       dplyr::case_when(
         !is.na(lane_according_to_current_metering) ~ lane_according_to_current_metering,
-        TRUE ~ felt
+        TRUE ~ trp_lane
       )
   ) |>
   dplyr::select(
     trp_id,
     trp_name,
     road_reference,
-    felt,
-    dag,
-    periode_start,
-    trafikkmengde,
-    snittfart,
-    prosentandel_godkjent_fart
+    trp_lane,
+    day,
+    #period_start,
+    traffic_volume,
+    mean_speed,
+    percentile_85,
+    percentage_valid_speed
   )
 
 the_data_tidy |>
   summarise(
     n = n(),
-    mean_volume = mean(trafikkmengde),
-    .by = c(trp_name, felt)
+    mean_volume = mean(traffic_volume),
+    .by = trp_name
   )
 
 writexl::write_xlsx(
   the_data_tidy,
-  "spesialbestillinger/skoger.xlsx"
+  "spesialbestillinger/atlanterhavsvegen.xlsx"
 )

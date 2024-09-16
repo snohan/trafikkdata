@@ -209,7 +209,8 @@ n_before_2022 <-
 # 2024-04-29: 33 057
 # 2024-06-04: 33 051
 # 2024-08-08: 33 400
-# 2024-09-04: 27 952 (labels all lanes update)
+# 2024-09-04: 27 952 (update: labels covering all lanes)
+# 2024-09-16: 27 796
 
 trp_need_label <-
   zero_dt_filtered |>
