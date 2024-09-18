@@ -145,6 +145,24 @@ trp_tidy <- trp %>%
 writexl::write_xlsx(trp_tidy, path = "trs_trp/punkter_med_feltnummer.xlsx")
 
 
+# TRP location ----
+trp <- get_points()
+
+trp_tidy <-
+  trp |>
+  dplyr::distinct(trp_id, .keep_all = T) |>
+  dplyr::select(
+    trp_id,
+    road_reference,
+    county_name,
+    municipality_name,
+    road_link_position,
+    lat, lon
+  )
+
+writexl::write_xlsx(trp_tidy, path = "trs_trp/trp_med_koordinater.xlsx")
+
+
 # TRP and legacies ----
 trs_with_trp %>%
   dplyr::filter(!is.na(legacyNortrafMpn)) %>%

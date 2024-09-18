@@ -308,7 +308,8 @@ negative_speed <-
   dplyr::filter(
     total_volume > 700,
     # When there are just a few events, it is probably just real overtakes, so filter them.
-    percentage_negative_speed >= 10
+    percentage_negative_speed >= 10,
+    !(trs_id %in% c("1100308")) # Eide, smal veg
   ) |>
   dplyr::arrange(
     desc(percentage_negative_speed)
