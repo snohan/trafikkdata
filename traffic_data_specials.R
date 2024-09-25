@@ -33,6 +33,20 @@
       lane_internal,
       lane_according_to_current_metering
     )
+
+  trp_info_lane_direction_names <-
+    trp_info |>
+    dplyr::select(
+      trp_id,
+      trp_name,
+      road_reference,
+      lane_internal,
+      lane_according_to_current_metering,
+      from_according_to_metering,
+      to_according_to_metering
+    )
+
+
 }
 
 # MDT for SD ----
@@ -476,4 +490,75 @@ the_data_tidy |>
 writexl::write_xlsx(
   the_data_tidy,
   "spesialbestillinger/atlanterhavsvegen.xlsx"
+)
+
+
+# VBV Politiet ----
+the_data <-
+  dplyr::bind_rows(
+    readr::read_delim(
+      "spesialbestillinger/vbv_pd.csv"
+    )
+  ) |>
+  # Weird quirk in reading Kibana eksport: ignores decimal
+  dplyr::mutate(
+    dplyr::across(
+      tidyselect::where(is.numeric),
+      ~ .x / 100
+    )
+  ) |>
+  dplyr::left_join(
+    trp_info_lane_direction_names,
+    by = dplyr::join_by(
+      traffic_registration_point_id == trp_id,
+      lane == lane_internal
+    )
+  ) |>
+  dplyr::mutate(
+    lane =
+      dplyr::case_when(
+        !is.na(lane_according_to_current_metering) ~ lane_according_to_current_metering,
+        TRUE ~ lane
+      ),
+    from =
+      dplyr::case_when(
+        lane %% 2 == 0 ~ to_according_to_metering,
+        TRUE ~ from_according_to_metering
+      ),
+    to =
+      dplyr::case_when(
+        lane %% 2 == 0 ~ from_according_to_metering,
+        TRUE ~ to_according_to_metering
+      ),
+    vehicle_class =
+      dplyr::case_when(
+        norsikt_class_l4 == "MC, MP" ~ "Motorsykkel, moped",
+        norsikt_class_l4 == "MC, MP WC" ~ "Motorsykkel, moped med henger",
+        norsikt_class_l4 == "PC, LGV, LB" ~ "Personbil, lett varebil, lett buss",
+        norsikt_class_l4 == "PC, LGV, LB WC" ~ "Personbil, lett varebil, lett buss med henger",
+        norsikt_class_l4 == "HB WOC WC" ~ "Buss med eller uten henger",
+        norsikt_class_l4 == "HGV, RT, EMS" ~ "Lastebil, trekkbil, annet tungt kjøretøy",
+        norsikt_class_l4 == "HGV WC" ~ "Lastebil med henger",
+        norsikt_class_l4 == "RT WC" ~ "Trekkbil med henger (semitrailer)"
+      )
+  ) |>
+  dplyr::select(
+    traffic_registration_point_id,
+    trp_name,
+    road_reference,
+    lane,
+    from,
+    to,
+    event_timestamp,
+    vehicle_class,
+    speed,
+    length,
+    valid_classification,
+    valid_speed,
+    valid_length
+  )
+
+writexl::write_xlsx(
+  the_data,
+  "spesialbestillinger/garmo.xlsx"
 )
