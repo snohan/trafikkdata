@@ -182,7 +182,9 @@ zero_dt_filtered <-
     # Sandviken sykkel R1
     !(trp_id =="23565B805152" & month_number %in% c(11, 12, 1, 2, 3)),
     # Sandviken sykkel R2
-    !(trp_id =="24316B805152" & month_number %in% c(11, 12, 1, 2, 3))
+    !(trp_id =="24316B805152" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Liljevatnet sykkel
+    !(trp_id =="07530B1807128")
   )
 
 n_before_2022 <-
@@ -211,6 +213,7 @@ n_before_2022 <-
 # 2024-08-08: 33 400
 # 2024-09-04: 27 952 (update: labels covering all lanes)
 # 2024-09-16: 27 796
+# 2024-10-03: 27 536
 
 trp_need_label <-
   zero_dt_filtered |>

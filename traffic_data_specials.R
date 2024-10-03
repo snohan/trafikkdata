@@ -14,6 +14,7 @@
 
   # TRP metainfo, and map internal lanes to fit current metering
   trp_info <- readr::read_rds("trs_trp/trp.rds")
+  # Made in trp_api_fetcher.R
 
   # Mobile TRPs lack info on lanes
   trp_info_no_lane <-
@@ -308,7 +309,7 @@ writexl::write_xlsx(
 )
 
 
-# 15 min ----
+# 15 min speed ----
 # Zhong et. al.
 
 the_data <-
@@ -490,6 +491,162 @@ the_data_tidy |>
 writexl::write_xlsx(
   the_data_tidy,
   "spesialbestillinger/atlanterhavsvegen.xlsx"
+)
+
+
+# 15 min speed and length ----
+# Want valid speed per length class, but only for those with valid length.
+# Need percentages for both valid speed and valid length.
+# Will show only total volume, not total mean speed, just mean speed per length class.
+
+# Årstadmodellen
+subfolder <- "spesialbestillinger/aarstadmodellen"
+
+the_data <-
+  purrr::map(
+    list.files(subfolder),
+    ~ readr::read_delim(paste0(subfolder, "/", .))
+  ) |>
+  purrr::list_rbind() |>
+  # Weird quirk in reading Kibana eksport: ignores decimal
+  dplyr::mutate(
+    dplyr::across(
+      tidyselect::where(is.numeric),
+      ~ .x / 100
+    ),
+    lengdeklasse =
+      dplyr::case_when(
+        lengdeklasse == "≥ 0,00 and < 5,60" ~ "korte",
+        TRUE ~ "lange"
+      )
+  )
+
+# Must separate speed and length to get percentages of valid measurements correct.
+the_length_data <-
+  the_data |>
+  dplyr::select(
+    trp_id,
+    felt,
+    dag,
+    periode_start,
+    lengdeklasse,
+    trafikkmengde,
+    godkjent_lengde
+  ) |>
+  dplyr::summarise(
+    trafikkmengde = sum(trafikkmengde),
+    .by = c(trp_id, felt, dag, periode_start, lengdeklasse, godkjent_lengde)
+  ) |>
+  tidyr::pivot_wider(
+    names_from = godkjent_lengde,
+    names_prefix = "trafikkmengde_",
+    values_from = c(trafikkmengde),
+    values_fill = list(trafikkmengde = c(0))
+  ) |>
+  dplyr::mutate(
+    trafikkmengde_total = sum(trafikkmengde_TRUE, trafikkmengde_FALSE),
+    prosentandel_godkjent_lengde = round(sum(trafikkmengde_TRUE) / trafikkmengde_total * 100, 1),
+    .by = c(trp_id, felt, dag, periode_start)
+  ) |>
+  dplyr::select(
+    trp_id,
+    felt,
+    dag,
+    periode_start,
+    lengdeklasse,
+    trafikkmengde_total,
+    trafikkmengde_lengde = trafikkmengde_TRUE,
+    prosentandel_godkjent_lengde
+  )
+
+the_speed_data <-
+  the_data |>
+  dplyr::filter(
+    godkjent_lengde == TRUE & godkjent_fart == TRUE
+  ) |>
+  dplyr::select(
+    trp_id,
+    felt,
+    dag,
+    periode_start,
+    lengdeklasse,
+    trafikkmengde_godkjent_fart = trafikkmengde,
+    snittfart
+  ) |>
+  dplyr::mutate(
+
+  )
+
+the_data_tidy <-
+  the_length_data |>
+  dplyr::left_join(
+    the_speed_data,
+    by = join_by(trp_id, felt, dag, periode_start, lengdeklasse)
+  ) |>
+  dplyr::mutate(
+    prosentandel_godkjent_fart = round(trafikkmengde_godkjent_fart / trafikkmengde_lengde * 100, 1),
+    snittfart =
+      dplyr::case_when(
+        trafikkmengde_godkjent_fart <= 5 ~ NA_real_,
+        TRUE ~ snittfart
+      ),
+    prosentandel_godkjent_fart = dplyr::if_else(is.na(snittfart), NA_real_, prosentandel_godkjent_fart)
+  ) |>
+  dplyr::left_join(
+    trp_info_no_lane,
+    by = dplyr::join_by(
+      trp_id == trp_id
+    )
+  ) |>
+  dplyr::left_join(
+    trp_info_lane,
+    by = dplyr::join_by(
+      trp_id == trp_id,
+      felt == lane_internal
+    )
+  ) |>
+  dplyr::mutate(
+    felt =
+      dplyr::case_when(
+        !is.na(lane_according_to_current_metering) ~ lane_according_to_current_metering,
+        TRUE ~ felt
+      )
+  ) |>
+  dplyr::select(
+    trp_id,
+    trp_name,
+    road_reference,
+    felt,
+    dag,
+    periode_start,
+    lengdeklasse,
+    trafikkmengde_total,
+    trafikkmengde_lengde,
+    prosentandel_godkjent_lengde,
+    snittfart,
+    prosentandel_godkjent_fart
+  )
+
+the_data_summarised <-
+  the_data_tidy |>
+  summarise(
+    n = n(),
+    mean_volume = mean(trafikkmengde_total, na.rm = T),
+    mean_speed = mean(snittfart, na.rm = T),
+    .by = c(trp_name, felt, lengdeklasse)
+  )
+
+the_trp_names <-
+  the_data_tidy |>
+  dplyr::select(
+    trp_name
+  ) |>
+  dplyr::distinct() |>
+  dplyr::arrange(trp_name)
+
+writexl::write_xlsx(
+  the_data_tidy,
+  "spesialbestillinger/aarstadmodellen.xlsx"
 )
 
 
