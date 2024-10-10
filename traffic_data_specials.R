@@ -37,17 +37,29 @@
 
   trp_info_lane_direction_names <-
     trp_info |>
+    dplyr::mutate(
+      from =
+        dplyr::case_when(
+          lane_according_to_current_metering %% 2 == 0 ~ to_according_to_metering,
+          TRUE ~ from_according_to_metering
+        ),
+      to =
+        dplyr::case_when(
+          lane_according_to_current_metering %% 2 == 0 ~ from_according_to_metering,
+          TRUE ~ to_according_to_metering
+        ),
+      direction = paste0("Fra ", from, " til ", to)
+    ) |>
     dplyr::select(
       trp_id,
-      trp_name,
-      road_reference,
-      lane_internal,
+      #trp_name,
+      #road_reference,
+      #lane_internal,
       lane_according_to_current_metering,
-      from_according_to_metering,
-      to_according_to_metering
+      #from_according_to_metering,
+      #to_according_to_metering
+      direction
     )
-
-
 }
 
 # MDT for SD ----
@@ -402,7 +414,7 @@ writexl::write_xlsx(
 the_data <-
   dplyr::bind_rows(
     readr::read_delim(
-      "spesialbestillinger/atlanterhavsvegen.csv"
+      "spesialbestillinger/elverum_tn.csv"
     )
   ) |>
   # Weird quirk in reading Kibana eksport: ignores decimal
@@ -490,7 +502,7 @@ the_data_tidy |>
 
 writexl::write_xlsx(
   the_data_tidy,
-  "spesialbestillinger/atlanterhavsvegen.xlsx"
+  "spesialbestillinger/elverum_tn.xlsx"
 )
 
 
@@ -657,7 +669,7 @@ the_data <-
       "spesialbestillinger/vbv_pd.csv"
     )
   ) |>
-  # Weird quirk in reading Kibana eksport: ignores decimal
+  # Weird quirk in reading Kibana export: ignores decimal
   dplyr::mutate(
     dplyr::across(
       tidyselect::where(is.numeric),
@@ -718,4 +730,70 @@ the_data <-
 writexl::write_xlsx(
   the_data,
   "spesialbestillinger/garmo.xlsx"
+)
+
+
+# Class per direction ----
+the_data <-
+  readr::read_delim(
+    "spesialbestillinger/vegdim_klasser.csv"
+  ) |>
+  # Weird quirk in reading Kibana eksport: ignores decimal
+  dplyr::mutate(
+    dplyr::across(
+      tidyselect::where(is.numeric),
+      ~ .x / 100
+    )
+  )
+
+the_data_tidy <-
+  the_data |>
+  dplyr::left_join(
+    trp_info_no_lane,
+    by = dplyr::join_by(
+      trp_id == trp_id
+    )
+  ) |>
+  dplyr::left_join(
+    trp_info_lane,
+    by = dplyr::join_by(
+      trp_id == trp_id,
+      lane == lane_internal
+    )
+  ) |>
+  dplyr::mutate(
+    lane =
+      dplyr::case_when(
+        !is.na(lane_according_to_current_metering) ~ lane_according_to_current_metering,
+        TRUE ~ lane
+      )
+  ) |>
+  dplyr::left_join(
+    trp_info_lane_direction_names,
+    by = join_by(
+      trp_id == trp_id,
+      lane == lane_according_to_current_metering
+    )
+  ) |>
+  dplyr::select(
+    trp_id,
+    trp_name,
+    road_reference,
+    lane,
+    direction,
+    day = time_from,
+    class,
+    traffic_volume
+  )
+
+the_data_tidy |>
+  summarise(
+    n = n(),
+    mean_volume = mean(traffic_volume),
+    .by = trp_name
+  )
+
+writexl::write_xlsx(
+  the_data_tidy,
+  "spesialbestillinger/vegdim_klasser.xlsx"
 )
