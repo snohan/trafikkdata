@@ -214,6 +214,7 @@ n_before_2022 <-
 # 2024-09-04: 27 952 (update: labels covering all lanes)
 # 2024-09-16: 27 796
 # 2024-10-03: 27 536
+# 2024-10-23: 27 294
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -246,11 +247,11 @@ trp_need_label <-
     streak_group = base::cumsum(c(TRUE, base::diff(day) != 1))
   ) |>
   dplyr::mutate(
-    streak_length = n(),
+    days_in_a_row = n(),
     .by = c(trp_id, lane, streak_group)
   ) |>
   dplyr::filter(
-    !(traffic_type == "BICYCLE" & month_number %in% c(1, 2, 3, 4, 10, 11, 12) & streak_length <= 3)
+    !(traffic_type == "BICYCLE" & month_number %in% c(1, 2, 3, 4, 10, 11, 12) & days_in_a_row <= 3)
   ) |>
   dplyr::arrange(
     county_name,
