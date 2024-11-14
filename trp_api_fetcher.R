@@ -24,3 +24,15 @@ source("H:/Programmering/R/byindeks/get_from_trp_api.R")
     "trs_trp/trp.rds"
   )
 }
+
+
+# TRS and TRP
+{
+  trs_trp_ids <- get_trs_and_trp_id()
+
+  readr::write_rds(
+    trs_trp_ids,
+    "trs_trp/trs_trp_ids.rds"
+  )
+
+}

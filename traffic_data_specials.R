@@ -5,6 +5,7 @@
 {
   base::Sys.setlocale(locale = "nb.utf8")
   library(writexl)
+  library(tictoc)
   source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
   source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 
@@ -796,4 +797,91 @@ the_data_tidy |>
 writexl::write_xlsx(
   the_data_tidy,
   "spesialbestillinger/vegdim_klasser.xlsx"
+)
+
+
+# AADT class direction ----
+# For transport model verification (Trier)
+# AADT with all length groups per direction 2023
+# All TRPs in east and south (regions)
+
+# Wants TRS-id also
+#trs_info <- readr::read_rds("trs_trp/trs.rds")
+trs_trp_ids <-
+  readr::read_rds("trs_trp/trs_trp_ids.rds") |>
+  dplyr::select(
+    trs_id, trp_id
+  ) |>
+  dplyr::filter(
+    !is.na(trp_id)
+  )
+
+
+# Need only TRPs with data in 2023
+trp_data_time_span <-
+  get_trp_data_time_span() |>
+  dplyr::filter(
+    first_data_with_quality_metrics < "2023-11-01",
+    latest_daily_traffic >= "2023-03-01"
+  )
+
+trps <-
+  get_points() |>
+  split_road_system_reference() |>
+  dplyr::select(
+    trp_id,
+    name,
+    traffic_type,
+    registration_frequency,
+    road_reference,
+    road_category_and_number,
+    county_name,
+    municipality_name
+  ) |>
+  dplyr::distinct(trp_id, .keep_all = T) |>
+  dplyr::filter(
+    traffic_type == "VEHICLE",
+    #registration_frequency == "CONTINUOUS",
+    county_name %in% c("Innlandet", "Akershus", "Oslo", "Østfold", "Buskerud", "Vestfold", "Telemark", "Agder", "Rogaland"),
+    trp_id %in% trp_data_time_span$trp_id
+  )
+
+{
+tictoc::tic()
+aadt <-
+  get_aadt_by_direction_and_length_for_trp_list(trps$trp_id, "WEEKDAY") |>
+  dplyr::filter(year == 2023) |>
+  dplyr::left_join(
+    trps,
+    by = join_by(trp_id)
+  ) |>
+  dplyr::select(
+    trp_id,
+    name,
+    registration_frequency,
+    road_reference,
+    road_category_and_number,
+    county_name,
+    tidyselect::everything(),
+    -traffic_type,
+    -municipality_name
+  )
+tictoc::toc()
+}
+
+
+aadt_and_trs <-
+  aadt |>
+  dplyr::left_join(
+    trs_trp_ids,
+    by = join_by(trp_id)
+  ) |>
+  dplyr::relocate(
+    trs_id,
+    .after = trp_id
+  )
+
+writexl::write_xlsx(
+  aadt_and_trs,
+  "spesialbestillinger/ydt_retning_lengde_2023.xlsx"
 )

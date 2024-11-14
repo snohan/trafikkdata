@@ -215,6 +215,8 @@ n_before_2022 <-
 # 2024-09-16: 27 796
 # 2024-10-03: 27 536
 # 2024-10-23: 27 294
+# 2024-11-01: 27 297
+# 2024-11-11: 26 415
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -263,6 +265,9 @@ trp_need_label <-
     -county_geono,
     -month_number,
     -streak_group
+  ) |>
+  dplyr::mutate(
+    comment = NA
   )
 
 # writexl::write_xlsx(
