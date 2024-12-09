@@ -328,7 +328,13 @@ writexl::write_xlsx(
 the_data <-
   dplyr::bind_rows(
     readr::read_delim(
-      "spesialbestillinger/molde_ferjekai_2024-07-10.csv"
+      "spesialbestillinger/sandnessundbrua_18.csv"
+    ),
+    readr::read_delim(
+      "spesialbestillinger/sandnessundbrua_19.csv"
+    ),
+    readr::read_delim(
+      "spesialbestillinger/sandnessundbrua_24.csv"
     )
   ) |>
   # Weird quirk in reading Kibana eksport: ignores decimal
@@ -396,18 +402,21 @@ the_data_tidy <-
     trafikkmengde,
     snittfart,
     prosentandel_godkjent_fart
+  ) |>
+  dplyr::filter(
+    lubridate::hour(periode_start) %in% c(7, 8)
   )
 
 the_data_tidy |>
   summarise(
     n = n(),
     mean_volume = mean(trafikkmengde),
-    .by = trp_name
+    .by = c(trp_name, felt)
   )
 
 writexl::write_xlsx(
   the_data_tidy,
-  "spesialbestillinger/molde_ferjekai_2024-07-10.xlsx"
+  "spesialbestillinger/sandnessundbrua.xlsx"
 )
 
 
