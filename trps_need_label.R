@@ -184,7 +184,19 @@ zero_dt_filtered <-
     # Sandviken sykkel R2
     !(trp_id =="24316B805152" & month_number %in% c(11, 12, 1, 2, 3)),
     # Liljevatnet sykkel
-    !(trp_id =="07530B1807128")
+    !(trp_id =="07530B1807128"),
+    # Folkestad
+    !(trp_id =="33345B2562216" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Løken
+    !(trp_id =="33211B2483702" & month_number %in% c(11, 12, 1, 2, 3)),
+    # Bruusgaardsvei
+    !(trp_id =="73890B1953494" & month_number %in% c(12, 1, 2)),
+    # Elvadalen nord
+    !(trp_id =="53385B249032"),
+    # Gullbringvegen
+    !(trp_id =="84491B2258803" & month_number %in% c(12, 1, 2)),
+    # Rotevatn
+    !(trp_id =="41209B1819765" & month_number %in% c(12, 1, 2)),
   )
 
 n_before_2022 <-
@@ -219,6 +231,7 @@ n_before_2022 <-
 # 2024-11-11: 26 415
 # 2024-11-25: 27 265
 # 2024-12-09: 27 263
+# 2025-01-02: 24 368 (I took some bike TRPs)
 
 trp_need_label <-
   zero_dt_filtered |>
