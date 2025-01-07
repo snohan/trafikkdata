@@ -2,8 +2,10 @@
 
 # Setup ----
 {
-  source("H:/Programmering/R/byindeks/rmd_setup.R")
+  base::Sys.setlocale(locale = "nb.utf8")
   source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
+  library(jsonlite)
+  library(lubridate)
   source("H:/Programmering/R/byindeks/split_road_system_reference.R")
   library(writexl)
   #library(outliers)
@@ -11,35 +13,68 @@
 
 
 # Toll station data ----
-# Using yearly aggregates to calculate AADT
+# Only yearly data is feasible to fetch by both class and direction due to export limit from Power BI.
+# Will use daily traffic to calculate coverage, see below.
 yearly <-
   readr::read_csv(
-    "toll/yearly.csv"
-  )
-
-yearly_tidy <-
-  yearly |>
+    #"toll/yearly.csv"
+    "toll/toll_station_yearly_2024.csv"
+  ) |>
   dplyr::select(
-    operator_id = 'operator ID',
-    toll_station_id = 'toll station code',
-    lane = 'toll station lane',
+    nvdb_id = 'NVDB ID',
+    direction_text = 'toll station direction',
     class = 'vehicle class ID',
-    year,
     traffic = 'Accepted passages'
   ) |>
   dplyr::filter(
-    class %in% c(1, 2)
+    class %in% c(1, 2),
+    !(nvdb_id == 0)
   ) |>
   dplyr::mutate(
-    operator_id = as.character(operator_id),
-    toll_station_id = as.character(toll_station_id)
+    class = dplyr::case_when(
+      class == 1 ~ "light",
+      class == 2 ~ "heavy"
+    )
+  ) |>
+  tidyr::pivot_wider(
+    names_from = class,
+    names_prefix = "traffic_",
+    values_from = traffic
+  ) |>
+  dplyr::mutate(
+    heavy_percentage =
+      (100 * traffic_heavy / (traffic_light + traffic_heavy)) |>
+      round(2),
+    # Get rid of leading zeros
+    nvdb_id = as.numeric(nvdb_id) |> as.character()
   )
 
+# 2023
+# yearly_tidy <-
+#   yearly |>
+#   dplyr::select(
+#     operator_id = 'operator ID',
+#     toll_station_id = 'toll station code',
+#     lane = 'toll station lane',
+#     class = 'vehicle class ID',
+#     year,
+#     traffic = 'Accepted passages'
+#   ) |>
+#   dplyr::filter(
+#     class %in% c(1, 2)
+#   ) |>
+#   dplyr::mutate(
+#     operator_id = as.character(operator_id),
+#     toll_station_id = as.character(toll_station_id)
+#   )
+
+
+## Coverage ----
 # Using daily aggregates to calculate coverage and look for anomalies
 daily <-
   base::list.files(
     "toll",
-    "daily",
+    "daily_2024",
     full.names = TRUE
   ) |>
   purrr::map_df(
@@ -49,37 +84,124 @@ daily <-
 daily_tidy <-
   daily |>
   dplyr::select(
-    year,
+    nvdb_id = 'NVDB ID',
+    direction_text = 'toll station direction',
     month = 'month no.',
     day = 'day no. of year',
-    operator_id = 'operator ID',
-    toll_station_id = 'toll station code',
+    #operator_id = 'operator ID',
+    #toll_station_id = 'toll station code',
     traffic = 'Accepted passages'
   ) |>
+  dplyr::filter(
+    !(nvdb_id == 0)
+  ) |>
   dplyr::mutate(
-    operator_id = as.character(operator_id),
-    toll_station_id = as.character(toll_station_id)
+    # Get rid of leading zeros
+    nvdb_id = as.numeric(nvdb_id) |> as.character()
+  ) |>
+  dplyr::mutate(
+    median = median(traffic) |> round(-1),
+    sd = sd(traffic) |> round(-1),
+    .by = c(nvdb_id, direction_text)
+  ) |>
+  dplyr::mutate(
+    outlier =
+      dplyr::case_when(
+        median > 300 & traffic < (0.1 * median) ~ TRUE,
+        TRUE ~ FALSE
+      )
+  ) |>
+  dplyr::arrange(
+    nvdb_id,
+    direction_text,
+    month,
+    day
+  )
+
+daily_stats <-
+  daily |>
+  dplyr::select(
+    nvdb_id = 'NVDB ID',
+    direction_text = 'toll station direction',
+    month = 'month no.',
+    day = 'day no. of year',
+    #operator_id = 'operator ID',
+    #toll_station_id = 'toll station code',
+    traffic = 'Accepted passages'
+  ) |>
+  dplyr::filter(
+    !(nvdb_id == 0)
+  ) |>
+  dplyr::mutate(
+    # Get rid of leading zeros
+    nvdb_id = as.numeric(nvdb_id) |> as.character()
+    #operator_id = as.character(operator_id),
+    #toll_station_id = as.character(toll_station_id)
   ) |>
   dplyr::summarise(
     n_days = n(),
+    sd = sd(traffic),
     min_day = min(traffic),
     max_day = max(traffic),
     mean = mean(traffic) |> round(-1),
     median = median(traffic) |> round(-1),
-    mean_median_diff = (1 - exp(log(mean) - log(median))) * 100,
-    .by = c(operator_id, toll_station_id)
+    min_day_to_median = (100 * min_day / median) |> round(2),
+    #mean_median_diff = (1 - exp(log(mean) - log(median))) * 100,
+    #.by = c(operator_id, toll_station_id)
+    .by = c(nvdb_id, direction_text)
+  ) |>
+  dplyr::filter(
+    # Remove opposite directions not intended to be registered
+    median > 10
+  ) |>
+  dplyr::arrange(
+    nvdb_id,
+    direction_text
+  ) |>
+  # Need to look at some deviating values.
+  # Assumption: for any station, most values are correct, so need only find the most deviating days
+  # Assumption: low median have naturally high deviations in terms of percentages
+  dplyr::filter(
+    median > 300,
+    min_day_to_median < 10
   )
-# There may be some days being outliers, but it doesn't seem to be a big issue.
+
+# Finally, total AADT and SE
+total_aadt <-
+  daily_tidy |>
+  dplyr::filter(
+    outlier == FALSE
+    # Only 300 of 200 000 removed!
+  ) |>
+  dplyr::summarise(
+    n_days = n(),
+    aadt = mean(traffic) |> round(-1),
+    sd = sd(traffic) |> round(0),
+    .by = c(nvdb_id, direction_text)
+  ) |>
+  dplyr::mutate(
+    se = (sd / sqrt(n_days) * sqrt((366 - n_days) / (366 - 1))) |> round(0)
+  ) |>
+  dplyr::filter(
+    aadt > 0
+  )
+
+# 2023: There may be some days being outliers, but it doesn't seem to be a big issue.
 
 
 # Toll station meta data ----
 toll_stations <-
-  get_all_tolling_stations()
+  get_all_tolling_stations() |>
+  dplyr::mutate(
+    # Get rid of leading zeros
+    nvdb_id = as.numeric(nvdb_id) |> as.character()
+  )
 
 toll_stations_selected <-
   toll_stations |>
   split_road_system_reference() |>
   dplyr::select(
+    nvdb_id,
     operator_id,
     toll_station_id,
     toll_station_name,
@@ -89,13 +211,15 @@ toll_stations_selected <-
     road_link_position
   ) |>
   dplyr::filter(
-    road_category %in% c("E", "R", "F"),
-    !is.na(toll_station_id)
+    road_category %in% c("E", "R", "F", "K"),
+    #!is.na(toll_station_id)
+    (nvdb_id %in% yearly$nvdb_id)
   ) |>
   dplyr::arrange(
     operator_id,
     as.numeric(toll_station_id)
   )
+
 
 # Some toll stations have same ID, but measures traffic on different traffic links
 # These must manually be mapped by lane to the correct traffic link
@@ -109,61 +233,146 @@ same_toll_station_id <-
     n > 1
   )
 
-toll_stations_single_link <-
-  toll_stations_selected |>
-  dplyr::anti_join(
-    same_toll_station_id,
-    by = dplyr::join_by(operator_id, toll_station_id)
-  )
+# NVDB ID is different for these
+
+# Remove Ryfast, labelled both directions, but data is per lane. Have TRPs anyway, so do not need them.
+# 100014 800
+# 100014 801
+# 100014 802
+
+
+
+# 2023:
+# toll_stations_single_link <-
+#   toll_stations_selected |>
+#   dplyr::anti_join(
+#     same_toll_station_id,
+#     by = dplyr::join_by(operator_id, toll_station_id)
+#   )
 
 
 # Toll station AADT ----
-aadt <-
-  yearly_tidy |>
-  dplyr::summarise(
-    traffic = sum(traffic),
-    .by = c(operator_id, toll_station_id, class)
+# 2023:
+# aadt <-
+#   yearly_tidy |>
+#   dplyr::summarise(
+#     traffic = sum(traffic),
+#     .by = c(operator_id, toll_station_id, class)
+#   ) |>
+#   dplyr::left_join(
+#     daily_tidy,
+#     by = dplyr::join_by(operator_id, toll_station_id)
+#   ) |>
+#   dplyr::mutate(
+#     aadt = (traffic / n_days) |> round(-1)
+#   ) |>
+#   dplyr::select(
+#     operator_id,
+#     toll_station_id,
+#     class,
+#     n_days,
+#     aadt
+#   ) |>
+#   tidyr::pivot_wider(
+#     names_from = "class",
+#     names_prefix = "aadt_class_",
+#     values_from = "aadt"
+#   ) |>
+#   dplyr::mutate(
+#     aadt_total = aadt_class_1 + aadt_class_2,
+#     heavy_ratio = ((aadt_class_2 / aadt_total) * 100) |> round(),
+#     coverage = ((n_days / 365) * 100) |> round()
+#   ) |>
+#   dplyr::select(
+#     -aadt_class_1,
+#     -aadt_class_2,
+#     -n_days
+#   )
+#
+# toll_stations_aadt <-
+#   toll_stations_single_link |>
+#   dplyr::left_join(
+#     aadt,
+#     by = dplyr::join_by(operator_id, toll_station_id)
+#   )
+
+toll_station_aadt <-
+  total_aadt |>
+  dplyr::left_join(
+    yearly,
+    by = dplyr::join_by(
+      nvdb_id, direction_text
+    )
   ) |>
   dplyr::left_join(
-    daily_tidy,
-    by = dplyr::join_by(operator_id, toll_station_id)
+    toll_stations_selected,
+    by = dplyr::join_by(nvdb_id)
   ) |>
-  dplyr::mutate(
-    aadt = (traffic / n_days) |> round(-1)
-  ) |>
-  dplyr::select(
-    operator_id,
-    toll_station_id,
-    class,
-    n_days,
-    aadt
-  ) |>
-  tidyr::pivot_wider(
-    names_from = "class",
-    names_prefix = "aadt_class_",
-    values_from = "aadt"
-  ) |>
-  dplyr::mutate(
-    aadt_total = aadt_class_1 + aadt_class_2,
-    heavy_ratio = ((aadt_class_2 / aadt_total) * 100) |> round(),
-    coverage = ((n_days / 365) * 100) |> round()
+  dplyr::filter(
+    !(operator_id == "100014" & toll_station_id %in% c("800", "801"))
   ) |>
   dplyr::select(
-    -aadt_class_1,
-    -aadt_class_2,
-    -n_days
+    nvdb_id,
+    #operator_id,
+    #toll_station_id,
+    toll_station_name,
+    road_reference,
+    directions,
+    direction_text,
+    #n_days,
+    aadt,
+    #sd,
+    se,
+    heavy_percentage
+  ) |>
+  dplyr::mutate(
+    total_aadt = sum(aadt),
+    .by = nvdb_id
+  ) |>
+  dplyr::mutate(
+    direction_percentage = (100 * aadt / total_aadt) |> round()
+  ) |>
+  # Removing "opposite" directions and specials
+  dplyr::filter(
+    direction_percentage >= 10
+  ) |>
+  dplyr::mutate(
+    n_directions = n(),
+    .by = nvdb_id
+  ) |>
+  dplyr::mutate(
+    # Which "both directions"-stations should we specify the correct direction for?
+    direction_imbalance =
+      dplyr::case_when(
+        n_directions > 1 & total_aadt > 300 & direction_percentage < 40 ~ TRUE,
+        n_directions > 1 & total_aadt > 300 & direction_percentage > 60 ~ TRUE,
+        TRUE ~ FALSE
+      ),
+    per_lane =
+      dplyr::case_when(
+        directions != "Begge retninger" & n_directions > 1 ~ TRUE,
+        TRUE ~ FALSE
+      )
+    # per_lane_b =
+    #   dplyr::case_when(
+    #     directions == "Begge retninger" & n_directions > 2 ~ TRUE,
+    #     TRUE ~ FALSE
+    #   )
+    # None of these
   )
 
-toll_stations_aadt <-
-  toll_stations_single_link |>
-  dplyr::left_join(
-    aadt,
-    by = dplyr::join_by(operator_id, toll_station_id)
-  )
+# TODO: some data are per lane, not direction - should be merged!
+# TODO: fill in missing directions
+# TODO: label correct direction for imbalanced station directions.
+
+# TODO: ?merge remaining "both directions"-stations to total AADT. This will be halfed in matching with links. Do not alter SE.
+
+
+
 
 toll_stations_aadt |>
   writexl::write_xlsx(
-    "toll/toll_station_aadt_2023.xlsx"
+    "toll/toll_station_aadt_2024.xlsx"
   )
 
 
