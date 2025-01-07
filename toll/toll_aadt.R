@@ -8,13 +8,61 @@
   library(lubridate)
   source("H:/Programmering/R/byindeks/split_road_system_reference.R")
   library(writexl)
-  #library(outliers)
 }
 
 
+# Toll station meta data ----
+toll_stations <-
+  get_all_tolling_stations() |>
+  dplyr::mutate(
+    # Get rid of leading zeros
+    nvdb_id = as.numeric(nvdb_id) |> as.character()
+  )
+
+toll_stations_selected <-
+  toll_stations |>
+  split_road_system_reference() |>
+  dplyr::select(
+    nvdb_id,
+    operator_id,
+    toll_station_id,
+    toll_station_name,
+    directions,
+    road_category,
+    road_reference,
+    road_link_position
+  ) |>
+  #dplyr::filter(
+  #  road_category %in% c("E", "R", "F", "K")
+  #) |>
+  dplyr::arrange(
+    operator_id,
+    as.numeric(toll_station_id)
+  )
+
+
+# Some toll stations have same ID, but measures traffic on different traffic links
+# These must manually be mapped by lane to the correct traffic link
+# 2024: no problem, they are distinguished by nvdb_id
+# same_toll_station_id <-
+#   toll_stations_selected |>
+#   dplyr::summarise(
+#     n = n(),
+#     .by = c(operator_id, toll_station_id)
+#   ) |>
+#   dplyr::filter(
+#     n > 1
+#   )
+
+# Remove Ryfast, labelled both directions, but data is per lane. Have TRPs anyway, so do not need them.
+# 100014 800
+# 100014 801
+
+
 # Toll station data ----
-# Only yearly data is feasible to fetch by both class and direction due to export limit from Power BI.
-# Will use daily traffic to calculate coverage, see below.
+# Only yearly data is feasible to fetch with both class and direction (export limit from Power BI).
+# This will be used to calculate heavy percentage.
+# Will use daily traffic to calculate all class AADT and SE, see below.
 yearly <-
   readr::read_csv(
     #"toll/yearly.csv"
@@ -34,7 +82,19 @@ yearly <-
     class = dplyr::case_when(
       class == 1 ~ "light",
       class == 2 ~ "heavy"
-    )
+    ),
+    # Get rid of leading zeros
+    nvdb_id = as.numeric(nvdb_id) |> as.character(),
+    # Need to merge "directions" that actually are lanes, see below for finding these.
+    direction_text =
+      dplyr::case_when(
+        nvdb_id %in% c("1013962143", "141140381", "287649715", "760759643", "82443541", "82559833", "82559836", "906727246") ~ "merged_lanes",
+        TRUE ~ direction_text
+      )
+  ) |>
+  dplyr::summarise(
+    traffic = sum(traffic),
+    .by = c(nvdb_id, direction_text, class)
   ) |>
   tidyr::pivot_wider(
     names_from = class,
@@ -42,11 +102,7 @@ yearly <-
     values_from = traffic
   ) |>
   dplyr::mutate(
-    heavy_percentage =
-      (100 * traffic_heavy / (traffic_light + traffic_heavy)) |>
-      round(2),
-    # Get rid of leading zeros
-    nvdb_id = as.numeric(nvdb_id) |> as.character()
+    heavy_percentage = (100 * traffic_heavy / (traffic_light + traffic_heavy)) |> round(2)
   )
 
 # 2023
@@ -97,7 +153,17 @@ daily_tidy <-
   ) |>
   dplyr::mutate(
     # Get rid of leading zeros
-    nvdb_id = as.numeric(nvdb_id) |> as.character()
+    nvdb_id = as.numeric(nvdb_id) |> as.character(),
+    # Need to merge "directions" that actually are lanes, see below for finding these.
+    direction_text =
+      dplyr::case_when(
+        nvdb_id %in% c("1013962143", "141140381", "287649715", "760759643", "82443541", "82559833", "82559836", "906727246") ~ "merged_lanes",
+        TRUE ~ direction_text
+      )
+  ) |>
+  dplyr::summarise(
+    traffic = sum(traffic),
+    .by = c(nvdb_id, direction_text, month, day)
   ) |>
   dplyr::mutate(
     median = median(traffic) |> round(-1),
@@ -118,6 +184,7 @@ daily_tidy <-
     day
   )
 
+# Which stations have anomalies, and how should they all be filtered?
 daily_stats <-
   daily |>
   dplyr::select(
@@ -185,70 +252,6 @@ total_aadt <-
   dplyr::filter(
     aadt > 0
   )
-
-# 2023: There may be some days being outliers, but it doesn't seem to be a big issue.
-
-
-# Toll station meta data ----
-toll_stations <-
-  get_all_tolling_stations() |>
-  dplyr::mutate(
-    # Get rid of leading zeros
-    nvdb_id = as.numeric(nvdb_id) |> as.character()
-  )
-
-toll_stations_selected <-
-  toll_stations |>
-  split_road_system_reference() |>
-  dplyr::select(
-    nvdb_id,
-    operator_id,
-    toll_station_id,
-    toll_station_name,
-    directions,
-    road_category,
-    road_reference,
-    road_link_position
-  ) |>
-  dplyr::filter(
-    road_category %in% c("E", "R", "F", "K"),
-    #!is.na(toll_station_id)
-    (nvdb_id %in% yearly$nvdb_id)
-  ) |>
-  dplyr::arrange(
-    operator_id,
-    as.numeric(toll_station_id)
-  )
-
-
-# Some toll stations have same ID, but measures traffic on different traffic links
-# These must manually be mapped by lane to the correct traffic link
-same_toll_station_id <-
-  toll_stations_selected |>
-  dplyr::summarise(
-    n = n(),
-    .by = c(operator_id, toll_station_id)
-  ) |>
-  dplyr::filter(
-    n > 1
-  )
-
-# NVDB ID is different for these
-
-# Remove Ryfast, labelled both directions, but data is per lane. Have TRPs anyway, so do not need them.
-# 100014 800
-# 100014 801
-# 100014 802
-
-
-
-# 2023:
-# toll_stations_single_link <-
-#   toll_stations_selected |>
-#   dplyr::anti_join(
-#     same_toll_station_id,
-#     by = dplyr::join_by(operator_id, toll_station_id)
-#   )
 
 
 # Toll station AADT ----
@@ -342,7 +345,7 @@ toll_station_aadt <-
   ) |>
   dplyr::mutate(
     # Which "both directions"-stations should we specify the correct direction for?
-    direction_imbalance =
+    direction_imbalanced =
       dplyr::case_when(
         n_directions > 1 & total_aadt > 300 & direction_percentage < 40 ~ TRUE,
         n_directions > 1 & total_aadt > 300 & direction_percentage > 60 ~ TRUE,
@@ -361,14 +364,12 @@ toll_station_aadt <-
     # None of these
   )
 
-# TODO: some data are per lane, not direction - should be merged!
-# TODO: fill in missing directions
-# TODO: label correct direction for imbalanced station directions.
+# Some data are per lane, despite being labelled as per direction - merged!
+# TODO: fill in missing directions (look at map and interpret direction description)
+# TODO: label correct direction for imbalanced station directions. (look at map and interpret direction description)
 
 # TODO: ?merge remaining "both directions"-stations to total AADT. This will be halfed in matching with links. Do not alter SE.
-
-
-
+# TODO: if some are labelled "both directions" but have only one-way traffic, ? look up lane numbers in nvdb?
 
 toll_stations_aadt |>
   writexl::write_xlsx(
@@ -379,6 +380,6 @@ toll_stations_aadt |>
 # JSON ----
 jsonlite::write_json(
   toll_stations_aadt,
-  path = "toll/toll_station_aadt_2023.json",
+  path = "toll/toll_station_aadt_2024.json",
   prettify = TRUE
 )
