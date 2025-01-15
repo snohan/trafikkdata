@@ -1,5 +1,6 @@
 # TRS and TRP
 
+{
 base::Sys.setlocale(locale = "nb.utf8")
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
@@ -8,6 +9,7 @@ source("H:/Programmering/R/byindeks/split_road_system_reference.R")
 library(geosphere)
 library(readxl)
 library(writexl)
+}
 
 
 # TRP reference direction ----
@@ -685,26 +687,33 @@ writexl::write_xlsx(first_commission, path = "stasjoners_forste_igangsetting.xls
 # All TRSs and their TRPs ----
 trs_and_trp_id <- get_trs_and_trp_id()
 
-trs_info <- get_trs_info() %>%
-  dplyr::select(trs_id,
-                trs_road_category = road_category,
-                trs_road_reference = road_reference)
+trs_info <-
+  get_trs_info_simple() |>
+  dplyr::select(
+    trs_id,
+    trs_road_category = road_category,
+    trs_road_reference = road_reference
+  )
 
-trp_info <- get_points_from_trp_api() %>%
-  dplyr::select(trp_id,
-                legacy_nortraf_mpn,
-                trp_name = name,
-                trp_status,
-                registration_frequency,
-                road_reference,
-                municipality_name,
-                county_name)
+trp_info <-
+  get_points_from_trp_api() |>
+  dplyr::select(
+    trp_id,
+    legacy_nortraf_mpn,
+    trp_name = name,
+    trp_status,
+    registration_frequency,
+    road_reference,
+    municipality_name,
+    county_name
+  )
 
-all_trs <- trs_and_trp_id %>%
-  dplyr::left_join(trs_info) %>%
-  dplyr::left_join(trp_info) %>%
-  dplyr::relocate(trp_id, .before = trp_name) %>%
-  dplyr::mutate(trs_id = as.numeric(trs_id)) %>%
+all_trs <-
+  trs_and_trp_id |>
+  dplyr::left_join(trs_info) |>
+  dplyr::left_join(trp_info) |>
+  dplyr::relocate(trp_id, .before = trp_name) |>
+  dplyr::mutate(trs_id = as.numeric(trs_id)) |>
   dplyr::arrange(trs_id)
 
 writexl::write_xlsx(all_trs, path = "all_stations.xlsx")

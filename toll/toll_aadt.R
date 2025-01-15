@@ -32,16 +32,13 @@ toll_stations_selected <-
     road_reference,
     road_link_position
   ) |>
-  #dplyr::filter(
-  #  road_category %in% c("E", "R", "F", "K")
-  #) |>
   dplyr::arrange(
     operator_id,
     as.numeric(toll_station_id)
   )
 
 
-# Some toll stations have same ID, but measures traffic on different traffic links
+# 2023: Some toll stations have same ID, but measures traffic on different traffic links
 # These must manually be mapped by lane to the correct traffic link
 # 2024: no problem, they are distinguished by nvdb_id
 # same_toll_station_id <-
@@ -54,18 +51,13 @@ toll_stations_selected <-
 #     n > 1
 #   )
 
-# Remove Ryfast, labelled both directions, but data is per lane. Have TRPs anyway, so do not need them.
-# 100014 800
-# 100014 801
-
 
 # Toll station data ----
 # Only yearly data is feasible to fetch with both class and direction (export limit from Power BI).
 # This will be used to calculate heavy percentage.
-# Will use daily traffic to calculate all class AADT and SE, see below.
+# Will use daily traffic to calculate AADT and SE, see below.
 yearly <-
   readr::read_csv(
-    #"toll/yearly.csv"
     "toll/toll_station_yearly_2024.csv"
   ) |>
   dplyr::select(
@@ -312,6 +304,9 @@ toll_station_aadt <-
     by = dplyr::join_by(nvdb_id)
   ) |>
   dplyr::filter(
+    # Remove Ryfast, labelled both directions, but data is per lane. Have TRPs anyway, so do not need them.
+    # 100014 800
+    # 100014 801
     !(operator_id == "100014" & toll_station_id %in% c("800", "801"))
   ) |>
   dplyr::select(
@@ -355,31 +350,74 @@ toll_station_aadt <-
       dplyr::case_when(
         directions != "Begge retninger" & n_directions > 1 ~ TRUE,
         TRUE ~ FALSE
-      )
+      ),
     # per_lane_b =
     #   dplyr::case_when(
     #     directions == "Begge retninger" & n_directions > 2 ~ TRUE,
     #     TRUE ~ FALSE
     #   )
     # None of these
+    directions =
+      dplyr::case_when(
+        # Filling in missing directions
+        nvdb_id == "1016036098" & direction_text == "From city centre" ~ "Med metrering",
+        nvdb_id == "1016036098" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "1016292474" & direction_text == "Mot Os" ~ "Med metrering",
+        nvdb_id == "1016292474" & direction_text == "Mot Bergen" ~ "Mot metrering",
+        nvdb_id == "1019360640" & direction_text == "To Molde" ~ "Med metrering",
+        nvdb_id == "1019360640" & direction_text == "To Trondheim" ~ "Mot metrering",
+        nvdb_id == "1019360641" & direction_text == "To Molde" ~ "Med metrering",
+        nvdb_id == "1019360641" & direction_text == "To Trondheim" ~ "Mot metrering",
+        nvdb_id == "710608427" & direction_text == "Northbound" ~ "Med metrering",
+        nvdb_id == "710608427" & direction_text == "Southbound" ~ "Mot metrering",
+        nvdb_id == "906727254" & direction_text == "South" ~ "Mot metrering",
+        nvdb_id == "906727252" & direction_text == "East" ~ "Mot metrering",
+        # Labelling correct direction for imbalanced station directions
+        nvdb_id == "487458622" & direction_text == "From city centre" ~ "Med metrering",
+        nvdb_id == "487458622" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "929790711" & direction_text == "From city centre" ~ "Med metrering",
+        nvdb_id == "929790711" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "929790716" & direction_text == "From city centre" ~ "Med metrering",
+        nvdb_id == "929790716" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "929790721" & direction_text == "From city centre" ~ "Med metrering",
+        nvdb_id == "929790721" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "929790725" & direction_text == "From city centre" ~ "Med metrering",
+        nvdb_id == "929790725" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "929790733" & direction_text == "From city centre" ~ "Med metrering", # should be opposite?
+        nvdb_id == "929790733" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "929790752" & direction_text == "From city centre" ~ "Med metrering",
+        nvdb_id == "929790752" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "929790762" & direction_text == "From city centre" ~ "Med metrering",
+        nvdb_id == "929790762" & direction_text == "To city centre" ~ "Mot metrering",
+        nvdb_id == "929790772" & direction_text == "From city centre" ~ "Mot metrering",
+        nvdb_id == "929790772" & direction_text == "To city centre" ~ "Med metrering",
+        TRUE ~ directions
+      )
   )
 
 # Some data are per lane, despite being labelled as per direction - merged!
-# TODO: fill in missing directions (look at map and interpret direction description)
-# TODO: label correct direction for imbalanced station directions. (look at map and interpret direction description)
+
+# Done: label correct direction for imbalanced station directions. (look at map and interpret direction description)
 
 # TODO: ?merge remaining "both directions"-stations to total AADT. This will be halfed in matching with links. Do not alter SE.
 # TODO: if some are labelled "both directions" but have only one-way traffic, ? look up lane numbers in nvdb?
 
-toll_stations_aadt |>
+toll_station_aadt |>
   writexl::write_xlsx(
     "toll/toll_station_aadt_2024.xlsx"
   )
 
 
 # JSON ----
-jsonlite::write_json(
-  toll_stations_aadt,
-  path = "toll/toll_station_aadt_2024.json",
-  prettify = TRUE
-)
+toll_station_aadt |>
+  dplyr::select(
+    nvdb_id,
+    directions,
+    aadt,
+    se,
+    heavy_percentage
+  ) |>
+  jsonlite::write_json(
+    path = "toll/toll_station_aadt_2024.json",
+    prettify = TRUE
+  )
