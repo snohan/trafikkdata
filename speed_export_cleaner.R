@@ -18,8 +18,8 @@ read_tidy_and_write_file <- function(file_name) {
   ) |>
   dplyr::select(
     trp_id = Trafikkregistreringspunkt,
-    trp_name = Navn,
-    road_reference = Vegreferanse,
+    #trp_name = Navn,
+    #road_reference = Vegreferanse,
     lane = Felt,
     date = Dato,
     hour_start = 'Fra tidspunkt',

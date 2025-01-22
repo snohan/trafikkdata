@@ -1573,3 +1573,58 @@ writexl::write_xlsx(
   path = "spesialbestillinger/vestfold_sykkelpunkt.xlsx"
 
 )
+
+
+# TRPs Oslo ----
+trp_data_timespan <-
+  get_trp_data_time_span()
+
+trp_oslo <-
+  trp |>
+  dplyr::filter(
+    traffic_type == "VEHICLE",
+    registration_frequency == "CONTINUOUS",
+    county_no == 3
+  ) |>
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference
+  ) |>
+  dplyr::distinct() |>
+  dplyr::left_join(
+    trp_data_timespan,
+    by = dplyr::join_by(trp_id)
+  ) |>
+  dplyr::filter(
+    first_data_with_quality_metrics <= "2019-01-01",
+    latest_daily_traffic >= "2019-01-01"
+  )
+
+aadt <-
+  get_aadt_for_trp_list(trp_oslo$trp_id)
+
+aadt_tidy <-
+  aadt |>
+  dplyr::filter(
+    year %in% c(2018, 2019)
+  ) |>
+  dplyr::summarise(
+    sum_coverage = sum(coverage),
+    .by = trp_id
+  ) |>
+  dplyr::filter(
+    sum_coverage >= 100
+  )
+
+trp_oslo_final <-
+  trp_oslo |>
+  dplyr::filter(
+    trp_id %in% aadt_tidy$trp_id
+  ) |>
+  dplyr::select(
+    trp_id,
+    name,
+    road_reference
+  ) |>
+  dplyr::arrange(name)
