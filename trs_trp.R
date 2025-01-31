@@ -867,7 +867,6 @@ trp_for_nvdb <-
 
 
 # Sensor
-# TODO: lengde og bredde på alle induktivsløyfer
 sensor_for_nvdb <-
   trs_trp_for_nvdb_raw |>
   dplyr::filter(
@@ -1628,3 +1627,10 @@ trp_oslo_final <-
     road_reference
   ) |>
   dplyr::arrange(name)
+
+readr::write_rds(
+  trp_oslo_final,
+  "spesialbestillinger/saraca_trps.rds"
+)
+
+#writexl::write_xlsx(trp_oslo_final, "spesialbestillinger/saraca_trps.xlsx")

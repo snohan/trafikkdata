@@ -5,10 +5,35 @@ decimal_point <- function(number) {
   stringr::str_replace(as.character(number), ",", "\\.")
 }
 
+# Raw files to be fetched from speed export in trafikkdata.no
+# Tidy files shared in Dropbox
+# TRP list made in trs_trp.R (TRPs Oslo)
 subfolder_raw <- "spesialbestillinger/saraca"
 subfolder_tidy <- "spesialbestillinger/saraca_tidy"
 
-list_of_files <- list.files(subfolder_raw)
+raw_files <- list.files(subfolder_raw)
+tidied_files <- list.files(subfolder_tidy)
+
+exported_trps <-
+  tibble::tibble(
+    file_name = raw_files
+  ) |>
+  dplyr::mutate(
+    trp_id = stringr::str_extract(file_name, "^[:alnum:]*_") |> stringr::str_remove("_")
+  )
+
+# Missing exports
+trps_saraca <-
+  readr::write_rds(
+    trp_oslo_final,
+    "spesialbestillinger/saraca_trps.rds"
+  ) |>
+  dplyr::filter(
+    !(trp_id %in% exported_trps$trp_id)
+  )
+
+left_to_tidy <- raw_files[!(raw_files %in% tidied_files)]
+
 
 read_tidy_and_write_file <- function(file_name) {
 
@@ -49,8 +74,8 @@ read_tidy_and_write_file <- function(file_name) {
 }
 
 
-for (i in 1:length(list_of_files)) {
+for (i in 1:length(left_to_tidy)) {
 
-  read_tidy_and_write_file(list_of_files[i])
+  read_tidy_and_write_file(left_to_tidy[i])
 
 }

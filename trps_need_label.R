@@ -232,6 +232,7 @@ n_before_2022 <-
 # 2024-11-25: 27 265
 # 2024-12-09: 27 263
 # 2025-01-02: 24 368 (I took some bike TRPs)
+# 2025-01-31: 23 906
 
 trp_need_label <-
   zero_dt_filtered |>
