@@ -834,6 +834,14 @@ trp_data_time_span <-
     latest_daily_traffic >= "2023-03-01"
   )
 
+trp_direction <-
+  get_points_with_direction() |>
+  dplyr::select(
+    trp_id,
+    from,
+    to
+  )
+
 trps <-
   get_points() |>
   split_road_system_reference() |>
@@ -849,7 +857,7 @@ trps <-
   ) |>
   dplyr::distinct(trp_id, .keep_all = T) |>
   dplyr::filter(
-    traffic_type == "VEHICLE",
+    #traffic_type == "VEHICLE",
     #registration_frequency == "CONTINUOUS",
     county_name %in% c("Innlandet", "Akershus", "Oslo", "Østfold", "Buskerud", "Vestfold", "Telemark", "Agder", "Rogaland"),
     trp_id %in% trp_data_time_span$trp_id
@@ -858,26 +866,39 @@ trps <-
 {
 tictoc::tic()
 aadt <-
-  get_aadt_by_direction_and_length_for_trp_list(trps$trp_id, "WEEKDAY") |>
+  get_aadt_by_direction_and_length_for_trp_list(trps$trp_id, "ALL") |>
   dplyr::filter(year == 2023) |>
   dplyr::left_join(
     trps,
     by = join_by(trp_id)
   ) |>
+  dplyr::left_join(
+    trp_direction,
+    by = join_by(trp_id)
+  ) |>
+  dplyr::mutate(
+    med_metrering = direction == to
+  ) |>
   dplyr::select(
     trp_id,
     name,
     registration_frequency,
+    traffic_type,
     road_reference,
     road_category_and_number,
     county_name,
+    direction,
+    med_metrering,
     tidyselect::everything(),
-    -traffic_type,
-    -municipality_name
+    -municipality_name,
+    -from,
+    -to
+  ) |>
+  dplyr::rename(
+    adt = aadt
   )
 tictoc::toc()
 }
-
 
 aadt_and_trs <-
   aadt |>
@@ -892,5 +913,5 @@ aadt_and_trs <-
 
 writexl::write_xlsx(
   aadt_and_trs,
-  "spesialbestillinger/ydt_retning_lengde_2023.xlsx"
+  "spesialbestillinger/adt_retning_lengde_2023.xlsx"
 )
