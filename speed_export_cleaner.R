@@ -24,10 +24,7 @@ exported_trps <-
 
 # Missing exports
 trps_saraca <-
-  readr::write_rds(
-    trp_oslo_final,
-    "spesialbestillinger/saraca_trps.rds"
-  ) |>
+  readr::read_rds("spesialbestillinger/saraca_trps.rds") |>
   dplyr::filter(
     !(trp_id %in% exported_trps$trp_id)
   )
