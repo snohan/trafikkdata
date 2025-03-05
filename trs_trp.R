@@ -147,6 +147,14 @@ trp_tidy <- trp %>%
 writexl::write_xlsx(trp_tidy, path = "trs_trp/punkter_med_feltnummer.xlsx")
 
 
+# TRP lane numbering ----
+trp_lane_numbering <- get_trp_lane_numbering()
+
+writexl::write_xlsx(
+  trp_lane_numbering,
+  "trs_trp/trp_lane_numbering.xlsx"
+)
+
 # TRP location ----
 trp <- get_points()
 
