@@ -233,12 +233,17 @@ trp_without_trs <- dplyr::anti_join(trp, trs_with_trp) %>%
 trs <- get_all_trs_with_trp()
 
 # or just
-bike_trps <- get_points() %>%
+bike_trps <-
+  get_points() %>%
   dplyr::group_by(trp_id) %>%
   dplyr::slice(which.min(validFrom)) %>%
   dplyr::filter(traffic_type == "BICYCLE") %>%
-  dplyr::select(trp_id, name, road_reference, county_name, municipality_name,
-                first_commissioned = validFrom, operational_status) %>%
+  dplyr::select(
+    trp_id, name,
+    road_reference, county_name, municipality_name,
+    first_commissioned = validFrom,
+    operational_status
+  ) %>%
   dplyr::arrange(road_reference) %>%
   writexl::write_xlsx(path = "sykkelpunkter.xlsx")
 
