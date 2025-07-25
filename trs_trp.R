@@ -5,14 +5,17 @@ base::Sys.setlocale(locale = "nb.utf8")
 source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
 source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+source("H:/Programmering/R/byindeks/get_from_nvdb_api.R")
 
 library(geosphere)
 library(readxl)
 library(writexl)
 }
 
-
 # TRP reference direction ----
+# Limit list to ones visible in trafikkdata.no
+trps_visible <- get_points()
+
 trp <- get_trp_direction_reference()
 
 # trp |>
@@ -25,16 +28,25 @@ trp <- get_trp_direction_reference()
 
 trps_without_reference_direction <-
   trp |>
+  dplyr::select(
+    -lane_internal,
+    -lane_according_to_current_metering
+  ) |>
+  dplyr::distinct() |>
   dplyr::filter(
     trp_type == "PERMANENT",
     #trp_type == "MOBILE",
-    !(operational_status %in% c("PLANNED", "RETIRED")),
-    is.na(direction_with_current_link)
+    #!(operational_status %in% c("PLANNED", "RETIRED")),
+    #!(operational_status %in% c("PLANNED")),
+    is.na(direction_with_current_link),
+    #registration_frequency == "CONTINUOUS",
+    #registration_frequency == "PERIODIC",
+    trp_id %in% trps_visible$trp_id
   ) |>
   dplyr::arrange(
-    county_id,
     road_reference
   )
+
 
 trps_without_reference_direction |>
   dplyr::select(
@@ -42,6 +54,9 @@ trps_without_reference_direction |>
     trp_type
   ) |>
   table()
+
+#sjekk <- hent_vegpunkt("EV39KS14D1m3924", "5055")
+
 
 
 # TRP stats ----
@@ -103,18 +118,28 @@ nedre_glomma <-
 # Note that bike trps with LM should not be more than 10 m away
 trs_trp <- get_trs_and_trps_with_coordinates_from_trp_api()
 
-trs_trp_distance <- trs_trp %>%
-  dplyr::mutate(distance = round(
-                  by(trs_trp, 1:nrow(trs_trp),
-                     function(row) {distGeo(c(row$stasjon_lon, row$stasjon_lat),
-                                            c(row$punkt_lon, row$punkt_lat))
-                  }),
-                  digits = 1)) %>%
+trs_trp_distance <-
+  trs_trp %>%
+  dplyr::mutate(
+    distance = round(
+      by(
+        trs_trp, 1:nrow(trs_trp),
+        function(row) {
+          distGeo(
+            c(row$stasjon_lon, row$stasjon_lat),
+            c(row$punkt_lon, row$punkt_lat))
+        }
+      ),
+      digits = 1)
+  ) %>%
   dplyr::filter(distance > 100) %>%
   dplyr::arrange(desc(distance))
 
-write.csv2(trs_trp_distance, file = "stasjon_punkt_avstand.csv",
-           row.names = F)
+write.csv2(
+  trs_trp_distance,
+  file = "stasjon_punkt_avstand.csv",
+  row.names = F
+)
 
 
 # TRPs ----
@@ -155,7 +180,7 @@ writexl::write_xlsx(
   "trs_trp/trp_lane_numbering.xlsx"
 )
 
-# TRP location ----
+# TRP coordinates ----
 trp <- get_points()
 
 trp_tidy <-
