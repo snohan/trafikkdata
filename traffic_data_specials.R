@@ -162,6 +162,74 @@ list(
   )
 
 
+# MDT NINA ----
+# Wants all MDT 1975-2024 for May, June, July on coastal roads.
+# Earliest we have is 1986.
+mdt_years <- c(1986:2024)
+
+# Not easy to filter for coastal roads. Will just take all TRPs (continuous, with some history) except Innlandet.
+trp_timespan <- get_trp_data_time_span()
+
+trp_filtered <-
+  trp_info |>
+  dplyr::left_join(
+    trp_timespan,
+    by = dplyr::join_by(trp_id)
+  ) |>
+  dplyr::filter(
+    traffic_type == "VEHICLE",
+    registration_frequency == "CONTINUOUS",
+    county_id != 34,
+    first_data < "2015-05-01",
+    latest_daily_traffic > "2024-08-01"
+  ) |>
+  dplyr::select(
+    trp_id, trp_name, road_reference, county_id, first_data
+  ) |>
+  dplyr::distinct()
+
+trp_filtered |>
+  dplyr::select(
+    county_id
+  ) |>
+  table()
+
+
+# MDT
+# First Finnmark as a test, to see if format and filters are ok with NINA
+trp_ids <-
+  trp_filtered |>
+  dplyr::filter(
+    county_id == 56
+  ) |>
+  dplyr::pull(trp_id)
+
+{
+tictoc::tic()
+
+  mdt_finnmark <-
+    purrr::map(
+      mdt_years,
+      ~ get_mdt_for_trp_list(trp_ids, .x)
+    ) |>
+    purrr::list_rbind() |>
+    dplyr::filter(
+      coverage > 50,
+      month %in% c(5:7)
+    ) |>
+    dplyr::select(
+      trp_id, year, month, mdt
+    )
+
+tictoc::toc()
+  }
+
+readr::write_csv2(
+  mdt_finnmark,
+  "spesialbestillinger/nina_01.csv"
+)
+
+
 # Asplan Viak Lindheim-Minde ----
 the_data <-
   dplyr::bind_rows(
