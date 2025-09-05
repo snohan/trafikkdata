@@ -986,3 +986,53 @@ writexl::write_xlsx(
   aadt_and_trs,
   "spesialbestillinger/adt_retning_lengde_2023.xlsx"
 )
+
+
+# Zhong time gaps ----
+subfolder <- "spesialbestillinger/zhong/raw"
+
+the_data <-
+  purrr::map(
+    list.files(subfolder),
+    ~ readr::read_delim(paste0(subfolder, "/", .))
+  ) |>
+  purrr::list_rbind() |>
+  # Weird quirk in reading Kibana eksport: ignores decimal
+  dplyr::mutate(
+    time_gap = decimal_point(time_gap) |> as.numeric()
+  ) |>
+  dplyr::rename(
+    trp_id = traffic_registration_point_id,
+    lane_internal = lane
+  ) |>
+  dplyr::left_join(
+    trp_info_lane,
+    by = dplyr::join_by(trp_id, lane_internal)
+  ) |>
+  dplyr::left_join(
+    trp_info_lane_direction_names,
+    by = dplyr::join_by(trp_id, lane_according_to_current_metering)
+  ) |>
+  dplyr::left_join(
+    trp_info |>
+      dplyr::select(trp_id, trp_name) |>
+      dplyr::distinct(),
+    by = dplyr::join_by(trp_id)
+  ) |>
+  dplyr::select(
+    trp_id, trp_name,
+    lane = lane_according_to_current_metering,
+    direction,
+    date, time, time_gap
+  )
+
+# writexl::write_xlsx(
+#   the_data,
+#   "spesialbestillinger/zhong/time_gaps.xlsx"
+# )
+
+# csv is much larger file, but compresses much more
+readr::write_csv2(
+  the_data,
+  "spesialbestillinger/zhong/time_gaps.csv"
+)
