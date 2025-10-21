@@ -238,6 +238,7 @@ n_before_2022 <-
 # 2025-05-02: 22 286
 # 2025-06-02: 20 195 (I took some)
 # 2025-09-01: 19 752
+# 2025-10-01: 19 752
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -350,7 +351,7 @@ negative_speed <-
   dplyr::filter(
     total_volume > 700,
     # When there are just a few events, it is probably just real overtakes, so filter them.
-    percentage_negative_speed >= 10,
+    percentage_negative_speed >= 15,
     !(trs_id %in% c("1100308")) # Eide, smal veg
   ) |>
   dplyr::arrange(

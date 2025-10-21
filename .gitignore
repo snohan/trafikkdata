@@ -50,7 +50,10 @@ kurs.R
 tetryon_api.R
 vehicle_registry_api_key.R
 
-# specific files
+# Specific files
 periodisk*.txt
 emu3*
 trs_query.txt
+
+# Allow specific
+!/trp_info/*.rds
