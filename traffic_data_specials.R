@@ -188,12 +188,12 @@ the_data <-
     readr::read_delim(
       "spesialbestillinger/lindheimminde_a.csv"
     ),
-    readr::read_delim(
-      "spesialbestillinger/lindheimminde_b.csv"
-    ),
-    readr::read_delim(
-      "spesialbestillinger/lindheimminde_c.csv"
-    ),
+    # readr::read_delim(
+    #   "spesialbestillinger/lindheimminde_b.csv"
+    # ),
+    # readr::read_delim(
+    #   "spesialbestillinger/lindheimminde_c.csv"
+    # ),
     readr::read_delim(
       "spesialbestillinger/lindheimminde_periodic.csv"
     )
