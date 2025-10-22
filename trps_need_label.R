@@ -4,6 +4,7 @@
   source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
   source("H:/Programmering/R/byindeks/split_road_system_reference.R")
   library(writexl)
+
 }
 
 # TRP stats ----
@@ -23,59 +24,36 @@ distinct_trps <-
     traffic_type,
     registration_frequency
   ) |>
-  dplyr::distinct(trp_id, .keep_all = T) #%>%
-  # dplyr::mutate(
-  #   name = stringr::str_to_title(name, locale = "no")
-  # )
+  dplyr::distinct(trp_id, .keep_all = T)
 
 
 # Zero dt ----
 read_a_file <- function(file_name) {
 
-  # readr::read_csv2(
-  #   paste0("zero_dt/", file_name)
-  # ) #%>%
-  # dplyr::mutate(
-  #   periode_start = as.character(periode_start)
-  # )
-
-  readr::read_csv(
-    file = paste0("zero_dt/", file_name),
-    #delim = ","
-  )
+  readr::read_csv(paste0("zero_dt/zero_days/", file_name))
 
 }
 
 zero_dt <-
-  list.files(
-    "zero_dt"
-  ) %>%
+  base::list.files("zero_dt/zero_days") |>
   purrr::map_df(
     ~ read_a_file(.)
-  ) %>%
-  dplyr::select(
-    -number_of_days
-  ) %>%
+  ) |>
+  dplyr::select(-number_of_days) |>
   # Remove invisible trps
-  dplyr::filter(
-    trp_id %in% distinct_trps$trp_id
-  ) %>%
+  dplyr::filter(trp_id %in% distinct_trps$trp_id) |>
   dplyr::mutate(
     #day = lubridate::dmy(day)
     lane = lane / 100 # 1,00 tolkes visst til 100!
   )
 
 present_trp_ids <-
-  zero_dt %>%
-  dplyr::select(
-    trp_id
-  ) %>%
+  zero_dt |>
+  dplyr::select(trp_id) |>
   dplyr::distinct()
 
 labels <-
-  get_labels_for_trp_list(
-    present_trp_ids$trp_id
-  ) |>
+  get_labels_for_trp_list(present_trp_ids$trp_id) |>
   dplyr::select(
     trp_id,
     lane,
@@ -98,12 +76,8 @@ labelled_zero_days_lane <-
 
 labels_all_lanes <-
   labels |>
-  dplyr::filter(
-    is.na(lane)
-  ) |>
-  dplyr::select(
-    -lane
-  )
+  dplyr::filter(is.na(lane)) |>
+  dplyr::select(-lane)
 
 labelled_zero_days_all_lanes <-
   zero_dt |>
@@ -127,7 +101,7 @@ labelled_zero_days <-
 
 # Real zero days as informed by owners
 real_zero_days <-
-  readr::read_csv2("real_zero_days.csv") %>%
+  readr::read_csv2("zero_dt/real_zero_days.csv") %>%
   dplyr::mutate(
     day = lubridate::dmy(day)
   )
@@ -135,11 +109,11 @@ real_zero_days <-
 # TODO: add filter for lonely days in winter for bike
 
 zero_dt_filtered <-
-  zero_dt %>%
+  zero_dt |>
   dplyr::anti_join(
     labelled_zero_days,
     by = c("trp_id", "lane", "day")
-  ) %>%
+  ) |>
   dplyr::anti_join(
     real_zero_days,
     by = c("trp_id", "day")
@@ -292,11 +266,6 @@ trp_need_label <-
     comment = NA
   )
 
-# writexl::write_xlsx(
-#   trp_need_label,
-#   path = "nulltrafikk.xlsx"
-# )
-
 trp_need_label |>
   dplyr::mutate(
     month = lubridate::floor_date(day, "month")
@@ -330,7 +299,7 @@ trp_need_label |>
 # Negative speed ----
 # Get data grom "negative_speed" in Kibana raw, use last seven days
 negative_speed <-
-  readr::read_csv2("negative_speed.csv") |>
+  readr::read_csv2("zero_dt/negative_speed.csv") |>
   dplyr::mutate(
     speed =
       dplyr::case_when(
@@ -361,7 +330,7 @@ negative_speed <-
 # Need to add some metainfo on stations from TRP-API
 # Need not fetch new data every time
 
-trs <- readr::read_rds("trs_trp/trs.rds")
+trs <- readr::read_rds("trp_info/trs.rds")
 
 negative_speed_trs <-
   negative_speed |>
