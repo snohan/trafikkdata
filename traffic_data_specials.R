@@ -988,3 +988,79 @@ readr::write_csv2(
   the_data,
   "spesialbestillinger/zhong/time_gaps.csv"
 )
+
+
+# Sykkel Norconsult ----
+# TRPs in bike index NJ, BRG
+trp_nj <- get_published_pointindex_bike(6952, 2025, 1)[[1]]
+trp_brg <- get_published_pointindex_bike(5952, 2025, 1)[[1]]
+
+municipalities <- c(
+  "Bergen", "Øygarden", "Alver", "Askøy",
+  "Randaberg", "Stavanger", "Sola", "Sandnes"
+)
+
+trps_in_areas <-
+  get_points_with_direction() |>
+  dplyr::filter(
+    traffic_type == "BICYCLE",
+    latest_day_with_data > "2018-12-31",
+    municipality_name %in% municipalities
+  ) |>
+  dplyr::select(
+    trp_id, name, road_reference, municipality_name, lat, lon
+  ) |>
+  dplyr::mutate(
+    bike_index = trp_id %in% c(trp_nj, trp_brg)
+  ) |>
+  dplyr::arrange(
+    municipality_name, road_reference
+  )
+
+aadt_y <- get_aadt_by_direction_for_trp_list(trps_in_areas$trp_id, "WEEKDAY")
+aadt_h <- get_aadt_by_direction_for_trp_list(trps_in_areas$trp_id, "WEEKEND")
+
+aadt <-
+  dplyr::bind_rows(
+    aadt_y, aadt_h
+  ) |>
+  dplyr::select(
+    trp_id, heading, year, day_type,
+    coverage_percentage = total.coverage.percentage,
+    days_included, days_in_total,
+    adt, standard_deviation, se_mean
+  )
+
+mdt_years <- c(2019:2025)
+
+mdt_y <-
+  purrr::map(
+    mdt_years,
+    ~ get_mdt_by_direction_for_trp_list(trps_in_areas$trp_id, .x, "WEEKDAY")
+  ) |>
+  purrr::list_rbind()
+
+mdt_h <-
+  purrr::map(
+    mdt_years,
+    ~ get_mdt_by_direction_for_trp_list(trps_in_areas$trp_id, .x, "WEEKEND")
+  ) |>
+  purrr::list_rbind()
+
+mdt <-
+  dplyr::bind_rows(
+    mdt_y, mdt_h
+  ) |>
+  dplyr::select(
+    trp_id, heading, year, month, day_type,
+    coverage_percentage = coverage,
+    days_included, days_in_total,
+    mdt, standard_deviation, se_mean
+  )
+
+base::list(
+  trp = trps_in_areas,
+  aadt = aadt,
+  mdt = mdt
+) |>
+  writexl::write_xlsx("spesialbestillinger/norconsult.xlsx")
