@@ -213,6 +213,7 @@ n_before_2022 <-
 # 2025-06-02: 20 195 (I took some)
 # 2025-09-01: 19 752
 # 2025-10-01: 19 752
+# 2025-11-03: 19 812
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -367,5 +368,5 @@ list(
   negativ_fart = negative_speed_trs
 ) |>
 writexl::write_xlsx(
-  path = "nulltrafikk.xlsx"
+  path = "zero_dt/nulltrafikk.xlsx"
 )
