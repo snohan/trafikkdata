@@ -1,0 +1,317 @@
+---
+title: "Kjøretøyklassifisering"
+format: 
+  pdf:
+    toc: true
+    number-sections: true
+    df-print: kable
+    toc-title: Innhold
+    mainfont: "Arial"
+    include-in-header:
+      text: |
+        \newfontfamily\sectionfont[Color=ed9300]{Arial}
+        \newfontfamily\subsectionfont[Color=444f55]{Arial}
+        \newfontfamily\subsubsectionfont[Color=ed9300]{Arial}
+        \addtokomafont{section}{\sectionfont}
+        \addtokomafont{subsection}{\subsectionfont}
+        \addtokomafont{subsubsection}{\subsubsectionfont}
+        \usepackage[font=small,textfont=it,labelsep=period]{caption}
+        \let\oldsection\section
+        \renewcommand\section{\clearpage\oldsection}
+    papersize: a4
+crossref: 
+  tbl-title: "Tabell"
+  lot-title: "Tabeller"
+  tbl-prefix: ""
+  fig-title: "Figur"
+  lof-title: "Figurer"
+  fig-prefix: ""
+  title-delim: "."
+  sec-prefix: "kapittel"
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| echo: false
+
+base::Sys.setlocale(locale = "nb.utf8")
+library(tidyverse)
+library(knitr)
+library(flextable)
+
+# knitr options ####
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  error = FALSE,
+  cache = FALSE,
+  dpi = 150,
+  dev = "ragg_png",
+  tab.topcaption = TRUE
+  )
+
+flextable::set_flextable_defaults(
+  #font.size = 8,
+  decimal.mark = ",",
+  big.mark = " ",
+  na_str = ""
+)
+
+```
+
+```{r}
+#| label: data
+#| include: false
+
+#classified_vehicles <- readr::read_csv2("kjoretoyregisteret/kjoretoy_filtrert.csv")
+
+n_vehicles <- readr::read_rds("H:/Programmering/R/trafikkdata/vehicle_classification_data/n_vehicles.rds")
+
+```
+
+{{< pagebreak >}}
+
+\listoftables
+
+\listoffigures
+
+{{< pagebreak >}}
+
+
+# Sammendrag {.unnumbered}
+Motorkjøretøy kan klassifiseres på ulike måter basert på hvilket formål det skal tjene. I dette dokumentet beskrives de vanligste klassifiseringssystemene i Norge, samt sammenhengen mellom disse:
+
+- lengdeklassifisering (trafikkdata)
+- kjøretøygrupper definert i kjøretøyforskriften (samme i EU)
+- nordisk klassifiseringsstandard (NorSIKT)
+
+En analyse av sammenhengen mellom kjøretøylengde og Kjøretøyforskriftens grupper viser at det ikke i alle tilfeller er entydige skiller mellom kjøretøygruppene og de tradisjonelle lengdeklassene. En tilsvarende oversikt over sammenhengen mellom kjøretøys tillatte totalvekt og Kjøretøyforskriftens grupper viser at disse to er entydig definert foruten noen få unntak.
+
+Videre viser en analyse av sammenhengen mellom kjøretøylengde og tillatt totalvekt at skillet mellom korte og lange kjøretøy burde vært ved 7,5 m dersom grensen skal passe best til skillet mellom lette og tunge ved 3,5 tonn tillatt totalvekt. Likevel er forskjellen fra den tradisjonelle lengdegrensen på 5,6 m relativt liten, og ikke av særlig betydning.
+
+Til slutt er det sett på sammenhengen mellom alle klassifiseringssystemene for å se hvilke klassekoder som tilsvarer hverandre. I trafikkregistreringer vil hvert kjøretøy bli forsøkt klassifisert ut fra de data som   trafikkregistreringsutstyret klarer å samle inn via sensorikk. Hvilke klasser som benyttes i slike registreringer kan variere mellom utstyrsleverandører. Dette dokumentet beskriver sammenhengen mellom slike utstyrsspesifikke klassifiseringer og de ovenfor nevnte klassifiseringssystemer. Dersom NorSIKT-systemet skal benyttes, viser det seg å være nivå 3 som passer best med data fra dagens trafikkregistreringsutstyr som benyttes i Trafikkdatasystemet.
+
+
+# Bakgrunn
+I trafikkdatasammenheng har det i mange år vært vanlig å klassifisere motorkjøretøy basert på _målt_ lengde. Den målte lengden er typisk brukt til å dele inn kjøretøy i to klasser: korte og lange. Målt lengde er ment som en tilnærming til skillet for tillatt totalvekt på 3,5 tonn som er grensen mellom lette og tunge kjøretøy, slik den er definert i Kjøretøyforskriften. Den tilsvarende grensen for målt lengde har alltid vært satt til 5,6 m.
+
+Denne rapporten tar for seg sammenhengen mellom den tradisjonelle lengdeklassifiseringen og kjøretøygrupperingen slik den er beskrevet i Kjøretøyforskriften. Videre sammenlignes dette med en felles nordisk standard for kjøretøyklassifisering (NorSIKT), samt klassifiseringen som fås fra trafikkregistreringsutstyret som benyttes til innsamling av trafikkdata i Norge.
+
+Sammenhenger mellom lengde- og kjøretøyklassifisering er basert på tekniske data fra Kjøretøyregisteret.
+
+
+# Lengdeklassifisering
+Den tradisjonelle lengdeklassifiseringen baserer seg på målt lengde, og har to nivåer.
+
+Nivå 1 har to klasser:
+
+  - kortere enn 5,6 m
+  - 5,6 m og lengre
+  
+Nivå 2 har seks klasser:
+
+  - kortere enn 5,6 m
+  - fra 5,6 m til 7,6 m
+  - fra 7,6 m til 12,5 m
+  - fra 12,5 m til 16 m
+  - fra 16 m til 24 m
+  - fra 24 m
+
+Tidligere var motorsykler angitt som egen klasse. Disse er nå inkludert i klassen kortere enn 5,6 m.
+
+
+# Kjøretøyforskriftens kjøretøygrupper
+Kjøretøyforskriftens kapittel 2 lister opp kjøretøygrupper som inndelt etter tillatt totalvekt og/eller antall sitteplasser. I det følgende er vekt oppgitt i tonn, og det er alltid tillatt totalvekt det er snakk om.
+
+Følgende kjøretøygrupper nevnes i forskriften:
+
+  - M1 (personbil, maks 8 sitteplasser)
+  - M2 (buss, flere enn 8 sitteplasser, maks 5 tonn)
+  - M3 (buss, flere enn 8 sitteplasser, over 5 tonn)
+  - N1 (varebil, maks 3,5 tonn)
+  - N2 (lastebil, 3,5–12 tonn)
+  - N3 (lastebil, over 12 tonn)
+  - O1 (tilhenger, maks 0,75 tonn)
+  - O2 (tilhenger, 0,75–3,5 tonn)
+  - O3 (tilhenger, 3,5–10 tonn)
+  - O4 (tilhenger, over 10 tonn)
+  - G (terrenggående varianter av gruppene M og N. For eksempel er en ganske vanlig personbil som Toyota Land Cruiser blant disse)
+  - L, MCL, MCM, MCT (moped og motorsykkel, med undergrupper som ikke er relevante her)
+  - T (traktor, med undergrupper som ikke er relevante her)
+  - C (beltetraktor, med undergrupper som ikke er relevante her)
+  - R (traktorhenger, med undergrupper som ikke er relevante her)
+  - S (utskiftbar trukket maskin, med undergrupper som ikke er relevante her)
+  - BB (beltebil)
+  - BM (beltemotorsykkel)
+  
+Det antas at bidraget til trafikkarbeid på offentlig veg fra klassene T, C, R, S, BB og BM kan neglisjeres.
+
+
+# Nordisk klassifiseringsstandard (NorSIKT)
+De nordiske landene har samarbeidet om et felles klassifiseringssystem, nordisk system for intelligent klassifisering av trafikk (NorSIKT). Systemet inneholder 6 nivåer med ulikt antall klasser. Nivå 1 er triviell og har kun én klasse for motorkjøretøy.
+
+NorSIKT nivå 2 har følgende fem klasser:
+
+  - LMV: light motor vehicle (lett kjøretøy)
+  - LMV WC: light motor vehicle with coupled (lett kjøretøy med henger)
+  - HMV: heavy motor vehicle (tungt kjøretøy)
+  - HMV WC: heavy motor vehicle with coupled (tungt kjøretøy med henger)
+  - OMV: other motor vehicle (andre kjøretøy)
+  
+NorSIKT nivå 3 har følgende sju klasser:
+
+  - MC_MP: motorcycle, moped (motorsykkel, moped)
+  - MC_MP WC: motorcycle, moped with coupled (motorsykkel, moped med henger)
+  - PC_LGV_LB: personal car, light goods vehicle, light bus (personbil, varebil, lett buss)
+  - PC_LGV_LB WC: personal car, light goods vehicle, light bus with coupled (personbil, varebil, lett buss med henger)
+  - HMV: heavy motor vehicle (tungt kjøretøy)
+  - HMV WC: heavy motor vehicle with coupled (tungt kjøretøy med henger)
+  - OMV: other motor vehicle (andre kjøretøy)
+  
+NorSIKT nivå 4 har følgende 11 klasser:
+
+  - MC_MP: motorcycle, moped (motorsykkel, moped)
+  - MC_MP WC: motorcycle, moped with coupled (motorsykkel, moped med henger)
+  - PC_LGV: personal car, light goods vehicle (personbil, varebil)
+  - PC_LGV WC: personal car, light goods vehicle with coupled (personbil, varebil med henger)
+  - LB: light bus (lett buss)
+  - LB WC: light bus with coupled (lett buss med henger)
+  - HB: heavy bus (tung buss)
+  - HB WC: heavy bus with coupled (tung buss med henger)
+  - HGV_RT_EMS: heavy goods vehicle, road tractor, other heavy vehicle (lastebil, trekkbil, annet tungt kjøretøy)
+  - HGV_RT_EMS WC: heavy goods vehicle, road tractor, other heavy vehicle with coupled (lastebil, trekkbil, annet tungt kjøretøy med henger)
+  - OMV: other motor vehicle (andre kjøretøy)
+
+
+NorSIKT nivå 5 har følgende 14 klasser:
+
+  - MC_MP: motorcycle, moped (motorsykkel, moped)
+  - MC_MP WC: motorcycle, moped with coupled (motorsykkel, moped med henger)
+  - PC_LGV: personal car, light goods vehicle (personbil, varebil)
+  - PC_LGV WC: personal car, light goods vehicle with coupled (personbil, varebil med henger)
+  - LB: light bus (lett buss)
+  - LB WC: light bus with coupled (lett buss med henger)
+  - HB: heavy bus (tung buss)
+  - HB WC: heavy bus with coupled (tung buss med henger)
+  - HGV: heavy goods vehicle (lastebil)
+  - HGV WC: heavy goods vehicle with coupled (lastebil med henger)
+  - RT: road tractor (trekkbil)
+  - RT WC: road tractor with coupled (trekkbil med semitrailer)
+  - EMS: other heavy vehicle (annet tungt kjøretøy)
+  - OMV: other motor vehicle (andre kjøretøy)
+  
+  
+NorSIKT nivå 6 har følgende 19 klasser:
+
+  - MP: moped (moped)
+  - MC: motorcycle (motorsykkel)
+  - MC WC: motorcycle with coupled (motorsykkel med henger)
+  - PC: personal car (personbil)
+  - PC WC: personal car with coupled (personbil med henger)
+  - Small LGV: small light goods vehicle (liten varebil)
+  - Small LGV WC: small light goods vehicle with coupled (liten varebil med henger)
+  - Big LGV: big light goods vehicle (stor varebil)
+  - Big LGV WC: big light goods vehicle with coupled (stor varebil med henger)
+  - LB: light bus (lett buss)
+  - LB WC: light bus with coupled (lett buss med henger)
+  - HB: heavy bus (tung buss)
+  - HB WC: heavy bus with coupled (tung buss med henger)
+  - HGV: heavy goods vehicle (lastebil)
+  - HGV WC: heavy goods vehicle with coupled (lastebil med henger)
+  - RT: road tractor (trekkbil)
+  - RT WC: road tractor with coupled (trekkbil med semitrailer)
+  - EMS: other heavy vehicle (annet tungt kjøretøy)
+  - OMV: other motor vehicle (andre kjøretøy)
+
+
+# Kjøretøyklasser fra trafikkregistreringsutstyr
+Kjøretøyklassifiseringen fra trafikkregistreringsutstyret er basert på mer enn bare lengdemåling. Hvilke måleverdier som inngår i klassifiseringen er avhengig av sensortype og leverandør.
+
+
+## Kontinuerlige registreringer
+I perioden fra 2015 til 2018 ble det innfaset nytt utstyr som gir klassifisering. Det er til nå blitt registrert med to ulike apparattyper.
+
+Fra Loop Monitor får vi følgende 11 kjøretøyklasser:
+
+  - 1: motorsykkel
+  - 2: personbil
+  - 3: personbil med henger
+  - 4: varebil
+  - 5: varebil med henger
+  - 6: buss
+  - 71: Liten lastebil
+  - 72: Lastebil
+  - 8: Vogntog
+  - 9: semitrailer
+  - 10 eller blank: uklassifisert
+
+Fra EMU3 får vi følgende 6 kjøretøyklasser:
+
+  - LMV1: motorsykkel, moped
+  - LMV2: personbil, lett varebil
+  - LMV2_WC: personbil, lett varebil med henger
+  - HMV: lastebil
+  - HMV_WC: lastebil med henger
+  - UC/LOOP: uklassifisert
+  
+
+## Periodiske registreringer
+For periodiske registreringer med faste sensorer benyttes samme apparattyper som for kontinuerlige registreringer. For mobile periodiske registreringer er det fra og med 2019 benyttet to ulike radartyper.
+
+Fra Armadillo får vi følgende kjøretøyklasser:
+
+  - Small: motorsykkel, små biler (omtrent under 4 m)
+  - Medium: personbil, varebil (omtrent 4–6 m)
+  - Large: buss, lastebil (omtrent over 6 m)
+  
+TOPO gir klassifisering i følgende kjøretøyklasser:
+
+  - 1: motorsykkel
+  - 2: personbil
+  - 3: personbil med henger, varebil med henger
+  - 4: varebil
+  - 5: varebil med henger
+  - 6: buss
+  - 7: lastebil
+  - 8: lastebil med henger
+  - 9: trekkbil med semitrailer
+  - 10: ukjent
+
+
+# Sammenhengen mellom lengde og kjøretøygruppe
+Datagrunnlaget i denne analysen er teknisk informasjon om dagens bilpark slik Kjøretøyregisteret var 4. september 2021. Her begrenses datagrunnlaget til kjøretøy som har status "registrert", og kjøretøy som er avskiltet eller vraket inngår ikke. Videre er det begrenset til kjøretøy som er registrert første gang etter 1.1.2000, da eldre kjøretøy antas å utgjøre en neglisjerbar andel av dagens kjørte kilometer på det norske vegnettet.
+
+Kjøretøylengden som er oppgitt i Kjøretøyregisteret er i noen tilfeller opplagt feil. Disse er luket ut etter følgende kriterier om lengdeintervall:
+
+  - L 1–4 m
+  - M1 2,5–12 m
+  - N1 4–10 m
+  - N2 3–12 m
+  - N3 3–20 m
+  - O1 1–10 m
+  - O2 2–15 m
+  - O3 4–15 m
+  - O4 2–25 m
+
+M2 og M3 har bare troverdige lengder.
+
+Antall kjøretøy i kjøretøygruppene er vist i @tbl-autosys_valid_length_table.
+
+
+```{r}
+#| label: tbl-autosys_valid_length_table
+#| tbl-cap: "Antall kjøretøy per gruppe i Kjøretøyregisteret fordelt på troverdig og feil angitt kjøretøylengde."
+
+n_vehicles  |> 
+  flextable::flextable() |> 
+  flextable::set_header_labels(
+    class = "Kjøretøygruppe",
+    valid_length_TRUE = "Troverdig lengde",
+    valid_length_FALSE = "Feil lengde"
+  ) |> 
+  flextable::bold(part = "header") |> 
+  flextable::bg(bg = "#ED9300", part = "header")
+```
+
