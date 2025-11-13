@@ -29,8 +29,12 @@ source("get_from_data_norge.R")
 
 # Complete set in CSV dump ----
 # OBS! 2 GB i csv-fila!
-komplett_liste <- readr::read_csv2("kjoretoyregisteret/kjoretoy_komplett.csv",
-                           col_select = traffic_data_relevant_columns)
+komplett_liste <-
+  readr::read_csv2(
+    "kjoretoyregisteret/kjoretoy_komplett.csv",
+    #col_select = traffic_data_relevant_columns,
+    n_max = 10
+  )
 
 
 # Filter vehicles ----

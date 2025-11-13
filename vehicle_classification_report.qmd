@@ -22,13 +22,14 @@ format:
 crossref: 
   tbl-title: "Tabell"
   lot-title: "Tabeller"
-  tbl-prefix: ""
+  tbl-prefix: "tabell"
   fig-title: "Figur"
   lof-title: "Figurer"
-  fig-prefix: ""
+  fig-prefix: "figur"
   title-delim: "."
   sec-prefix: "kapittel"
 ---
+
 
 ```{r}
 #| label: setup
@@ -40,7 +41,6 @@ library(tidyverse)
 library(knitr)
 library(flextable)
 
-# knitr options ####
 knitr::opts_chunk$set(
   echo = FALSE,
   warning = FALSE,
@@ -65,26 +65,21 @@ flextable::set_flextable_defaults(
 #| label: data
 #| include: false
 
-#classified_vehicles <- readr::read_csv2("kjoretoyregisteret/kjoretoy_filtrert.csv")
-
 n_vehicles <- readr::read_rds("H:/Programmering/R/trafikkdata/vehicle_classification_data/n_vehicles.rds")
-
+classified_vehicles <- readr::read_csv2("kjoretoyregisteret/kjoretoy_filtrert.csv")
 ```
 
-{{< pagebreak >}}
 
 \listoftables
-
 \listoffigures
-
-{{< pagebreak >}}
+\newpage
 
 
 # Sammendrag {.unnumbered}
-Motorkjøretøy kan klassifiseres på ulike måter basert på hvilket formål det skal tjene. I dette dokumentet beskrives de vanligste klassifiseringssystemene i Norge, samt sammenhengen mellom disse:
+Klassifisering av motorkjøretøy kan gjøres på ulike måter avhengig av hvilket formål det skal tjene. Dette dokumentet tar for seg sammenhengen mellom klassene i disse klassifiseringssystemene:
 
 - lengdeklassifisering (trafikkdata)
-- kjøretøygrupper definert i kjøretøyforskriften (samme i EU)
+- kjøretøygrupper definert i kjøretøyforskriften
 - nordisk klassifiseringsstandard (NorSIKT)
 
 En analyse av sammenhengen mellom kjøretøylengde og Kjøretøyforskriftens grupper viser at det ikke i alle tilfeller er entydige skiller mellom kjøretøygruppene og de tradisjonelle lengdeklassene. En tilsvarende oversikt over sammenhengen mellom kjøretøys tillatte totalvekt og Kjøretøyforskriftens grupper viser at disse to er entydig definert foruten noen få unntak.
@@ -95,7 +90,9 @@ Til slutt er det sett på sammenhengen mellom alle klassifiseringssystemene for 
 
 
 # Bakgrunn
-I trafikkdatasammenheng har det i mange år vært vanlig å klassifisere motorkjøretøy basert på _målt_ lengde. Den målte lengden er typisk brukt til å dele inn kjøretøy i to klasser: korte og lange. Målt lengde er ment som en tilnærming til skillet for tillatt totalvekt på 3,5 tonn som er grensen mellom lette og tunge kjøretøy, slik den er definert i Kjøretøyforskriften. Den tilsvarende grensen for målt lengde har alltid vært satt til 5,6 m.
+I trafikkdatasammenheng har det i mange år vært vanlig å klassifisere motorkjøretøy basert på _målt_ lengde. En slik lengdemåling foretas automatisk når et kjøretøy blir registrert av sensorer når det passerer et trafikkregistreringspunkt. Slike trafikkregistreringspunkt er plassert på offentlig veg og foretar registrering av alle passerende kjøretøy uten at det påvirker trafikken.
+
+Trafikkdata samles inn for ulike statistikkformål, og i mange sammenhenger er det relevant å dele kjøretøy inn i to vektklasser: lette og tunge. Dette er basert på skillet for tillatt totalvekt på 3,5 tonn, slik det er definert i Kjøretøyforskriften, som er utgangspunktet for blant annet førerkrav og avgiftsnivå. Den automatisk målte lengden er typisk brukt til å dele inn kjøretøy i to tilsvarende klasser, korte og lange, hvor skillet er satt ved 5,6 m.
 
 Denne rapporten tar for seg sammenhengen mellom den tradisjonelle lengdeklassifiseringen og kjøretøygrupperingen slik den er beskrevet i Kjøretøyforskriften. Videre sammenlignes dette med en felles nordisk standard for kjøretøyklassifisering (NorSIKT), samt klassifiseringen som fås fra trafikkregistreringsutstyret som benyttes til innsamling av trafikkdata i Norge.
 
@@ -103,7 +100,7 @@ Sammenhenger mellom lengde- og kjøretøyklassifisering er basert på tekniske d
 
 
 # Lengdeklassifisering
-Den tradisjonelle lengdeklassifiseringen baserer seg på målt lengde, og har to nivåer.
+Den tradisjonelle lengdeklassifiseringen baserer seg på automatisk målt lengde ved hjelp av trafikkregistreringsutstyr. Den har to nivåer.
 
 Nivå 1 har to klasser:
 
@@ -119,11 +116,18 @@ Nivå 2 har seks klasser:
   - fra 16 m til 24 m
   - fra 24 m
 
-Tidligere var motorsykler angitt som egen klasse. Disse er nå inkludert i klassen kortere enn 5,6 m.
+Tidligere var motorsykler angitt som egen klasse, men er nå inkludert i klassen "kortere enn 5,6 m".
 
 
-# Kjøretøyforskriftens kjøretøygrupper
-Kjøretøyforskriftens kapittel 2 lister opp kjøretøygrupper som inndelt etter tillatt totalvekt og/eller antall sitteplasser. I det følgende er vekt oppgitt i tonn, og det er alltid tillatt totalvekt det er snakk om.
+# Forskriftenes kjøretøyklassifisering
+Det er flere forskrifter som definerer kjøretøyklasser og -betegnelser. Disse er
+
+- Forskrift om tekniske krav og godkjenning av kjøretøy, deler og utstyr (kjøretøyforskriften)
+- Forskrift om godkjenning av bil og tilhenger til bil (bilforskriften)
+- Forskrift om krav til kjøretøy
+- Forskrift om bruk av kjøretøy
+
+Kjøretøyforskriftens § 2-2 lister opp kjøretøygrupper som er inndelt etter tillatt totalvekt og/eller antall sitteplasser. I det følgende er vekt oppgitt i tonn, og det er alltid "tillatt totalvekt" det er snakk om.
 
 Følgende kjøretøygrupper nevnes i forskriften:
 
@@ -147,6 +151,42 @@ Følgende kjøretøygrupper nevnes i forskriften:
   - BM (beltemotorsykkel)
   
 Det antas at bidraget til trafikkarbeid på offentlig veg fra klassene T, C, R, S, BB og BM kan neglisjeres.
+
+\newpage
+
+Til gruppekodene i kjøretøyforskriften er det nevnt tilhørende gruppebetegnelser. Disse er også definert bilforskriftens § 1-5, som angitt i @tbl-bilforskriften.
+
+::: {#tbl-bilforskriften}
+| Gruppekode  | Betegnelse                    |
+|-------------|-------------------------------|
+| M1          | Personbil                     |
+| M2 og M3    | Buss                          |
+| N1          | Varebil                       |
+| N2 og N3    | Lastebil, trekkvogn           |
+| O1 og O2    | Tilhenger ($\leq$ 3 500 kg)   |
+| O3 og O4    | Tilhenger (>3 500 kg)         |
+
+: Klassebetegnelser i bilforskriften.
+
+:::
+
+Kjøretøyforskriftens § 2-5 definerer videre noen betegnelser som er relevante her:
+
+- *Tilhenger*: Kjøretøy som hovedsaklig er innrettet for transport av personer eller gods og til å trekkes av motorvogn, herunder kjøretøy gruppe O. Som tilhenger regnes også campingtilhenger.
+
+- *Påhengsvogn*: Tilhenger med en eller flere aksler som er slik konstruert at vertikale krefter kan overføres til tilhengerkoplingen på den trekkende motorvogn.
+
+- *Slepvogn*: Tilhenger med to eller flere aksler som er slik konstruert at vertikale krefter – bortsett fra kreftene p.g.a. tilhengerdragets vekt – ikke kan overføres til tilhengerkoplingen på den trekkende motorvogn.
+
+- *Semitrailer*: Tilhenger med en eller flere aksler og som er slik konstruert at en vesentlig del av tilhengerens vekt bæres av en svingskive montert på den trekkende motorvogn.
+
+- *Vogntog*: Motorvogn med ett eller flere kjøretøy tilkoplet.
+
+Forskrift om krav til kjøretøy gjentar mye av definisjonene fra kjøretøyforskriften, men forskrift om bruk av kjøretøy definerer i § 5-2:
+
+- *Vogntog*: Kjøretøykombinasjon bestående av motorvogn tilkoblet slepvogn, påhengsvogn eller semitrailer.
+
+- *Modulvogntog*: Kjøretøykombinasjoner bestående av motorvogner N2 og N3, tilhengere O3 og O4 og semitrailere O3 og O4 som er i samsvar med dimensjonene i rådsdirektiv 96/53/EF som endret ved direktiv 2002/7/EF.
 
 
 # Nordisk klassifiseringsstandard (NorSIKT)
@@ -283,7 +323,7 @@ TOPO gir klassifisering i følgende kjøretøyklasser:
 # Sammenhengen mellom lengde og kjøretøygruppe
 Datagrunnlaget i denne analysen er teknisk informasjon om dagens bilpark slik Kjøretøyregisteret var 4. september 2021. Her begrenses datagrunnlaget til kjøretøy som har status "registrert", og kjøretøy som er avskiltet eller vraket inngår ikke. Videre er det begrenset til kjøretøy som er registrert første gang etter 1.1.2000, da eldre kjøretøy antas å utgjøre en neglisjerbar andel av dagens kjørte kilometer på det norske vegnettet.
 
-Kjøretøylengden som er oppgitt i Kjøretøyregisteret er i noen tilfeller opplagt feil. Disse er luket ut etter følgende kriterier om lengdeintervall:
+Kjøretøyforskriftens § 2-6 definerer kjøretøylengde som kjøretøyets største utvendige lengde fra forreste til bakerste punkt. Kjøretøylengden som er oppgitt i Kjøretøyregisteret er i noen tilfeller opplagt feil. Disse er her luket ut etter følgende kriterier om lengdeintervall:
 
   - L 1–4 m
   - M1 2,5–12 m
@@ -297,21 +337,125 @@ Kjøretøylengden som er oppgitt i Kjøretøyregisteret er i noen tilfeller oppl
 
 M2 og M3 har bare troverdige lengder.
 
-Antall kjøretøy i kjøretøygruppene er vist i @tbl-autosys_valid_length_table.
+\newpage
 
+Antall kjøretøy i kjøretøygruppene er vist i @tbl-autosys_valid_length_table.
 
 ```{r}
 #| label: tbl-autosys_valid_length_table
-#| tbl-cap: "Antall kjøretøy per gruppe i Kjøretøyregisteret fordelt på troverdig og feil angitt kjøretøylengde."
+#| tbl-cap: "Antall troverdige kjøretøylengder i Kjøretøyregisteret."
 
 n_vehicles  |> 
   flextable::flextable() |> 
+  flextable::fontsize(size = 9, part = "all") |> 
   flextable::set_header_labels(
-    class = "Kjøretøygruppe",
-    valid_length_TRUE = "Troverdig lengde",
-    valid_length_FALSE = "Feil lengde"
+    class = "Kjøretøy\n-gruppe",
+    valid_length_TRUE = "Troverdig\nlengde",
+    valid_length_FALSE = "Feil\nlengde"
   ) |> 
   flextable::bold(part = "header") |> 
   flextable::bg(bg = "#ED9300", part = "header")
 ```
 
+I @fig-plot_length_distributions og @tbl-autosys_length vises fordeling av lengder per kjøretøygruppe.
+
+```{r}
+#| label: fig-plot_length_distributions
+#| fig-cap: "Fordeling av Kjøretøyregisterets lengder per kjøretøygruppe"
+#| fig-height: 6
+
+classified_vehicles |> 
+  dplyr::filter(valid_length == TRUE)|> 
+  ggplot(
+    aes(class, lengde_m)
+  ) +
+  geom_boxplot() +
+  theme_bw() +
+  scale_y_continuous(
+    breaks = c(5.6, 7.6, 12.5, 16, 24)
+  ) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.title.y = element_text(
+      margin = margin(t = 0, r = 15, b = 0, l = 0)),
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0))
+    ) +
+  labs(
+    x = "Kjøretøygruppe i kjøretøyforskriften",
+    y = "Kjøretøylengde i Kjøretøyregisteret (m)",
+    title = "Fordeling av kjøretøylengde per kjøretøygruppe"
+    )
+```
+
+```{r}
+#| label: tbl-autosys_length
+#| tbl-cap: "Lengdefordeling per kjøretøygruppe."
+
+classified_vehicles |> 
+  dplyr::filter(valid_length == TRUE) |> 
+  dplyr::summarise(
+    #Antall = n(),
+    min = min(lengde_m),
+    #Persentil_25 = quantile(lengde_m, 0.25, na.rm = TRUE),
+    median = median(lengde_m, na.rm = TRUE),
+    #Persentil_75 = quantile(lengde_m, 0.75, na.rm = TRUE),
+    maks = max(lengde_m),
+    #Gj.snitt = mean(lengde_m, na.rm = TRUE),
+    #Std.avvik = sd(lengde_m, na.rm = TRUE)
+    .by = class
+  ) |> 
+  dplyr::arrange(class) |> 
+  flextable::flextable() |> 
+  flextable::fontsize(size = 9, part = "all") |> 
+  flextable::colformat_double(j = 2:4, digits = 1) |> 
+  flextable::set_header_labels(
+    class = "Kjøretøy\n-gruppe",
+    min = "Minste\nlengde\n(m)",
+    median = "Median\n(m)",
+    maks = "Største\nlengde\n(m)"
+  ) |> 
+  flextable::bold(part = "header") |> 
+  flextable::bg(bg = "#ED9300", part = "header")
+```
+
+I @fig-plot_length_distributions går det tydelig fram at klassene L, M1 og N1 stort sett passer inn under 5,6 m. Videre er det ganske bra plass til de fleste i klasse M2 og N2 mellom 5,6 m og 7,6 m. M3 blir delt i to ved skillet på 12,5 m. N3 passer rimelig greit inn mellom 7,6 m og 12,5 m, men disse kjøretøyene har jo ofte henger i tillegg. Foreløpig foreligger ingen informasjon om typiske sammensetninger av bil og henger.
+
+I figuren nedenfor vises fordeling av tillatt totalvekt per klasse.
+
+```{r}
+#| label: fig-plot_weight_distributions
+#| fig-height: 6
+#| fig-cap: "Fordeling av Kjøretøyregisterets tillatte totalvekter per kjøretøyklasse"
+
+classified_vehicles |> 
+  dplyr::filter(
+    valid_weight == TRUE,
+    vekt_t <= 60
+  )|> 
+  ggplot(aes(class, vekt_t)) +
+  geom_boxplot() +
+  #geom_hline(aes(yintercept = 3.5), color = limit_color, alpha = alpha_value) +
+  theme_bw() +
+  scale_y_continuous(
+    breaks = c(3.5, 20, 40, 60)
+  ) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.title.y = element_text(
+      margin = margin(t = 0, r = 15, b = 0, l = 0)),
+    axis.title.x = element_text(
+      margin = margin(t = 15, r = 0, b = 0, l = 0))
+  ) +
+  labs(
+    x = "Kjøretøyklasse i Kjøretøyforskriften",
+    y = "Tillatt totalvekt (tonn)",
+    title = "Fordeling av tillatt totalvekt per kjøretøyklasse"
+  )
+```
+
+Her er kjøretøy med tillatt totalvekt over 60 tonn utelatt. Disse er for det meste dumpere (N3) som ikke kan kjøre på offentlig veg, eller spesielle hengere (O4, maskinhenger o.l).
+
+I M2 er det noen få kjøretøy som er korte og/eller lette (42 som er under 3,5 tonn), men stort sett er alle i M2 både lange og tunge.
