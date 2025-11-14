@@ -53,12 +53,11 @@ knitr::opts_chunk$set(
   )
 
 flextable::set_flextable_defaults(
-  #font.size = 8,
+  font.size = 8,
   decimal.mark = ",",
   big.mark = " ",
   na_str = ""
 )
-
 ```
 
 ```{r}
@@ -67,6 +66,16 @@ flextable::set_flextable_defaults(
 
 n_vehicles <- readr::read_rds("H:/Programmering/R/trafikkdata/vehicle_classification_data/n_vehicles.rds")
 classified_vehicles <- readr::read_csv2("kjoretoyregisteret/kjoretoy_filtrert.csv")
+
+vehicles_5.4_grouped <- read.csv2("kjoretoyregisteret/vehicles_5.4_grouped.csv")
+vehicles_5.6_grouped <- read.csv2("kjoretoyregisteret/vehicles_5.6_grouped.csv")
+vehicles_5.8_grouped <- read.csv2("kjoretoyregisteret/vehicles_5.8_grouped.csv")
+vehicles_6.0_grouped <- read.csv2("kjoretoyregisteret/vehicles_6.0_grouped.csv")
+vehicles_relative <- read.csv2("kjoretoyregisteret/vehicles_relative.csv")
+
+classes_joined <- readr::read_csv2("kjoretoyregisteret/classes_joined.csv")
+
+norsikt_rtdce_mapping <- readr::read_csv2("kjoretoyregisteret/norsikt_rtdce_mapping.csv")
 ```
 
 
@@ -335,29 +344,49 @@ Kjøretøyforskriftens § 2-6 definerer kjøretøylengde som kjøretøyets stør
   - O3 4–15 m
   - O4 2–25 m
 
-M2 og M3 har bare troverdige lengder.
+M2 og M3 har bare troverdige lengder. Antall kjøretøy i kjøretøygruppene er vist i @tbl-autosys.
+
+I @fig-plot_length_distributions og @tbl-autosys vises fordeling av lengder per kjøretøygruppe. I @fig-plot_length_distributions går det tydelig fram at klassene L, M1 og N1 stort sett passer inn under 5,6 m. Videre er det ganske bra plass til de fleste i klasse M2 og N2 mellom 5,6 m og 7,6 m. M3 blir delt i to ved skillet på 12,5 m. N3 passer rimelig greit inn mellom 7,6 m og 12,5 m, men disse kjøretøyene har jo ofte henger i tillegg. Foreløpig foreligger ingen informasjon om typiske sammensetninger av bil og henger.
 
 \newpage
 
-Antall kjøretøy i kjøretøygruppene er vist i @tbl-autosys_valid_length_table.
-
 ```{r}
-#| label: tbl-autosys_valid_length_table
-#| tbl-cap: "Antall troverdige kjøretøylengder i Kjøretøyregisteret."
+#| label: tbl-autosys
+#| tbl-cap: "Lengdefordeling per kjøretøygruppe."
 
-n_vehicles  |> 
+classified_vehicles |> 
+  dplyr::filter(valid_length == TRUE) |> 
+  dplyr::summarise(
+    min = min(lengde_m),
+    median = median(lengde_m, na.rm = TRUE),
+    maks = max(lengde_m),
+    .by = class
+  ) |> 
+  dplyr::arrange(class) |> 
+  dplyr::left_join(
+    n_vehicles,
+    by = "class"
+  ) |> 
+  dplyr::select(
+    class, 
+    valid_length_TRUE, valid_length_FALSE,
+    min, median, maks
+  ) |> 
   flextable::flextable() |> 
-  flextable::fontsize(size = 9, part = "all") |> 
+  flextable::colformat_double(j = 4:6, digits = 1) |> 
   flextable::set_header_labels(
-    class = "Kjøretøy\n-gruppe",
-    valid_length_TRUE = "Troverdig\nlengde",
-    valid_length_FALSE = "Feil\nlengde"
+    class = "Kjøretøy-\ngruppe",
+    valid_length_TRUE = "Antall\nkjøretøy",
+    valid_length_FALSE = "Antall med\nfeil lengde",
+    min = "Minste\nlengde\n(m)",
+    median = "Median\nlengde\n(m)",
+    maks = "Største\nlengde\n(m)"
   ) |> 
   flextable::bold(part = "header") |> 
   flextable::bg(bg = "#ED9300", part = "header")
 ```
 
-I @fig-plot_length_distributions og @tbl-autosys_length vises fordeling av lengder per kjøretøygruppe.
+\clearpage
 
 ```{r}
 #| label: fig-plot_length_distributions
@@ -389,45 +418,14 @@ classified_vehicles |>
     )
 ```
 
-```{r}
-#| label: tbl-autosys_length
-#| tbl-cap: "Lengdefordeling per kjøretøygruppe."
+\newpage
 
-classified_vehicles |> 
-  dplyr::filter(valid_length == TRUE) |> 
-  dplyr::summarise(
-    #Antall = n(),
-    min = min(lengde_m),
-    #Persentil_25 = quantile(lengde_m, 0.25, na.rm = TRUE),
-    median = median(lengde_m, na.rm = TRUE),
-    #Persentil_75 = quantile(lengde_m, 0.75, na.rm = TRUE),
-    maks = max(lengde_m),
-    #Gj.snitt = mean(lengde_m, na.rm = TRUE),
-    #Std.avvik = sd(lengde_m, na.rm = TRUE)
-    .by = class
-  ) |> 
-  dplyr::arrange(class) |> 
-  flextable::flextable() |> 
-  flextable::fontsize(size = 9, part = "all") |> 
-  flextable::colformat_double(j = 2:4, digits = 1) |> 
-  flextable::set_header_labels(
-    class = "Kjøretøy\n-gruppe",
-    min = "Minste\nlengde\n(m)",
-    median = "Median\n(m)",
-    maks = "Største\nlengde\n(m)"
-  ) |> 
-  flextable::bold(part = "header") |> 
-  flextable::bg(bg = "#ED9300", part = "header")
-```
-
-I @fig-plot_length_distributions går det tydelig fram at klassene L, M1 og N1 stort sett passer inn under 5,6 m. Videre er det ganske bra plass til de fleste i klasse M2 og N2 mellom 5,6 m og 7,6 m. M3 blir delt i to ved skillet på 12,5 m. N3 passer rimelig greit inn mellom 7,6 m og 12,5 m, men disse kjøretøyene har jo ofte henger i tillegg. Foreløpig foreligger ingen informasjon om typiske sammensetninger av bil og henger.
-
-I figuren nedenfor vises fordeling av tillatt totalvekt per klasse.
+I @fig-plot_weight_distributions vises fordeling av tillatt totalvekt per klasse. Her er kjøretøy med tillatt totalvekt over 60 tonn utelatt. Disse er for det meste dumpere (N3) som ikke kan kjøre på offentlig veg, eller spesielle hengere (O4, maskinhenger o.l). I M2 er det noen få kjøretøy som er korte og/eller lette (42 som er under 3,5 tonn), men stort sett er alle i M2 både lange og tunge.
 
 ```{r}
 #| label: fig-plot_weight_distributions
 #| fig-height: 6
-#| fig-cap: "Fordeling av Kjøretøyregisterets tillatte totalvekter per kjøretøyklasse"
+#| fig-cap: "Fordeling av Kjøretøyregisterets tillatte totalvekter per kjøretøygruppe"
 
 classified_vehicles |> 
   dplyr::filter(
@@ -450,12 +448,104 @@ classified_vehicles |>
       margin = margin(t = 15, r = 0, b = 0, l = 0))
   ) +
   labs(
-    x = "Kjøretøyklasse i Kjøretøyforskriften",
+    x = "Kjøretøygruppe i Kjøretøyforskriften",
     y = "Tillatt totalvekt (tonn)",
-    title = "Fordeling av tillatt totalvekt per kjøretøyklasse"
+    title = "Fordeling av tillatt totalvekt per kjøretøygruppe"
   )
 ```
 
-Her er kjøretøy med tillatt totalvekt over 60 tonn utelatt. Disse er for det meste dumpere (N3) som ikke kan kjøre på offentlig veg, eller spesielle hengere (O4, maskinhenger o.l).
 
-I M2 er det noen få kjøretøy som er korte og/eller lette (42 som er under 3,5 tonn), men stort sett er alle i M2 både lange og tunge.
+# Sammenheng mellom lengde og tillatt totalvekt
+Datagrunnlaget i denne analysen er det samme som i forrige kapittel, men her brukt til en analyse av sammenhengen mellom kjøretøylengde og klassifisering. Spørsmålet er hvor godt lengdegrensen på 5,6 m passer med skillet mellom lett og tung på 3,5 tonn tillatt totalvekt.
+
+## Relevante kjøretøyklasser
+For å se nærmere på grensen mellom lette og tunge, er det tilstrekkelig å inkludere følgende kjøretøygrupper slik de er definert i Kjøretøyforskriften:
+
+  - M1, M1G (personbil, maks 8 sitteplasser)
+  - M2, M2G (minibuss, flere enn 8 sitteplasser, maks 5 tonn totalvekt)
+  - N1, N1G (lett varebil, maks 3,5 tonn totalvekt)
+  - N2, N2G (liten lastebil, totalvekt mellom 3,5 og 12 tonn)
+
+De øvrige klassene inneholder kun lengre kjøretøy.
+
+
+## Analyse
+Ved å kategorisere alle kjøretøy etter kombinasjon av lengde og tillatt totalvekt, kan de deles inn i disse fire kategoriene:
+
+  - Korte og lette: under 5,6 m og opp til og med 3,5 tonn.
+  - Korte og tunge: under 5,6 m og over 3,5 tonn.
+  - Lange og lette: 5,6 m eller mer og opp til og med 3,5 tonn.
+  - Lange og tunge: 5,6 m eller mer og over 3,5 tonn.
+  
+Den første og siste kategorien er i harmoni med tanken om å skille lette og tunge kjøretøy ved 5,6 m. De to midterste kategoriene er i denne sammenhengen selvmotsigende, og bør helst inneholde så få kjøretøy som mulig.
+
+I de følgende figurene er det vist hvordan kjøretøyene fordeler seg i disse fire kategoriene for ulike valg av lengdegrensen.
+
+```{r}
+#| label: fig-combination_plot_function
+
+plot_combination_distribution <- function(vehicle_grouped_df, subtitle_text) {
+  
+  vehicle_grouped_df |> 
+    ggplot2::ggplot(
+      aes(kategori, antall)
+    ) +
+    ggplot2::geom_col(fill = "#ED9300") +
+    ggplot2::geom_text(
+      aes(label = antall, y = 1e5),
+      color = "black",
+      position = position_dodge(0.9),
+      vjust = 0,
+      size = 2
+    ) +
+    ggplot2::facet_wrap(vars(class)) +
+    ggplot2::theme_bw() +
+    ggplot2::scale_y_continuous(
+      breaks = c(0, 1e6)
+    ) +
+    ggplot2::theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      axis.text.x = element_text(angle = 90),
+      axis.title.y = element_text(
+        margin = margin(t = 0, r = 15, b = 0, l = 0)),
+      axis.title.x = element_text(
+        margin = margin(t = 15, r = 0, b = 0, l = 0))
+    ) +
+    ggplot2::labs(x = "Kategori", y = "Antall kjøretøy") +
+    ggplot2::ggtitle(
+      "Sammenheng mellom lengde og tillatt totalvekt",
+      subtitle = subtitle_text
+    )
+}
+```
+
+
+```{r}
+#| label: fig-bin_5_4
+#| fig-cap: "Antall kjøretøy i kombinasjon av vekt og lengde med lengdeskille ved 5,4 m."
+
+plot_combination_distribution(vehicles_5.4_grouped, "Lengdeskille ved 5,4 m")
+```
+
+```{r}
+#| label: fig-bin_5_6
+#| fig-cap: "Antall kjøretøy i kombinasjon av vekt og lengde med lengdeskille ved 5,6 m."
+
+plot_combination_distribution(vehicles_5.6_grouped, "Lengdeskille ved 5,6 m")
+```
+
+```{r}
+#| label: fig-bin_5_8
+#| fig-cap: "Antall kjøretøy i kombinasjon av vekt og lengde med lengdeskille ved 5,8 m."
+
+plot_combination_distribution(vehicles_5.8_grouped, "Lengdeskille ved 5,8 m")
+```
+
+```{r}
+#| label: fig-bin_6_0
+#| fig-cap: "Antall kjøretøy i kombinasjon av vekt og lengde med lengdeskille ved 6,0 m."
+
+plot_combination_distribution(vehicles_6.0_grouped, "Lengdeskille ved 6,0 m")
+```
