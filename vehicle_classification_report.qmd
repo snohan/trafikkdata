@@ -1,6 +1,6 @@
 ---
 title: "Kjøretøyklassifisering"
-format: 
+format:
   pdf:
     toc: true
     number-sections: true
@@ -8,7 +8,7 @@ format:
     toc-title: Innhold
     mainfont: "Arial"
     include-in-header:
-      text: |
+      text:
         \newfontfamily\sectionfont[Color=ed9300]{Arial}
         \newfontfamily\subsectionfont[Color=444f55]{Arial}
         \newfontfamily\subsubsectionfont[Color=ed9300]{Arial}
@@ -58,6 +58,74 @@ flextable::set_flextable_defaults(
   big.mark = " ",
   na_str = ""
 )
+
+red_bg <- "#fedfe1"
+green_bg <- "#e8f3e9"
+
+
+table_class_comparison <- function(level) {
+  
+  classes_joined |> 
+    dplyr::filter(norsikt_level == level) |> 
+    dplyr::mutate(
+      dplyr::across(
+        .cols = c(norsikt_class, register_class, lm_class, emu3_class, armadillo_class, topo_class),
+        .fns = ~ stringr::str_replace_all(., ", ", "\n")
+      )
+    ) |> 
+    flextable::flextable(
+      col_keys = c("norsikt_class", "register_class", "length_class", "lm_class", "emu3_class", "armadillo_class", "topo_class")
+    ) |> 
+    flextable::set_header_labels(
+      norsikt_class = "NorSIKT-\nklasse",
+      register_class = "Forskrifts-\ngruppe",
+      length_class = "Lengde-\nklasse",
+      lm_class = "LM",
+      emu3_class = "EMU3",
+      armadillo_class = "Armadillo",
+      topo_class = "TOPO"
+    ) |> 
+    flextable::bold(part = "header") |> 
+    flextable::bg(bg = "#ED9300", part = "header") |> 
+    flextable::border_inner_h(border = flextable::fp_border_default()) |>
+    flextable::align(j = c(4:7), align = "center", part = "all") |> 
+    flextable::bg(
+      j = "lm_class", 
+      bg = 
+        function(x) {
+          dplyr::if_else(x, green_bg, red_bg)
+        },
+      part = "body", 
+      source = "norsikt_class_unambiguously_defined_by_lm"
+    ) |> 
+    flextable::bg(
+      j = "emu3_class", 
+      bg = 
+        function(x) {
+          dplyr::if_else(x, green_bg, red_bg)
+        },
+      part = "body", 
+      source = "norsikt_class_unambiguously_defined_by_emu3"
+    ) |> 
+    flextable::bg(
+      j = "armadillo_class", 
+      bg = 
+        function(x) {
+          dplyr::if_else(x, green_bg, red_bg)
+        },
+      part = "body", 
+      source = "norsikt_class_unambiguously_defined_by_armadillo"
+    ) |> 
+    flextable::bg(
+      j = "topo_class", 
+      bg = 
+        function(x) {
+          dplyr::if_else(x, green_bg, red_bg)
+        },
+      part = "body", 
+      source = "norsikt_class_unambiguously_defined_by_topo"
+    )
+}
 ```
 
 ```{r}
@@ -78,7 +146,6 @@ classes_joined <- readr::read_csv2("kjoretoyregisteret/classes_joined.csv")
 norsikt_rtdce_mapping <- readr::read_csv2("kjoretoyregisteret/norsikt_rtdce_mapping.csv")
 ```
 
-
 \listoftables
 \listoffigures
 \newpage
@@ -95,7 +162,7 @@ En analyse av sammenhengen mellom kjøretøylengde og Kjøretøyforskriftens gru
 
 Videre viser en analyse av sammenhengen mellom kjøretøylengde og tillatt totalvekt at skillet mellom korte og lange kjøretøy burde vært ved 7,5 m dersom grensen skal passe best til skillet mellom lette og tunge ved 3,5 tonn tillatt totalvekt. Likevel er forskjellen fra den tradisjonelle lengdegrensen på 5,6 m relativt liten, og ikke av særlig betydning.
 
-Til slutt er det sett på sammenhengen mellom alle klassifiseringssystemene for å se hvilke klassekoder som tilsvarer hverandre. I trafikkregistreringer vil hvert kjøretøy bli forsøkt klassifisert ut fra de data som   trafikkregistreringsutstyret klarer å samle inn via sensorikk. Hvilke klasser som benyttes i slike registreringer kan variere mellom utstyrsleverandører. Dette dokumentet beskriver sammenhengen mellom slike utstyrsspesifikke klassifiseringer og de ovenfor nevnte klassifiseringssystemer. Dersom NorSIKT-systemet skal benyttes, viser det seg å være nivå 3 som passer best med data fra dagens trafikkregistreringsutstyr som benyttes i Trafikkdatasystemet.
+Til slutt er det sett på sammenhengen mellom alle klassifiseringssystemene for å se hvilke klassekoder som tilsvarer hverandre. I trafikkregistreringer vil hvert kjøretøy bli forsøkt klassifisert ut fra de data som trafikkregistreringsutstyret klarer å samle inn via sensorikk. Hvilke klasser som benyttes i slike registreringer kan variere mellom utstyrsleverandører. Dette dokumentet beskriver sammenhengen mellom slike utstyrsspesifikke klassifiseringer og de ovenfor nevnte klassifiseringssystemer. Dersom NorSIKT-systemet skal benyttes, viser det seg å være nivå 3 som passer best med data fra dagens trafikkregistreringsutstyr som benyttes i Trafikkdatasystemet.
 
 
 # Bakgrunn
@@ -456,9 +523,10 @@ classified_vehicles |>
 
 
 # Sammenheng mellom lengde og tillatt totalvekt
-Datagrunnlaget i denne analysen er det samme som i forrige kapittel, men her brukt til en analyse av sammenhengen mellom kjøretøylengde og klassifisering. Spørsmålet er hvor godt lengdegrensen på 5,6 m passer med skillet mellom lett og tung på 3,5 tonn tillatt totalvekt.
+Datagrunnlaget i denne analysen er det samme som i forrige kapittel, men er her brukt til å se på sammenhengen mellom kjøretøylengde og -klassifisering. Spørsmålet er hvor godt lengdegrensen på 5,6 m stemmer overens med skillet mellom lett og tung på 3,5 tonn tillatt totalvekt.
 
-## Relevante kjøretøyklasser
+
+## Relevante kjøretøygrupper
 For å se nærmere på grensen mellom lette og tunge, er det tilstrekkelig å inkludere følgende kjøretøygrupper slik de er definert i Kjøretøyforskriften:
 
   - M1, M1G (personbil, maks 8 sitteplasser)
@@ -472,10 +540,10 @@ De øvrige klassene inneholder kun lengre kjøretøy.
 ## Analyse
 Ved å kategorisere alle kjøretøy etter kombinasjon av lengde og tillatt totalvekt, kan de deles inn i disse fire kategoriene:
 
-  - Korte og lette: under 5,6 m og opp til og med 3,5 tonn.
-  - Korte og tunge: under 5,6 m og over 3,5 tonn.
-  - Lange og lette: 5,6 m eller mer og opp til og med 3,5 tonn.
-  - Lange og tunge: 5,6 m eller mer og over 3,5 tonn.
+  - "Korte og lette": under 5,6 m og opp til og med 3,5 tonn.
+  - "Korte og tunge": under 5,6 m og over 3,5 tonn.
+  - "Lange og lette": 5,6 m eller mer og opp til og med 3,5 tonn.
+  - "Lange og tunge": 5,6 m eller mer og over 3,5 tonn.
   
 Den første og siste kategorien er i harmoni med tanken om å skille lette og tunge kjøretøy ved 5,6 m. De to midterste kategoriene er i denne sammenhengen selvmotsigende, og bør helst inneholde så få kjøretøy som mulig.
 
@@ -496,7 +564,7 @@ plot_combination_distribution <- function(vehicle_grouped_df, subtitle_text) {
       color = "black",
       position = position_dodge(0.9),
       vjust = 0,
-      size = 2
+      size = 2.5
     ) +
     ggplot2::facet_wrap(vars(class)) +
     ggplot2::theme_bw() +
@@ -548,4 +616,242 @@ plot_combination_distribution(vehicles_5.8_grouped, "Lengdeskille ved 5,8 m")
 #| fig-cap: "Antall kjøretøy i kombinasjon av vekt og lengde med lengdeskille ved 6,0 m."
 
 plot_combination_distribution(vehicles_6.0_grouped, "Lengdeskille ved 6,0 m")
+```
+
+I alle disse tilfellene er det "kort og lett" som dominerer i antall. Det er relativt små forskjeller i fordelingene.
+
+En sammenligning av fordelingene for ulike lengdeskiller er vist i @fig-rel_dist.
+
+```{r}
+#| label: fig-rel_dist
+#| fig-cap: "Relativ fordeling av kjøretøy ved flere valg av lengdeskille."
+#| fig-height: 7
+
+vehicles_relative |> 
+  dplyr::filter(lengdegrense %in% c("5.4", "5.6", "6", "6.5", "7", "7.5", "8", "8.5")) |> 
+  ggplot(aes(kategori, prosentandel, fill = lengdegrense)) +
+  ggplot2::geom_col(position = "dodge") +
+  theme_bw() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90, vjust = 0.5),
+    axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+    axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0))
+  ) +
+  scale_fill_brewer(
+    name = "Lengde-\nskille (m)",
+    palette = "Set3"
+  ) +
+  labs(x = "Kategori", y = "Prosentandel (%)") +
+  ggtitle("Sammenheng mellom lengde og tillatt totalvekt")
+```
+
+I @fig-rel_dist_closer vises fordelingene i de to mellomkategoriene som vi vil ha færrest mulig kjøretøy i.
+
+```{r}
+#| label: fig-rel_dist_closer
+#| fig-cap: "Relativ andel kjøretøy i mellomkategoriene ved ulike valg av lengdegrense."
+
+vehicles_relative |> 
+  dplyr::filter(kategori %in% c("kort_og_tung", "lang_og_lett")) |> 
+  ggplot(aes(lengdegrense, prosentandel, fill = kategori)) +
+  ggplot2::geom_col(position = "stack") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        axis.title.y = element_text(
+          margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.x = element_text(
+          margin = margin(t = 10, r = 0, b = 0, l = 0)),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        legend.position = "bottom") +
+  scale_fill_brewer(
+    name = NULL,
+    palette = "Dark2",
+    labels = c("Korte og tunge", "Lange og lette")
+  ) +
+  labs(x = "Lengdeskille (m)", y = "Prosentandel (%)") +
+  ggtitle(
+    "Sammenheng mellom lengde og tillatt totalvekt",
+    subtitle = "Andel kjøretøy i problemkategoriene"
+  )
+```
+
+Ut fra @fig-rel_dist_closer ser vi at lengdeskille ved 7,5 m gir lavest andel kjøretøy i mellomkategoriene med 0,7 %. Forskjellen er ikke mer enn 1,5 prosentpoeng fra slik det er med 5,6 m, hvor 2,2 % av kjøretøyene i Kjøretøyregisteret i en av mellomkategoriene. Det er et markant dropp ved 6 m, og dette harmonerer med det som data fra både EMU3 og LM viser av sammenheng mellom sine klasser og målt lengde.
+
+
+## Korte og tunge
+Med 5,6 m som grense er det kun 500 kjøretøy som samtidig er korte og tunge. Typisk er dette SUV-er, små varebiler eller veldig små lastebiler. Med 6,0 m som grense økes denne gruppa til 2 200 kjøretøy, men den består av de samme typene.
+
+
+## Lange og lette
+Mange kjøretøy er definert med tillatt totalvekt på nøyaktig 3,5 tonn (tilpasset krav til førerkort, avgift m.m.). Disse er det 35 000 av når lengdegrensen er 5,6 m. Typisk er disse varebiler og bobiler.
+
+
+## Overrepresentasjon av bobiler
+Det er velkjent at bobiler i perioder utgjør en større andel av kjøretøyene på vegen enn de utgjør i selve kjøretøyregisteret. Dette vil gjerne være tilfelle på (Nasjonale) turistveger i juni. En stor andel av disse er definert som lette (tillatt totalvekt på akkurat 3,5 tonn), men er betydelig lenger enn 5,6 m, typisk 6,0-7,5 m. Disse vil bli lengdeklassifisert over 5,6 m og føre til en for høy andel tunge.
+
+
+## Overrepresentasjon av varebiler
+I byområder er det høy andel varebiler. En andel av disse er definert som lette (tillatt totalvekt på akkurat 3,5 tonn), men er betydelig lenger enn 5,6 m, typisk 6,0-7,5 m. Disse vil bli lengdeklassifisert over 5,6 m og føre til en for høy andel tunge.
+
+
+## Lette og korte biler med henger
+Kombinasjonen av lette og korte biler med hvilken som helst henger, vil gi samlet lengde over 5,6 m. Disse vil bli lengdeklassifisert over 5,6 m og føre til en for høy andel tunge. Overrepresentasjon av dette vil typisk være sommertrafikk med campingvogn og lastehenger ved hytteområder.
+
+
+## Feilkilder
+Fordelingene presentert over er teoretiske og tar ikke hensyn til at ulike typer kjøretøy eventuelt utøver ulikt trafikkarbeid. Det kan være at lengre kjøretøy kjører mer enn korte, og at "problemområdet" rundt 5,6 m utgjør en større andel av trafikkarbeidet enn i Kjøretøyregisteret.
+
+
+# Sammenheng mellom klassifiseringssystemene
+Med utgangspunkt i NorSIKT-klassene er det i tabellene nedenfor satt opp hvilke klasser i de andre klassifiseringssystemene som er de tilsvarende. 
+
+
+## NorSIKT nivå 2
+Nivå 2 omfatter fem klasser og sammenheng med øvrige klassifiseringer er vist i @tbl-norsikt_2_compare. De siste kolonnene i tabellen om det er en entydig sammenheng mellom klassene. For nivå 2 er det en helt entydig sammenheng med klassene som trafikkregistreringsutstyret for kontinuerlig registrering gir. Det samme gjelder for det mobile utstyret, bortsett fra at Armadillo ikke har egne klasser for kjøretøy med henger.
+
+```{r}
+#| label: tbl-norsikt_2_compare
+#| tbl-cap: "Sammenheng mellom NorSIKT nivå 2 og andre klassifiseringssystemer. Grønn farge indikerer entydig sammenheng med NorSIKT-klassen. "
+
+table_class_comparison(2)
+```
+
+\newpage
+
+
+## NorSIKT nivå 3
+Nivå 3 omfatter sju klasser og sammenheng med øvrige klassifiseringer er vist i @tbl-norsikt_3_compare.
+
+```{r}
+#| label: tbl-norsikt_3_compare
+#| tbl-cap: "Sammenheng mellom NorSIKT nivå 3 og andre klassifiseringssystemer."
+
+table_class_comparison(3)
+```
+
+Den eneste forskjellen mellom nivå 2 og 3 er at motorsykler og lignende (f.eks. mopedbil, ATV mm.) er skilt ut som egen klasse. NorSIKT har egen klasse for motorsykkel med henger, men det er ikke en egen klasse for dette hos trafikkregistreringsutstyret. Denne klassen er i de aller fleste tilfeller ganske fåtallig, så den kan for praktiske formål slås sammen med klassen for motorsykler uten henger.
+
+\newpage
+
+
+## NorSIKT nivå 4
+Nivå 4 omfatter 11 klasser og sammenheng med øvrige klassifiseringer er vist i @tbl-norsikt_4_compare.
+
+```{r}
+#| label: tbl-norsikt_4_compare
+#| tbl-cap: "Sammenheng mellom NorSIKT nivå 4 og andre klassifiseringssystemer."
+
+table_class_comparison(4)
+```
+
+Forskjellen fra nivå 3 er at lett og tung buss er skilt ut som egne klasser med og uten henger. Det er kun LM og TOPO som har egen klasse for buss uten henger. Andel tunge busser med henger vil være fåtallig slik at disse kan inngå i klassen for buss. En tilpasning av nivå 4 der utvidelsen fra nivå 3 kun er en egen klasse for tunge busser vil passe utstyret best.
+
+\newpage
+
+
+## NorSIKT nivå 5
+Nivå 5 omfatter 14 klasser og sammenheng med øvrige klassifiseringer er vist i @tbl-norsikt_5_compare.
+
+```{r}
+#| label: tbl-norsikt_5_compare
+#| tbl-cap: "Sammenheng mellom NorSIKT nivå 5 og andre klassifiseringssystemer."
+
+table_class_comparison(5)
+```
+
+Utvidelsen fra nivå 4 til nivå 5 består av at de tunge deles inn i egne klasser for lastebil og trekkbil med og uten henger, samt en for øvrige tunge kjøretøy. Denne utvidelsen har ingen tilsvarende klasser fra EMU3 eller Armadillo, men LM og TOPO har egne klasser for lastebil med henger og trekkbil med semitrailer.
+
+
+## NorSIKT nivå 6
+Nivå 6 omfatter 19 klasser og sammenheng med øvrige klassifiseringer er vist i tabellen nedenfor.
+
+```{r}
+#| label: tbl-norsikt_6_compare
+#| tbl-cap: "Sammenheng mellom NorSIKT nivå 6 og andre klassifiseringssystemer."
+
+table_class_comparison(6)
+```
+
+Utvidelsen av nivå 5 til nivå 6 består i å splitte moped ut fra motorsykkel, og egne klasser for henholdsvis personbil, liten lett varebil og stor lett varebil. Disse distinksjonene er ikke tilgjengelig i utstyrsklassene.
+
+
+## NorSIKT-nivå tilpasset utstyrsklasser
+Basert på klassene som fås fra dagens trafikkregistreringsutstyr er det tre nivåer i NorSIKT som er aktuelle å benytte. Det er nivå 2, 3 og 4. Men ikke alle klasser har helt entydig sammenheng med utstyrsklassene. Ved å tilpasse klassene noe, kan få dette entydig.
+
+
+NorSIKT nivå 2 kan benyttes som den er, og sammenhengen er vist i @tbl-norsikt_2_compare. Armadillo har ikke egne klasser med henger, men har sammenheng med de øvrige klassene.
+
+NorSIKT nivå 3 kan tilpasses ved at de to klassene for motorsykkel med og uten henger blir slått sammen til en. Sammenhengen er vist i @tbl-norsikt_3_mapping.
+
+```{r}
+#| label: tbl-norsikt_3_mapping
+#| tbl-cap: "Sammenheng mellom NorSIKT nivå 3 (tilpasset) og utstyrsklasser."
+
+norsikt_rtdce_mapping |> 
+  dplyr::filter(norsikt_level == "3r") |> 
+  dplyr::mutate(
+      dplyr::across(
+        .cols = c(norsikt_class, register_class, lm_class, emu3_class, armadillo_class, topo_class),
+        .fns = ~ stringr::str_replace_all(., ", ", "\n")
+      )
+  ) |> 
+  dplyr::select(
+    norsikt_class,
+    lm_class,
+    emu3_class,
+    armadillo_class,
+    topo_class
+  ) |> 
+  flextable::flextable() |> 
+  flextable::set_header_labels(
+    norsikt_class = "NorSIKT-\nklasse",
+    lm_class = "LM",
+    emu3_class = "EMU3",
+    armadillo_class = "Armadillo",
+    topo_class = "TOPO"
+  ) |> 
+  flextable::bold(part = "header") |> 
+  flextable::bg(bg = "#ED9300", part = "header") |> 
+  flextable::border_inner_h(border = flextable::fp_border_default()) |>
+  flextable::align(j = c(2:5), align = "center", part = "all")
+```
+
+Armadillo har ikke egne klasser med henger, men har sammenheng med de øvrige klassene.
+
+NorSIKT nivå 4 må tilpasses på flere måter. For det første må samme tilpasning som i nivå 3 gjøres. Videre kan lette busser beholdes i klassen for lette kjøretøy slik de er i nivå 3. De tunge bussene kan skilles ut fra tunge, men da i en felles klasse med og uten henger. I tillegg kan de tunge splittes opp delvis slik de gjøres i nivå 5, ved å ha en klasse for lastebil og trekkbil uten henger, og så en egen klasse for lastebil med henger og en klasse for trekkbil med semitrailer. Dette nivået er da aktuelt kun for LM og ikke EMU3, og sammenhengen er vist i @tbl-norsikt_4_mapping.
+
+\newpage
+
+```{r}
+#| label: tbl-norsikt_4_mapping
+#| tbl-cap: "Sammenheng mellom NorSIKT nivå 4 (tilpasset) og utstyrsklasser."
+
+norsikt_rtdce_mapping |> 
+  dplyr::filter(norsikt_level == "45") |> 
+  dplyr::mutate(
+      dplyr::across(
+        .cols = c(norsikt_class, register_class, lm_class, emu3_class, armadillo_class, topo_class),
+        .fns = ~ stringr::str_replace_all(., ", ", "\n")
+      )
+  ) |> 
+  dplyr::select(
+    norsikt_class,
+    lm_class,
+    topo_class
+  ) |> 
+  flextable::flextable() |> 
+  flextable::set_header_labels(
+    norsikt_class = "NorSIKT-\nklasse",
+    register_class = "Forskriftsklasse",
+    length_class = "Lengdeklasse",
+    lm_class = "LM",
+    topo_class = "TOPO"
+  ) |> 
+  flextable::bold(part = "header") |> 
+  flextable::bg(bg = "#ED9300", part = "header") |> 
+  flextable::border_inner_h(border = flextable::fp_border_default()) |>
+  flextable::align(j = c(2:3), align = "center", part = "all")
 ```
