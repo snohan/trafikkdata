@@ -7,31 +7,12 @@
   library(flextable)
   library(httr)
   library(writexl)
-
-  source("get_from_data_norge.R")
 }
 
 
-# Four data sets from API ----
-
-# Avgiftskoder, antakelig irrelevant
-#vehicle_groups <- get_vehicle_groups()
-
-# Klassene brukt i Kjøretøyforskriften
-#vehicle_technical_codes <- get_technical_codes()
-# TODO: map to NorSiKT classes
-
-# The available parameters
-#vehicle_info_fields <- get_vehicle_info_fields()
-
-# The vehicle data, light goods vehicles
-#vehicle_info_N1 <- get_vehicle_info("N1")
-# Spørringa tar alt for langt tid! Bruk CSV-dump i stedet.
-
-
 # Complete set in CSV dump ----
-# OBS! 2 GB i csv-fila!
-komplett_liste <-
+# Huge file!
+vehicles <-
   readr::read_csv(
     #"kjoretoyregisteret/kjoretoy_komplett.csv",
     "H:/Trafikkdata/Autosys/7877_kjoretoydata_5/7877_kjoretoydata_5.csv"
@@ -44,39 +25,100 @@ komplett_liste <-
     stringr::str_detect(TEKN_TKNAVN, "^R", negate = TRUE),
     stringr::str_detect(TEKN_TKNAVN, "^S", negate = TRUE),
     stringr::str_detect(TEKN_TKNAVN, "^B", negate = TRUE),
-    TEKN_REG_F_G > 20050000
+    stringr::str_detect(TEKN_TKNAVN, "L2e", negate = TRUE),
+    stringr::str_detect(TEKN_TKNAVN, "L4e", negate = TRUE),
+    stringr::str_detect(TEKN_TKNAVN, "L5e", negate = TRUE),
+    TEKN_REG_F_G > 20050000 # Removing old vehicles
   ) |>
-  dplyr::select(-TEKN_MAKS_TAKLAST)
+  dplyr::mutate(
+    length_m = TEKN_LENGDE / 1e3,
+    date_registered = lubridate::ymd(TEKN_REG_F_G),
+    # date_registered_norway = lubridate::ymd(TEKN_REG_F_G_N),
+    date_last_pkk = lubridate::ymd(TEKN_SISTE_PKK),
+    axle_dist_m_1 = TEKN_MINAVST_MS1 / 1e3,
+    axle_dist_m_2 = TEKN_MINAVST_MS2 / 1e3
+  ) |> 
+  dplyr::select(
+    date_registered,
+    # date_registered_norway,
+    class_code = TEKN_TKNAVN,
+    status = TEKN_REG_STATUS,
+    brand = TEKN_MERKENAVN,
+    model = TEKN_MODELL,
+    length_m,
+    weight_allowed = TEKN_TOTVEKT,
+    coupling_weight_allowed = TEKN_BEL_H_FESTE,
+    axles_n = TEKN_AKSLER,
+    axle_dist_m_1,
+    axle_dist_m_2,
+    date_last_pkk,
+    km = KILOMETERSTAND
+  ) 
 
+# diff_dates <-
+#   vehicles |> 
+#   dplyr::select(
+#     date_registered,
+#     date_registered_norway,
+#   ) |> 
+#   dplyr::mutate(
+#     diff_date = date_registered_norway - date_registered
+#   ) |> 
+#   dplyr::filter(
+#     diff_date > 0
+#   )
 
-komplett_liste$TEKN_TKNAVN |> unique() |> sort()
-komplett_liste$TEKN_REG_STATUS |> unique() |> sort()
+vehicles$class_code |> unique() |> sort()
+vehicles$status |> unique() |> sort()
 
-top_brands <-
-  komplett_liste |>
-  dplyr::filter(
-    stringr::str_detect(TEKN_TKNAVN, "^M3[:alnum:]*")
-  ) |>
+# top_brands <-
+#   vehicles |>
+#   dplyr::filter(
+#     stringr::str_detect(TEKN_TKNAVN, "^M3[:alnum:]*")
+#   ) |>
+#   dplyr::summarise(
+#     n_vehicles = n(),
+#     .by = TEKN_MERKENAVN
+#   ) |>
+#   dplyr::arrange(dplyr::desc(n_vehicles))
+
+classes <- 
+  vehicles |> 
   dplyr::summarise(
     n_vehicles = n(),
-    .by = TEKN_MERKENAVN
-  ) |>
-  dplyr::arrange(desc(n_vehicles))
+    .by = class_code
+  ) |> 
+  dplyr::arrange(class_code)
 
 
-# Filter vehicles ----
-registered_vehicles <- komplett_liste %>%
-  dplyr::filter(
-    tekn_reg_status == "REGISTRERT",
-    tekn_reg_aar > 2e7 # removing old vehicles
-    )
+# L1e: moped
+# L2e: moped med tre hjul
+# L3e: motorsykkel
+# L4e: motorsykkel med sidevogn
+# L5e: motorsykkel med tre hjul
+# L6e: moped med fire hjul
+# L7e: motorsykkel med fire hjul
 
-class_codes <- registered_vehicles %>%
-  dplyr::group_by(tekn_tknavn) %>%
-  dplyr::summarise(antall = n())
+class_examples <- 
+  vehicles |> 
+  dplyr::filter(class_code == "L5e") |> 
+  dplyr::select(
+    class_code,
+    brand,
+    model,
+    length_m,
+    axles_n,
+    date_last_pkk,
+    km
+  )
 
-class_examples <- registered_vehicles %>%
-  dplyr::filter(tekn_tknavn == "TT")
+
+# HERE!!!
+
+
+
+
+
 
 classified_vehicles <- registered_vehicles %>%
   dplyr::mutate(
