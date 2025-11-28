@@ -1,13 +1,15 @@
-# Read and filter vehicles from complete dump from vehicle registry
+# Read and filter vehicles from complete dump of vehicle registry
 
 # Packages
-library(tidyverse)
-library(jsonlite)
-library(flextable)
-library(httr)
-library(writexl)
+{
+  library(tidyverse)
+  library(jsonlite)
+  library(flextable)
+  library(httr)
+  library(writexl)
 
-source("get_from_data_norge.R")
+  source("get_from_data_norge.R")
+}
 
 
 # Four data sets from API ----
@@ -30,11 +32,36 @@ source("get_from_data_norge.R")
 # Complete set in CSV dump ----
 # OBS! 2 GB i csv-fila!
 komplett_liste <-
-  readr::read_csv2(
-    "kjoretoyregisteret/kjoretoy_komplett.csv",
+  readr::read_csv(
+    #"kjoretoyregisteret/kjoretoy_komplett.csv",
+    "H:/Trafikkdata/Autosys/7877_kjoretoydata_5/7877_kjoretoydata_5.csv"
     #col_select = traffic_data_relevant_columns,
-    n_max = 10
-  )
+    #n_max = 10
+  ) |>
+  dplyr::filter(
+    stringr::str_detect(TEKN_TKNAVN, "^T", negate = TRUE),
+    stringr::str_detect(TEKN_TKNAVN, "^C", negate = TRUE),
+    stringr::str_detect(TEKN_TKNAVN, "^R", negate = TRUE),
+    stringr::str_detect(TEKN_TKNAVN, "^S", negate = TRUE),
+    stringr::str_detect(TEKN_TKNAVN, "^B", negate = TRUE),
+    TEKN_REG_F_G > 20050000
+  ) |>
+  dplyr::select(-TEKN_MAKS_TAKLAST)
+
+
+komplett_liste$TEKN_TKNAVN |> unique() |> sort()
+komplett_liste$TEKN_REG_STATUS |> unique() |> sort()
+
+top_brands <-
+  komplett_liste |>
+  dplyr::filter(
+    stringr::str_detect(TEKN_TKNAVN, "^M3[:alnum:]*")
+  ) |>
+  dplyr::summarise(
+    n_vehicles = n(),
+    .by = TEKN_MERKENAVN
+  ) |>
+  dplyr::arrange(desc(n_vehicles))
 
 
 # Filter vehicles ----

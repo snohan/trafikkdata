@@ -158,7 +158,7 @@ Klassifisering av motorkjøretøy kan gjøres på ulike måter avhengig av hvilk
 - kjøretøygrupper definert i kjøretøyforskriften
 - nordisk klassifiseringsstandard (NorSIKT)
 
-En analyse av sammenhengen mellom kjøretøylengde og Kjøretøyforskriftens grupper viser at det ikke i alle tilfeller er entydige skiller mellom kjøretøygruppene og de tradisjonelle lengdeklassene. En tilsvarende oversikt over sammenhengen mellom kjøretøys tillatte totalvekt og Kjøretøyforskriftens grupper viser at disse to er entydig definert foruten noen få unntak.
+En analyse av sammenhengen mellom kjøretøylengde og kjøretøyforskriftens grupper viser at det ikke i alle tilfeller er entydige skiller mellom kjøretøygruppene og de tradisjonelle lengdeklassene. En tilsvarende oversikt over sammenhengen mellom kjøretøys tillatte totalvekt og Kjøretøyforskriftens grupper viser at disse to er entydig definert foruten noen få unntak.
 
 Videre viser en analyse av sammenhengen mellom kjøretøylengde og tillatt totalvekt at skillet mellom korte og lange kjøretøy burde vært ved 7,5 m dersom grensen skal passe best til skillet mellom lette og tunge ved 3,5 tonn tillatt totalvekt. Likevel er forskjellen fra den tradisjonelle lengdegrensen på 5,6 m relativt liten, og ikke av særlig betydning.
 
@@ -168,7 +168,7 @@ Til slutt er det sett på sammenhengen mellom alle klassifiseringssystemene for 
 # Bakgrunn
 I trafikkdatasammenheng har det i mange år vært vanlig å klassifisere motorkjøretøy basert på _målt_ lengde. En slik lengdemåling foretas automatisk når et kjøretøy blir registrert av sensorer når det passerer et trafikkregistreringspunkt. Slike trafikkregistreringspunkt er plassert på offentlig veg og foretar registrering av alle passerende kjøretøy uten at det påvirker trafikken.
 
-Trafikkdata samles inn for ulike statistikkformål, og i mange sammenhenger er det relevant å dele kjøretøy inn i to vektklasser: lette og tunge. Dette er basert på skillet for tillatt totalvekt på 3,5 tonn, slik det er definert i Kjøretøyforskriften, som er utgangspunktet for blant annet førerkrav og avgiftsnivå. Den automatisk målte lengden er typisk brukt til å dele inn kjøretøy i to tilsvarende klasser, korte og lange, hvor skillet er satt ved 5,6 m.
+Trafikkdata samles inn for ulike statistikkformål, og i mange sammenhenger er det relevant å dele kjøretøy inn i to vektklasser: lette og tunge. Dette er basert på skillet for tillatt totalvekt på 3,5 tonn, slik det er definert i kjøretøyforskriften, som er utgangspunktet for blant annet førerkrav og avgiftsnivå. Den automatisk målte lengden er typisk brukt til å dele inn kjøretøy i to tilsvarende klasser, korte og lange, hvor skillet er satt ved 5,6 m.
 
 Denne rapporten tar for seg sammenhengen mellom den tradisjonelle lengdeklassifiseringen og kjøretøygrupperingen slik den er beskrevet i Kjøretøyforskriften. Videre sammenlignes dette med en felles nordisk standard for kjøretøyklassifisering (NorSIKT), samt klassifiseringen som fås fra trafikkregistreringsutstyret som benyttes til innsamling av trafikkdata i Norge.
 
