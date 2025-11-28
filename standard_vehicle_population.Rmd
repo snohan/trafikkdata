@@ -1,18 +1,31 @@
 ---
 title: "Standard kjøretøypopulasjoner"
-output: 
-  html_document:
+format: 
+  html:
     css: svv.css
-    number_sections: true
+    page-layout: full
+    number-sections: true
     toc: true
-    toc_float: 
-      collapsed: false
-      smooth_scroll: false
+    toc-location: left
+    toc-title: Innhold
     toc_depth: 2
+    smooth-scroll: true
+    self-contained: true
+crossref:
+  fig-title: Figur
+  tbl-title: Tabell
+  title-delim: .
+  fig-prefix: figur
+  tbl-prefix: tabell
 fig_width: 5
 ---
 
-```{r setup, include = FALSE, echo = FALSE, warning=FALSE, message=FALSE}
+```{r}
+#| label: setup
+#| include: false
+#| echo: false
+#| warning: false
+
 # Packages are loaded through sourcing rmd_setup.R
 source("H:/Programmering/R/byindeks/rmd_setup.R")
 
@@ -24,7 +37,9 @@ svv_background_color <- "#F5F5F5"
 ```
 
 
-```{r read_populations}
+```{r}
+#| label: read_populations
+
 standard_pop_trp_aadt <- 
   readRDS("standard_pop_trp_aadt.rds")
 
@@ -44,11 +59,13 @@ Datagrunnlaget for beregning av standard kjøretøypopulasjon er registrerte dat
   - veldig lav andel korte lengder og lav fart
   - to felt
   
-Tabellen nedenfor viser hvilke trafikkregistreringspunkter data er hentet fra.
+I @tbl-table vises hvilke trafikkregistreringspunkter data er hentet fra.
 
 <br>
 
-```{r table}
+```{r}
+#| label: tbl-table
+
 standard_pop_trp_aadt %>%
   dplyr::arrange(
     county_geono,
@@ -76,7 +93,9 @@ standard_pop_trp_aadt %>%
 ```
 
 
-```{r plot_function}
+```{r}
+#| label: plot_function
+
 plot_standard_population <- 
   function(standard_population_df, subtitle_text) {
   
@@ -132,7 +151,9 @@ plot_standard_population <-
 
 # NorSIKT nivå 2
 
-```{r plot_norsikt_l2}
+```{r}
+#| label: fig-plot_norsikt_l2
+
 populations_class %>% 
   dplyr::filter(
     classification_scheme == "norsikt_l2"
@@ -144,7 +165,9 @@ populations_class %>%
 
 <br>
 
-```{r table_norsikt_l2}
+```{r}
+#| label: tbl-table_norsikt_l2
+
 populations_class %>% 
   dplyr::filter(
     classification_scheme == "norsikt_l2",
@@ -165,7 +188,9 @@ populations_class %>%
 
 # NorSIKT nivå 3
 
-```{r plot_norsikt_l3}
+```{r}
+#| label: fig-plot_norsikt_l3
+
 populations_class %>% 
   dplyr::filter(
     classification_scheme == "norsikt_l3"
@@ -177,7 +202,9 @@ populations_class %>%
 
 <br>
 
-```{r table_norsikt_l3}
+```{r}
+#| label: tbl-table_norsikt_l3
+
 populations_class %>% 
   dplyr::filter(
     classification_scheme == "norsikt_l3",
@@ -198,7 +225,9 @@ populations_class %>%
 
 # NorSIKT nivå 4
 
-```{r plot_norsikt_l4}
+```{r}
+#| label: fig-plot_norsikt_l4
+
 populations_class %>% 
   dplyr::filter(
     classification_scheme == "norsikt_l4h"
@@ -210,7 +239,9 @@ populations_class %>%
 
 <br>
 
-```{r table_norsikt_l4}
+```{r}
+#| label: tbl-table_norsikt_l4
+
 populations_class %>% 
   dplyr::filter(
     classification_scheme == "norsikt_l4h",
@@ -231,7 +262,9 @@ populations_class %>%
 
 # To lengdeklasser (5,6 m)
 
-```{r plot_length_2}
+```{r}
+#| label: fig-plot_length_2
+
 populations_length_class %>% 
   dplyr::filter(
     classification_scheme == "length_class_2"
@@ -243,7 +276,9 @@ populations_length_class %>%
 
 <br>
 
-```{r table_length_2}
+```{r}
+#| label: tbl-table_length_2
+
 populations_length_class %>% 
   dplyr::filter(
     classification_scheme == "length_class_2",
@@ -264,7 +299,9 @@ populations_length_class %>%
 
 # To lengdeklasser (7,6 m)
 
-```{r plot_length_2_7.6}
+```{r}
+#| label: fig-plot_length_2_7.6
+
 populations_length_class %>% 
   dplyr::filter(
     classification_scheme == "length_class_2_7.6"
@@ -276,7 +313,9 @@ populations_length_class %>%
 
 <br>
 
-```{r table_length_2_7.6}
+```{r}
+#| label: tbl-table_length_2_7.6
+
 populations_length_class %>% 
   dplyr::filter(
     classification_scheme == "length_class_2_7.6",
@@ -297,7 +336,9 @@ populations_length_class %>%
 
 # Seks lengdeklasser
 
-```{r plot_length_full}
+```{r}
+#| label: fig-plot_length_full
+
 populations_length_class %>% 
   dplyr::filter(
     classification_scheme == "length_class_full"
@@ -309,7 +350,9 @@ populations_length_class %>%
 
 <br>
 
-```{r table_length_full}
+```{r}
+#| label: tbl-table_length_full
+
 populations_length_class %>% 
   dplyr::filter(
     classification_scheme == "length_class_full",
