@@ -214,6 +214,7 @@ n_before_2022 <-
 # 2025-09-01: 19 752
 # 2025-10-01: 19 752
 # 2025-11-03: 19 812
+# 2025-12-01: 19 203
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -281,7 +282,7 @@ trp_top_list <-
   ) |>
   dplyr::summarise(
     count = n(),
-    .by = c(trp_id, name, traffic_type, municipality_name)
+    .by = c(trp_id, name, traffic_type, road_category, county_name, municipality_name)
   ) |>
   dplyr::arrange(
     desc(count)
@@ -290,7 +291,7 @@ trp_top_list <-
 # Find the dates of a specified TRP
 trp_need_label |>
   dplyr::filter(
-    trp_id == "71847V886007"
+    trp_id == "05899V1109722"
   ) |>
   ggplot(aes(x = day)) +
   geom_bar() +
