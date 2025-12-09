@@ -50,6 +50,7 @@ vehicle_registry_api_key.R
 periodisk*.txt
 emu3*
 trs_query.txt
+trp_api.txt
 
 # Allow specific
 !/trp_info/*.rds

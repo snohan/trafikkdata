@@ -5,6 +5,7 @@
   source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
   #source("H:/Programmering/R/byindeks/get_from_trp_api.R")
   source("H:/Programmering/R/byindeks/split_road_system_reference.R")
+  source("H:/Programmering/R/trafikkdata/calculate_aadt_by_factor_curve_method.R")
   #library(writexl)
 }
 

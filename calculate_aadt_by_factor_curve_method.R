@@ -1,6 +1,6 @@
 # The Factor Curve Method for estimating AADT from periodic registrations
-library(tidyverse)
-library(lubridate)
+# library(tidyverse)
+# library(lubridate)
 
 # Alternative: use nearby continuous points' variation curves, a.k.a. the reference method, by
 # fetching e.g. 10 nearest points with high quality curves for the year.
@@ -9,6 +9,12 @@ library(lubridate)
 factor_curve_yearly <- read.csv2("factor_curve_method/factor_curves_yearly.csv") %>%
   tidyr::pivot_longer(cols = M1:M7, names_to = "curve", values_to = "factor_yearly") %>%
   dplyr::mutate(factor_yearly = factor_yearly / 100)
+
+factor_curve_yearly |> 
+  ggplot(
+    aes(uke, factor_yearly, color = curve)
+  ) +
+  geom_line()
 
 factor_curve_weekly <- read.csv2("factor_curve_method/factor_curves_weekly.csv") %>%
   tidyr::pivot_longer(cols = M1:M7, names_to = "curve", values_to = "factor_weekly") %>%
