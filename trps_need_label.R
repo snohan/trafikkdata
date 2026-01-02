@@ -4,7 +4,6 @@
   source("H:/Programmering/R/byindeks/get_from_trafficdata_api.R")
   source("H:/Programmering/R/byindeks/split_road_system_reference.R")
   library(writexl)
-
 }
 
 # TRP stats ----
@@ -215,6 +214,7 @@ n_before_2022 <-
 # 2025-10-01: 19 752
 # 2025-11-03: 19 812
 # 2025-12-01: 19 203
+# 2026-01-02: 18 547
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -287,6 +287,7 @@ trp_top_list <-
   dplyr::arrange(
     desc(count)
   )
+
 
 # Find the dates of a specified TRP
 trp_need_label |>
