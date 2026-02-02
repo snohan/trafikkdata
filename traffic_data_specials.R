@@ -840,7 +840,7 @@ writexl::write_xlsx(
 # Wants TRS-id also
 #trs_info <- readr::read_rds("trs_trp/trs.rds")
 trs_trp_ids <-
-  readr::read_rds("trs_trp/trs_trp_ids.rds") |>
+  readr::read_rds("trp_info/trs_trp_ids.rds") |>
   dplyr::select(
     trs_id, trp_id
   ) |>
@@ -849,12 +849,13 @@ trs_trp_ids <-
   )
 
 
-# Need only TRPs with data in 2023
+# Need only TRPs with data in specific years
+adt_year <- 2024
 trp_data_time_span <-
   get_trp_data_time_span() |>
   dplyr::filter(
-    first_data_with_quality_metrics < "2023-11-01",
-    latest_daily_traffic >= "2023-03-01"
+    first_data_with_quality_metrics < paste0(adt_year, "-11-01"),
+    latest_daily_traffic >= paste0(adt_year, "-03-01")
   )
 
 trp_direction <-
@@ -880,17 +881,21 @@ trps <-
   ) |>
   dplyr::distinct(trp_id, .keep_all = T) |>
   dplyr::filter(
-    #traffic_type == "VEHICLE",
-    #registration_frequency == "CONTINUOUS",
-    county_name %in% c("Innlandet", "Akershus", "Oslo", "Østfold", "Buskerud", "Vestfold", "Telemark", "Agder", "Rogaland"),
+    # øst
+    # county_name %in% c("Innlandet", "Akershus", "Oslo", "Østfold", "Buskerud"),
+    # sør
+    # county_name %in% c("Vestfold", "Telemark", "Agder"),
+    # vest
+    county_name %in% c("Vestland", "Rogaland"),
     trp_id %in% trp_data_time_span$trp_id
   )
 
 {
 tictoc::tic()
-aadt <-
-  get_aadt_by_direction_and_length_for_trp_list(trps$trp_id, "ALL") |>
-  dplyr::filter(year == 2023) |>
+adt_2024_wday <-
+  get_aadt_by_direction_and_length_for_trp_list(trps$trp_id, "WEEKDAY") |>
+  # WEEKEND, WEEKDAY, ALL
+  dplyr::filter(year == 2024) |>
   dplyr::left_join(
     trps,
     by = join_by(trp_id)
@@ -919,12 +924,7 @@ aadt <-
   ) |>
   dplyr::rename(
     adt = aadt
-  )
-tictoc::toc()
-}
-
-aadt_and_trs <-
-  aadt |>
+  ) |>
   dplyr::left_join(
     trs_trp_ids,
     by = join_by(trp_id)
@@ -933,11 +933,15 @@ aadt_and_trs <-
     trs_id,
     .after = trp_id
   )
+tictoc::toc()
+}
 
-writexl::write_xlsx(
-  aadt_and_trs,
-  "spesialbestillinger/adt_retning_lengde_2023.xlsx"
-)
+dplyr::bind_rows(
+  adt_2024_all,
+  adt_2024_wday,
+  adt_2025_all,
+  adt_2025_wday
+) |> writexl::write_xlsx("spesialbestillinger/adt_retning_lengde_2024_2025_vest.xlsx")
 
 
 # Zhong time gaps ----
