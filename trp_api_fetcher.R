@@ -10,7 +10,7 @@ source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 
   readr::write_rds(
     trs_id,
-    "trs_trp/trs.rds"
+    "trp_info/trs.rds"
   )
 }
 
@@ -21,7 +21,7 @@ source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 
   readr::write_rds(
     trp_info,
-    "trs_trp/trp.rds"
+    "trp_info/trp.rds"
   )
 }
 
@@ -32,7 +32,7 @@ source("H:/Programmering/R/byindeks/get_from_trp_api.R")
 
   readr::write_rds(
     trs_trp_ids,
-    "trs_trp/trs_trp_ids.rds"
+    "trp_info/trs_trp_ids.rds"
   )
 
 }
