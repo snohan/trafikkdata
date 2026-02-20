@@ -1,0 +1,273 @@
+---
+title: "Fartsrapport"
+format: 
+  html:
+    css: ../svv.css
+    page-layout: full
+    number-sections: false
+    toc: true
+    toc-location: left
+    toc-title: "Innhold"
+    toc-expand: true
+    df-print: paged
+    self-contained: true
+crossref:
+  fig-title: Figur
+  tbl-title: Tabell
+  title-delim: .
+  fig-prefix: figur
+  tbl-prefix: tabell
+editor: source
+knitr: 
+  opts_chunk: 
+    echo: false
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+#| echo: false
+#| warning: false
+#| message: false
+  
+# Packages are loaded through sourcing rmd_setup.R
+# Common set ups
+
+# Packages ####
+base::Sys.setlocale(locale = "nb.utf8")
+library(tidyverse)
+library(rmarkdown)
+library(leaflet)
+library(knitr)
+library(flextable)
+library(DT)
+library(htmltools)
+library(RColorBrewer)
+library(officer) # fp_border color in flextable
+library(scales)
+
+source("H:/Programmering/R/byindeks/index_report_functions.R")
+source("H:/Programmering/R/byindeks/leaflet_nvdb_map_setup.R")
+
+svv_background_color <- "#F5F5F5"
+
+# knitr options ####
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  error = FALSE,
+  cache = FALSE,
+  dpi = 150,
+  dev = "ragg_png",
+  tab.topcaption = TRUE
+  )
+
+# Flextable defaults
+flextable::set_flextable_defaults(
+  font.size = 12,
+  decimal.mark = ",",
+  big.mark = " ",
+  na_str = ""
+)
+```
+
+```{r}
+#| label: get_data
+
+all_data <- readr::read_rds("H:/Programmering/R/trafikkdata/fartsrapport/tidy/47061V704629_2025-05-10.rds")
+
+direction_1 <- all_data$direction$direction[1]
+direction_2 <- all_data$direction$direction[2]
+```
+
+
+```{r}
+#| label: trp
+
+all_data$trp |> 
+    dplyr::select(
+        Punkt_id = trp_id, 
+        Punktnavn = name, 
+        Vegreferanse = road_reference, 
+        Fylke = county_name, 
+        Kommune = municipality_name, 
+        Fartsgrense = speed_limit, 
+        Periodestart = first_data, 
+        Periodeslutt = last_data
+    ) |> 
+    dplyr::mutate(
+        Fartsgrense = as.character(Fartsgrense),
+        Periodestart = base::format(Periodestart, "%A %d. %B %Y"),
+        Periodeslutt = base::format(Periodeslutt, "%A %d. %B %Y")
+    ) |> 
+    tidyr::pivot_longer(everything()) |> 
+    flextable::flextable() |> 
+    flextable::delete_part(part = "header") |> 
+    flextable::border_remove() |> 
+    flextable::width(j = 2, 5) |> 
+    flextable::bold(j = 1) |> 
+    flextable::bg(j = 1, bg = "#ED9300")
+
+```
+
+```{r}
+#| label: fig-map
+#| fig-cap: "Plasseringen til trafikkregistreringspunktet."
+
+all_data$trp |> 
+    leaflet(
+      options =
+        leafletOptions(
+          crs = nvdb_crs,
+          zoomControl = TRUE
+        )
+    ) |>
+    addTiles(
+      urlTemplate = nvdb_map_url,
+      attribution = nvdb_map_attribution
+    ) |>
+    addCircleMarkers(
+      lng = ~lon,
+      lat = ~lat,
+      radius = 7,
+      stroke = T,
+      weight = 3,
+      color = "#444f55",
+      opacity = 0.9
+    )
+```
+
+Klikk her for å se omgivelsene i [Vegbilder](`r all_data$trp$vegbilde_url`){target="_blank"}.
+
+
+## Fartsintervaller
+
+```{r}
+#| label: fig-intervals
+#| height: 5
+#| fig-cap: "Fordeling i intervaller."
+
+all_data$intervals |> 
+    ggplot2::ggplot(aes(speed_interval, n_vehicles,)) +
+    ggplot2::geom_col(fill = "#ED9300") +
+    theme_minimal() +
+    theme(
+      plot.background = element_rect(fill = svv_background_color),
+      panel.background = element_rect(fill = svv_background_color)
+    ) +
+    labs(x = NULL, y = "Antall passeringer")
+```
+
+
+## Aggregerte data
+
+### `r direction_1`
+
+```{r}
+#| label: direction_weekday_1
+
+all_data$direction_weekday |> 
+  dplyr::filter(
+    valid_speed == TRUE,
+    direction == direction_1) |> 
+    dplyr::select(day_of_week, n_days, n_vehicles, arithmetic_mean, percentile_85, percentile_95, perc_above_limit, perc_above_atk_crit) |> 
+  tidyr::pivot_longer(
+    cols = -c(day_of_week),
+    names_to  = "variable",
+    values_to = "value"
+  ) |> 
+  tidyr::pivot_wider(
+    names_from  = day_of_week,
+    values_from = value
+  ) |> 
+  flextable::flextable() |> 
+  flextable::labelizor(
+    j = 1, 
+    labels = 
+      c(
+        "variable" = "",
+        "n_days" = "Antall dager",
+        "n_vehicles" = "Antall passeringer",
+        "arithmetic_mean" = "Artimetisk gjennomsnitt",
+        "percentile_85" = "85-fraktil (km/t)",
+        "percentile_95" = "95-fraktil (km/t)",
+        "perc_above_limit" = "Andel over fartsgrensen (%)",
+        "perc_above_atk_crit" = "Andel over ATK-kriteriet (%)"
+      )
+  ) |> 
+  flextable::bold(j = 1) |> 
+  flextable::bold(part = "header") |> 
+  flextable::bg(j = 1, bg = "#ED9300") |> 
+  flextable::bg(bg = "#ED9300", part = "header") |> 
+  flextable::colformat_double(i = 3:7, digits = 1) |> 
+  flextable::colformat_double(i = 1:2, digits = 0)
+```
+
+
+### `r direction_2`
+
+```{r}
+#| label: direction_weekday_2
+
+all_data$direction_weekday |> 
+  dplyr::filter(
+    valid_speed == TRUE,
+    direction == direction_2) |> 
+    dplyr::select(day_of_week, n_days, n_vehicles, arithmetic_mean, percentile_85, percentile_95, perc_above_limit, perc_above_atk_crit) |> 
+  tidyr::pivot_longer(
+    cols = -c(day_of_week),
+    names_to  = "variable",
+    values_to = "value"
+  ) |> 
+  tidyr::pivot_wider(
+    names_from  = day_of_week,
+    values_from = value
+  ) |> 
+  flextable::flextable() |> 
+  flextable::labelizor(
+    j = 1, 
+    labels = 
+      c(
+        "variable" = "",
+        "n_days" = "Antall dager",
+        "n_vehicles" = "Antall passeringer",
+        "arithmetic_mean" = "Artimetisk gjennomsnitt",
+        "percentile_85" = "85-fraktil (km/t)",
+        "percentile_95" = "95-fraktil (km/t)",
+        "perc_above_limit" = "Andel over fartsgrensen (%)",
+        "perc_above_atk_crit" = "Andel over ATK-kriteriet (%)"
+      )
+  ) |> 
+  flextable::bold(j = 1) |> 
+  flextable::bold(part = "header") |> 
+  flextable::bg(j = 1, bg = "#ED9300") |> 
+  flextable::bg(bg = "#ED9300", part = "header") |> 
+  flextable::colformat_double(i = 3:7, digits = 1) |> 
+  flextable::colformat_double(i = 1:2, digits = 0)
+```
+
+
+## Når på døgnet
+
+
+```{r}
+#| label: fig-hour
+#| fig-cap: "Antall passeringer over fartsgrensen."
+
+all_data$hour_weekday |> 
+  ggplot2::ggplot(aes(hour_of_day, n_above_limit, color = day_of_week)) +
+  ggplot2::geom_line() +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = svv_background_color),
+    panel.background = element_rect(fill = svv_background_color),
+    legend.position = "bottom"
+  ) +
+  scale_color_brewer(
+    name = "",
+    palette = "Set1"
+  ) +
+  labs(x = "", y = "Antall passeringer")
+```
