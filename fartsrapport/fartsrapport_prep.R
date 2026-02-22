@@ -17,9 +17,9 @@
 
 
 # Given a TRP ID and a folder with its vbv data
-trp_id_chosen <- "47061V704629"
+trp_id_chosen <- "97174V1215671"
 vbv_folder <- "spesialbestillinger/rasen"
-vegbilde_url <- "https://vegbilder.atlas.vegvesen.no?lat=60.52524326&lng=11.50873199&view=image&zoom=15&year=2025&imageId=Vegbilder_360_2025.2025-06-18T15.04.12_FV00024_S6D1_m04094_360_1"
+vegbilde_url <- "https://vegbilder.atlas.vegvesen.no/?year=2025&lat=61.58557224&lng=9.80156209&zoom=16&view=image&imageId=Vegbilder_360_2025.2025-08-21T11.33.30_FV02522_S5D1_m01423_360_2"
 
-source("fartsrapport_aggreger.R")
+source("fartsrapport/fartsrapport_aggreger.R")
 

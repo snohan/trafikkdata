@@ -61,9 +61,11 @@ data_raw <-
         speed < 110 ~ "100-110",
         speed < 120 ~ "110-120",
         TRUE ~ "> 120"
-      ) |> factor(levels = c("< 40", "40-50", "50-60", "60-70", "70-80", "80-90", "90-100", "100-110", "110-120", "> 120")),
+      ) |> base::factor(levels = c("< 40", "40-50", "50-60", "60-70", "70-80", "80-90", "90-100", "100-110", "110-120", "> 120")),
     day = lubridate::date(timestamp),
-    day_of_week = lubridate::wday(timestamp, label = TRUE),
+    day_of_week = lubridate::wday(timestamp, label = TRUE) 
+      |> stringr::str_sub(1,3) 
+      |> base::factor(levels = c("man", "tir", "ons", "tor", "fre", "lør", "søn")),
     hour_of_day = lubridate::hour(timestamp)
   ) |> 
   dplyr::left_join(
@@ -83,9 +85,9 @@ aggregate_speed <- function(df, ...) {
       percentile_95 = stats::quantile(speed, 0.95),
       n_days = dplyr::n_distinct(day),
       n_vehicles = n(),
-      n_above_limit = base::sum(speed > speed_limit),
+      n_above_limit = base::sum(speed > trp_metadata_chosen$speed_limit),
       perc_above_limit = 100 * n_above_limit / n_vehicles,
-      n_above_atk_crit = base::sum(speed > 1.1 * speed_limit),
+      n_above_atk_crit = base::sum(speed > 1.1 * trp_metadata_chosen$speed_limit),
       perc_above_atk_crit = 100 * n_above_atk_crit / n_above_limit,
       .groups = "drop"
     )
@@ -106,7 +108,7 @@ aggregates_direction <-
   dplyr::arrange(direction)
 
 aggregates_hour_weekday <-
-  aggregate_speed(data_raw, day_of_week, hour_of_day) |> 
+  aggregate_speed(data_raw, valid_speed, day_of_week, hour_of_day) |> 
   dplyr::mutate(
     n_above_limit_per_day = n_above_limit / n_days
   )
@@ -116,6 +118,7 @@ aggregate_speed_intervals <- function(df, ...) {
 
   aggregates_df <-
     df |> 
+    dplyr::filter(valid_speed) |> 
     dplyr::group_by(speed_interval, ...) |> 
     dplyr::summarise(
       n_vehicles = n(),

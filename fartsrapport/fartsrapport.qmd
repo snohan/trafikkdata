@@ -76,13 +76,18 @@ flextable::set_flextable_defaults(
 ```{r}
 #| label: get_data
 
-all_data <- readr::read_rds("H:/Programmering/R/trafikkdata/fartsrapport/tidy/47061V704629_2025-05-10.rds")
+all_data <- readr::read_rds("H:/Programmering/R/trafikkdata/fartsrapport/tidy/97174V1215671_2025-05-10.rds")
+
+n_vehicles_total <- base::sum(all_data$total$n_vehicles)
+n_vehicles_valid_speed <- dplyr::filter(all_data$total, valid_speed) |> dplyr::pull(n_vehicles)
+valid_speed_percentage <- 100 * n_vehicles_valid_speed / n_vehicles_total
 
 direction_1 <- all_data$direction$direction[1]
 direction_2 <- all_data$direction$direction[2]
 ```
 
 
+## Tid og sted
 ```{r}
 #| label: trp
 
@@ -141,6 +146,9 @@ all_data$trp |>
 
 Klikk her for å se omgivelsene i [Vegbilder](`r all_data$trp$vegbilde_url`){target="_blank"}.
 
+
+## Datakvalitet
+I perioden er det registrert `r base::format(n_vehicles_total, big.mark = " ")` kjøretøy. Av disse er det `r base::format(n_vehicles_valid_speed, big.mark = " ")` passeringer med godkjent fartsmåling. Dette utgjør `r base::format(valid_speed_percentage, digits = 1, decimal.mark = ",")` %.
 
 ## Fartsintervaller
 
@@ -207,7 +215,6 @@ all_data$direction_weekday |>
 
 
 ### `r direction_2`
-
 ```{r}
 #| label: direction_weekday_2
 
@@ -250,24 +257,25 @@ all_data$direction_weekday |>
 
 
 ## Når på døgnet
-
-
 ```{r}
 #| label: fig-hour
 #| fig-cap: "Antall passeringer over fartsgrensen."
 
 all_data$hour_weekday |> 
+  dplyr::filter(valid_speed) |> 
   ggplot2::ggplot(aes(hour_of_day, n_above_limit, color = day_of_week)) +
   ggplot2::geom_line() +
+  scale_color_brewer(
+    name = "",
+    palette = "Set1"
+  ) +
   theme_minimal() +
   theme(
     plot.background = element_rect(fill = svv_background_color),
     panel.background = element_rect(fill = svv_background_color),
     legend.position = "bottom"
+    # legend.direction = "horizontal"
   ) +
-  scale_color_brewer(
-    name = "",
-    palette = "Set1"
-  ) +
+  guides(color = guide_legend(nrow = 1)) +
   labs(x = "", y = "Antall passeringer")
 ```
