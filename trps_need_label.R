@@ -216,6 +216,7 @@ n_before_2022 <-
 # 2025-12-01: 19 203
 # 2026-01-02: 18 547
 # 2026-02-02: 18 513
+# 2026-03-02: 18 490
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -265,9 +266,7 @@ trp_need_label <-
     -month_number,
     -streak_group
   ) |>
-  dplyr::mutate(
-    comment = NA
-  )
+  dplyr::mutate(comment = NA)
 
 trp_need_label |>
   dplyr::mutate(
