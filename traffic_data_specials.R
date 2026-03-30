@@ -15,6 +15,51 @@
   }
 }
 
+
+# Specific hours ----
+chosen_trps <- c(
+  "55092V1125799",
+  "64888V1125917",
+  "14843V1125937",
+  "52043V1664653",
+  "49212V1126027",
+  "02636V1125920"
+)
+
+ht <-
+  purrr::map(
+    chosen_trps,
+    ~ get_hourly_traffic_by_lane(.x, "2024-01-01T00:00:00+01:00", "2025-01-01T00:00:00+01:00")
+  ) |> 
+  purrr::list_rbind() |> 
+  dplyr::filter(lubridate::hour(from) == 15 & lubridate::wday(from) %in% c(2:6) & total_coverage > 0)
+
+ht_tidy <-
+  ht |> 
+  dplyr::left_join(
+    trp_info_no_lane,
+    by = "trp_id"
+  ) |> 
+  dplyr::left_join(
+    trp_info_lane_direction_names,
+    by = dplyr::join_by(trp_id, lane == lane_according_to_current_metering)
+  ) |> 
+  dplyr::select(
+    trp_id, trp_name, road_reference, lane, direction,
+    hour = from,
+    coverage = total_coverage,
+    traffic_volume = traffic
+  ) |> 
+  dplyr::mutate(
+    lane = factor(lane, levels = c(1, 3, 5, 7, 2, 4, 6, 8))
+  ) |> 
+  dplyr::arrange(road_reference, hour, lane)
+
+writexl::write_xlsx(
+  ht_tidy,
+  path = "spesialbestillinger/ht_tromso.xlsx"
+)
+
 # MDT for SD ----
 ## Get data ----
 trp_info <-
