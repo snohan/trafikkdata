@@ -118,9 +118,14 @@ zero_dt_filtered <-
     by = c("trp_id", "day")
   ) |>
   dplyr::mutate(
-    month_number = lubridate::month(day)
+    month_number = lubridate::month(day),
+    year = lubridate::year(day)
   ) |>
   dplyr::filter(
+    # Prinsens gate ved Elgeseter 
+    !(trp_id == "16219V72812" & month_number %in% c(6:8) & year == 2015),
+    # Elvestad vest
+    !(trp_id == "98144V2554057" & lane %in% c(3, 4) & month_number %in% c(9:11) & year == 2015),
     # Innherredsvegen ved Fjæregata
     !(trp_id == "04300V72813" & lane == 2 & day > "2017-07-01"),
     !(trp_id == "04300V72813" & lane == 4 & day > "2017-07-01"),
@@ -217,6 +222,7 @@ n_before_2022 <-
 # 2026-01-02: 18 547
 # 2026-02-02: 18 513
 # 2026-03-02: 18 490
+# 2026-04-07: 18 200 (I took some for 2015)
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -238,7 +244,8 @@ trp_need_label <-
     road_reference,
     lane,
     day,
-    month_number
+    month_number,
+    year
   ) |>
   dplyr::arrange(
     trp_id,
@@ -288,11 +295,27 @@ trp_top_list <-
     desc(count)
   )
 
+trp_old <-
+  trp_need_label |>
+  dplyr::filter(
+    day <= "2016-01-01"
+  ) |>
+  dplyr::summarise(
+    count = n(),
+    .by = c(trp_id, name, traffic_type, road_category, county_name, municipality_name)
+  ) |>
+  dplyr::arrange(
+    desc(count)
+  )
+
+# Bike TRPs with normally occurring zero days in winter. Using glmmTMB ? to find outliers with zero inflation.
+
 
 # Find the dates of a specified TRP
 trp_need_label |>
   dplyr::filter(
-    trp_id == "05899V1109722"
+    trp_id == "05713V2518807",
+    year == 2015
   ) |>
   ggplot(aes(x = day)) +
   geom_bar() +

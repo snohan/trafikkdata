@@ -492,7 +492,8 @@ writexl::write_xlsx(
 the_data <-
   dplyr::bind_rows(
     readr::read_delim(
-      "spesialbestillinger/elverum_tn.csv"
+      # "spesialbestillinger/elverum_tn.csv"
+      "spesialbestillinger/klofta.csv"
     )
   ) |>
   # Weird quirk in reading Kibana eksport: ignores decimal
@@ -503,38 +504,41 @@ the_data <-
     )
   ) |>
   dplyr::rename(
-    percentile_85 = '85th percentile of percentile_85'
+    percentile_85 = '85th percentile of speed'
   ) |>
-  dplyr::mutate(
-    mean_speed = decimal_point(mean_speed) |> as.numeric(),
-    percentile_85 = decimal_point(percentile_85) |> as.numeric()
-  ) |>
-  tidyr::pivot_wider(
-    names_from = valid_speed,
-    values_from = c(traffic, mean_speed, percentile_85),
-    values_fill = list(traffic = c(0), mean_speed = NA, percentile_85 = NA)
-  ) |>
-  dplyr::mutate(
-    traffic_volume = traffic_TRUE + traffic_FALSE,
-    percentage_valid_speed = round(traffic_TRUE / traffic_volume * 100, 1)
-  ) |>
+  # dplyr::mutate(
+  #   mean_speed = decimal_point(mean_speed) |> as.numeric(),
+  #   percentile_85 = decimal_point(percentile_85) |> as.numeric()
+  # ) |>
+  # tidyr::pivot_wider(
+  #   names_from = valid_speed,
+  #   values_from = c(traffic, mean_speed, percentile_85),
+  #   values_fill = list(traffic = c(0), mean_speed = NA, percentile_85 = NA)
+  # ) |>
+  # dplyr::mutate(
+  #   traffic_volume = traffic_TRUE + traffic_FALSE,
+  #   percentage_valid_speed = round(traffic_TRUE / traffic_volume * 100, 1)
+  # ) |>
+  dplyr::filter(
+    valid_speed == TRUE
+  ) |> 
   dplyr::select(
     trp_id,
     trp_lane,
-    day,
-    #periode_start,
-    traffic_volume,
-    mean_speed = mean_speed_TRUE,
-    percentile_85 = percentile_85_TRUE,
-    percentage_valid_speed
-  ) |>
-  dplyr::mutate(
-    mean_speed =
-      dplyr::case_when(
-        traffic_volume <= 5 ~ NA_real_,
-        TRUE ~ mean_speed
-      )
-  )
+    # day,
+    period_start,
+    # traffic_volume,
+    mean_speed,# = mean_speed_TRUE,
+    percentile_85# = percentile_85_TRUE,
+    # percentage_valid_speed
+  ) #|>
+  # dplyr::mutate(
+  #   mean_speed =
+  #     dplyr::case_when(
+  #       traffic_volume <= 5 ~ NA_real_,
+  #       TRUE ~ mean_speed
+  #     )
+  # )
 
 the_data_tidy <-
   the_data |>
@@ -551,24 +555,30 @@ the_data_tidy <-
       trp_lane == lane_internal
     )
   ) |>
-  dplyr::mutate(
-    trp_lane =
-      dplyr::case_when(
-        !is.na(lane_according_to_current_metering) ~ lane_according_to_current_metering,
-        TRUE ~ trp_lane
-      )
+  dplyr::left_join(
+    trp_info_lane_direction_names,
+    by = dplyr::join_by(trp_id, lane_according_to_current_metering)
   ) |>
   dplyr::select(
     trp_id,
     trp_name,
     road_reference,
-    trp_lane,
-    day,
-    #period_start,
-    traffic_volume,
+    lane = lane_according_to_current_metering,
+    direction,
+    period_start,
+    # traffic_volume,
     mean_speed,
-    percentile_85,
-    percentage_valid_speed
+    percentile_85
+  ) |> 
+  dplyr::mutate(
+    lane = base::factor(lane, levels = c(1, 3, 2, 4)),
+    speed_limit = dplyr::case_when(
+      trp_id == "30552V444220" ~ "100",
+      TRUE ~ "110"
+    )
+  ) |> 
+  dplyr::arrange(
+    trp_id, period_start, lane
   )
 
 the_data_tidy |>
@@ -580,7 +590,7 @@ the_data_tidy |>
 
 writexl::write_xlsx(
   the_data_tidy,
-  "spesialbestillinger/elverum_tn.xlsx"
+  "spesialbestillinger/klofta.xlsx"
 )
 
 
