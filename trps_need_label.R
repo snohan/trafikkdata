@@ -223,6 +223,7 @@ n_before_2022 <-
 # 2026-02-02: 18 513
 # 2026-03-02: 18 490
 # 2026-04-07: 18 200 (I took some for 2015)
+# 2026-05-04: 18 198
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -285,7 +286,8 @@ trp_need_label |>
 trp_top_list <-
   trp_need_label |>
   dplyr::filter(
-    day >= "2025-01-01"
+    day >= "2026-01-01",
+    traffic_type == "VEHICLE"
   ) |>
   dplyr::summarise(
     count = n(),

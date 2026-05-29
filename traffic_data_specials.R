@@ -491,54 +491,35 @@ writexl::write_xlsx(
 # Speed ----
 the_data <-
   dplyr::bind_rows(
-    readr::read_delim(
-      # "spesialbestillinger/elverum_tn.csv"
-      "spesialbestillinger/klofta.csv"
-    )
+    readr::read_delim("spesialbestillinger/fossen_bratte.csv")
   ) |>
-  # Weird quirk in reading Kibana eksport: ignores decimal
-  dplyr::mutate(
-    dplyr::across(
-      tidyselect::where(is.numeric),
-      ~ .x / 100
-    )
-  ) |>
-  dplyr::rename(
-    percentile_85 = '85th percentile of speed'
-  ) |>
-  # dplyr::mutate(
-  #   mean_speed = decimal_point(mean_speed) |> as.numeric(),
-  #   percentile_85 = decimal_point(percentile_85) |> as.numeric()
-  # ) |>
-  # tidyr::pivot_wider(
-  #   names_from = valid_speed,
-  #   values_from = c(traffic, mean_speed, percentile_85),
-  #   values_fill = list(traffic = c(0), mean_speed = NA, percentile_85 = NA)
-  # ) |>
-  # dplyr::mutate(
-  #   traffic_volume = traffic_TRUE + traffic_FALSE,
-  #   percentage_valid_speed = round(traffic_TRUE / traffic_volume * 100, 1)
-  # ) |>
   dplyr::filter(
     valid_speed == TRUE
   ) |> 
   dplyr::select(
     trp_id,
-    trp_lane,
-    # day,
-    period_start,
-    # traffic_volume,
-    mean_speed,# = mean_speed_TRUE,
-    percentile_85# = percentile_85_TRUE,
-    # percentage_valid_speed
-  ) #|>
-  # dplyr::mutate(
-  #   mean_speed =
-  #     dplyr::case_when(
-  #       traffic_volume <= 5 ~ NA_real_,
-  #       TRUE ~ mean_speed
-  #     )
-  # )
+    lane = trp_lane,
+    time = day,
+    traffic_volume = traffic,
+    mean_speed,
+    percentile_85 = '85th percentile of speed'
+  ) |> 
+  dplyr::mutate(
+    mean_speed = mean_speed / 100,
+    percentile_85 = percentile_85 / 100
+  ) |> 
+  dplyr::mutate(
+    mean_speed =
+      dplyr::case_when(
+        traffic_volume <= 5 ~ NA_real_,
+        TRUE ~ mean_speed
+      ),
+      percentile_85 =
+        dplyr::case_when(
+          traffic_volume <= 5 ~ NA_real_,
+          TRUE ~ percentile_85
+        )
+  )
 
 the_data_tidy <-
   the_data |>
@@ -552,7 +533,7 @@ the_data_tidy <-
     trp_info_lane,
     by = dplyr::join_by(
       trp_id == trp_id,
-      trp_lane == lane_internal
+      lane == lane_internal
     )
   ) |>
   dplyr::left_join(
@@ -565,21 +546,26 @@ the_data_tidy <-
     road_reference,
     lane = lane_according_to_current_metering,
     direction,
-    period_start,
-    # traffic_volume,
+    time,
+    traffic_volume,
     mean_speed,
+    # month,
+    # day_part,
+    # avg_speed,
+    # sd,
     percentile_85
-  ) |> 
-  dplyr::mutate(
-    lane = base::factor(lane, levels = c(1, 3, 2, 4)),
-    speed_limit = dplyr::case_when(
-      trp_id == "30552V444220" ~ "100",
-      TRUE ~ "110"
-    )
-  ) |> 
-  dplyr::arrange(
-    trp_id, period_start, lane
-  )
+  ) #|> 
+  # dplyr::mutate(
+  #   lane = base::factor(lane, levels = c(1, 3, 2, 4)),
+  #   day_part = base::factor(day_part, levels = c("morgen", "ettermiddag")),
+  #   speed_limit = dplyr::case_when(
+  #     trp_id == "30552V444220" ~ "100",
+  #     TRUE ~ "110"
+  #   )
+  # ) |> 
+  # dplyr::arrange(
+  #   trp_id, month, day_part, lane
+  # )
 
 the_data_tidy |>
   summarise(
@@ -590,7 +576,7 @@ the_data_tidy |>
 
 writexl::write_xlsx(
   the_data_tidy,
-  "spesialbestillinger/klofta.xlsx"
+  "spesialbestillinger/fossen_bratte.xlsx"
 )
 
 
