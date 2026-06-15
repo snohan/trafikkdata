@@ -11,28 +11,26 @@
 
 # Match OSM id to TRP id ----
 
+# Finn først OSM Way id for hver TRP
+# Må finne INRIX sin segmenterte OSM Way id, segmentid, basert på geometri-matching, men filtrert på way_id for å spare regnetid
+
 ## TRPs ----
 trps <- 
   get_points() |> 
   dplyr::filter(
     traffic_type == "VEHICLE",
-    registration_frequency == "CONTINUOUS"
+    registration_frequency == "CONTINUOUS",
+    operational_status != "RETIRED"
   ) |> 
   dplyr::select(
     trp_id, lat, lon
   ) |> 
   dplyr::distinct()
 
-# But need only TRPs with recent data of good quality
-trp_latest_date <- 
-  get_trps_latest_data() |> 
-  dplyr::filter(
-    latest_data_by_hour > "2026-05-01"
-  )
 
 
 ## Get OSM id ----
-get_osm_id_for_trp <- function(trp_id, lat, lon) {
+get_osm_id <- function(lat, lon) {
 
   result <-
     osmdata::opq_around(
@@ -41,13 +39,22 @@ get_osm_id_for_trp <- function(trp_id, lat, lon) {
       key = "highway",
       radius = 5
     ) |> 
-    osmdata::osmdata_sf() |> 
-    dplyr::mutate(trp_id = trp_id)
+    osmdata::osmdata_sf()
 
-  return(result)
+  osm_id <- result$osm_lines$osm_id
+
+  return(osm_id)
 
 }
 
+
+trp_osm <-
+  trps |> 
+  dplyr::slice(1:3) |> 
+  dplyr::mutate(
+    osm_id = purrr::map2(lat, lon, ~ get_osm_id(.x, .y))
+  )
+  
 
 
 
@@ -57,7 +64,7 @@ test_punkt <-
   # c(63.3932674, 10.4143456)
   c(63.4055996, 10.4000711)
 
-test_data <- 
+test_data_2 <- 
   osmdata::opq_around(
     lat = test_punkt[1],
     lon = test_punkt[2],
@@ -69,12 +76,20 @@ test_data <-
   # osmdata::osmdata_data_frame()
   osmdata::osmdata_sf()
 
+result <- get_osm_id(test_punkt[1], test_punkt[2])
 
 
-q <- 
-  opq("trondheim, norway") |>
-  add_osm_feature(key = "highway", value = "cycleway") |> 
-  osmdata_sf()
+test_data_2 <- 
+  osmdata::opq_around(
+    lat = trps$lat[3],
+    lon = trps$lon[3],
+    key = "highway",
+    # value = "residential",
+    radius = 5
+  ) |> 
+  # osmdata::add_osm_feature(key = "highway") 
+  # osmdata::osmdata_data_frame()
+  osmdata::osmdata_sf()
 
 
-available_features()
+# Look at OSM map: https://www.openstreetmap.org/?way=[YOUR_WAY_ID]

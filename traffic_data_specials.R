@@ -891,7 +891,7 @@ trs_trp_ids <-
 
 
 # Need only TRPs with data in specific years
-adt_year <- 2024
+adt_year <- 2025
 trp_data_time_span <-
   get_trp_data_time_span() |>
   dplyr::filter(
@@ -923,20 +923,20 @@ trps <-
   dplyr::distinct(trp_id, .keep_all = T) |>
   dplyr::filter(
     # øst
-    # county_name %in% c("Innlandet", "Akershus", "Oslo", "Østfold", "Buskerud"),
+    county_name %in% c("Innlandet", "Akershus", "Oslo", "Østfold", "Buskerud"),
     # sør
     # county_name %in% c("Vestfold", "Telemark", "Agder"),
     # vest
-    county_name %in% c("Vestland", "Rogaland"),
+    # county_name %in% c("Vestland", "Rogaland"),
     trp_id %in% trp_data_time_span$trp_id
   )
 
 {
 tictoc::tic()
-adt_2024_wday <-
+adt_2025_wday <-
   get_aadt_by_direction_and_length_for_trp_list(trps$trp_id, "WEEKDAY") |>
   # WEEKEND, WEEKDAY, ALL
-  dplyr::filter(year == 2024) |>
+  dplyr::filter(year == 2025) |>
   dplyr::left_join(
     trps,
     by = join_by(trp_id)
@@ -978,11 +978,11 @@ tictoc::toc()
 }
 
 dplyr::bind_rows(
-  adt_2024_all,
-  adt_2024_wday,
-  adt_2025_all,
+  # adt_2024_all,
+  # adt_2024_wday,
+  # adt_2025_all,
   adt_2025_wday
-) |> writexl::write_xlsx("spesialbestillinger/adt_retning_lengde_2024_2025_vest.xlsx")
+) |> writexl::write_xlsx("spesialbestillinger/adt_retning_lengde_2025_ost_ukedag.xlsx")
 
 
 # Zhong time gaps ----
