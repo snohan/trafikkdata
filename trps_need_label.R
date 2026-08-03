@@ -224,6 +224,8 @@ n_before_2022 <-
 # 2026-03-02: 18 490
 # 2026-04-07: 18 200 (I took some for 2015)
 # 2026-05-04: 18 198
+# 2026-06-16: 18 189
+# 2026-08-03: 17 864
 
 trp_need_label <-
   zero_dt_filtered |>
@@ -311,13 +313,28 @@ trp_old <-
   )
 
 # Bike TRPs with normally occurring zero days in winter. Using glmmTMB ? to find outliers with zero inflation.
+bike_trps <-
+  trp_need_label |>
+  dplyr::filter(
+    traffic_type == "BICYCLE"
+  ) |>
+  dplyr::mutate(
+    month_no = lubridate::month(day)
+  ) |> 
+  dplyr::summarise(
+    count = n(),
+    .by = c(trp_id, name, month_no, year, road_category, county_name, municipality_name)
+  ) |>
+  dplyr::arrange(
+    trp_id, year, month_no
+  )
 
 
 # Find the dates of a specified TRP
 trp_need_label |>
   dplyr::filter(
-    trp_id == "05713V2518807",
-    year == 2015
+    trp_id == "66126V3112188",
+    year == 2026
   ) |>
   ggplot(aes(x = day)) +
   geom_bar() +

@@ -195,7 +195,7 @@ length(unique(yearly_unidirectional_stations$nvdb_id)) == nrow(toll_stations_one
 # Manually set direction in the cases where:
 # - there is only one direction anyway (direction ratio = 1), 15 such in 2025.
 # - stations with more than two directions, 3 stations in 2025.
-# - directionial distribution outside 60-40.
+# - directional distribution outside 60-40.
 
 yearly_both_directional_stations_distribution <-
   yearly |> 
